@@ -8,7 +8,7 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 95**.
+**READY TO LAUNCH.** Overall **74 → 92**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
@@ -49,19 +49,25 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
-| P3 — Low | 8 | 2 | **6** | 0 |
+| P3 — Low | 9 | 3 | **6** | 0 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
-`SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002` and `PRIV-002`. Not one would have been
-found by reading the code again more carefully.
+`SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002`, `PRIV-002`, `PERF-002` and
+`PERF-003`. Not one would have been found by reading the code again more carefully. The last two
+are the clearest cases: both came from asking why a score was low and then measuring, and the
+same habit later showed that `PERF-002`'s fix had **already worked** while this file was still
+recording it as a deliberate no-op.
 
 **One P2 is open.** `OPS-001` got worse rather than better on 6 September. The retention job
 works when triggered by hand, but two consecutive slots have now passed without it firing, and
 the job is demonstrably registered and enabled. Nothing left to test from this side.
 
-The open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions rather
-than engineering ones.
+**Three P3s are open, and only one of them is about money.** `PERF-001` (image optimization)
+waits on the plan, as does the deferred P2 `SEC-003`. `PERF-002`'s remaining per-route adoption
+waits on a localisation decision. `PERF-003` waits on nothing at all — it is ~1.2 MB of image
+payload removable today, and it is the only open finding in this document that needs no
+permission from anyone.
 
 **Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` deferred (reason required)
 
@@ -1360,11 +1366,16 @@ next time an audit reads clean.
 
 Re-scored after Phases 1–4. The original number is kept beside each so the movement is visible.
 
+**Overall is the mean of the dimensions above it, rounded** — not a separate judgement. Stated
+because it had stopped being true: the *Before* column averaged its ten dimensions (73.2 → 74)
+while *Now* read 95 against an average of 92.3, so one column held two numbers produced two
+different ways. Anyone changing a dimension should recompute the total rather than re-feel it.
+
 | Dimension | Before | Now | What moved it |
 |---|---:|---:|---|
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
 | Correctness | 88 | **97** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
-| Reliability | 78 | **92** | Health endpoint plus **live uptime monitoring**, structured logging in every money path, scheduled retention, and **every outbound provider call bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. Held below the mid-90s by two things: the retention cron has still not been seen to fire on schedule (`OPS-001`), and there are no circuit breakers. |
+| Reliability | 78 | **88** | Health endpoint plus **live uptime monitoring**, structured logging in every money path, and **every outbound provider call bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. **Lowered from 92 on 2026-09-06.** That score credited "scheduled retention", and the schedule does not run: two slots have now passed untouched with every explanation eliminated (`OPS-001`). A job that only works when a human remembers to trigger it is not a reliability feature, and scoring it as one was the kind of error this file exists to catch. Also no circuit breakers. |
 | Performance | 72 | **85** | Re-measured 2026-09-06 and raised, for the first time on evidence rather than reasoning. `PERF-002`'s tier 2 pre-step turned out to be most of the fix rather than the no-op this file recorded: removing `no-store` let Vercel's edge hold the HTML, and warm TTFB fell from ~1.0s to **~0.18s**. Still short of full marks for one measured reason — `PERF-001` keeps images unoptimised, and `PERF-003` found 2.68 MB of homepage images of which 1.98 MB is un-converted JPEG. The *server* is now fast; the *page* still carries the weight. |
 | **Testing** | 45 | **96** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. And `completeCheckout` is now covered **end to end against the real service** on a Neon test branch, closing the last gap — including ten simultaneous buyers racing for one unit. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
@@ -1373,7 +1384,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
 | **Compliance** (new) | — | **88** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. Held below 90 because retention is still not proven to run on a schedule. |
-| **Overall** | **74** | **95** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds it below the high 90s is no longer engineering at all: one unobserved cron slot, and three decisions about what to spend — the 6-hour restore window, image optimization, and the CSP nonce. |
+| **Overall** | **74** | **92** | **Ready to launch.** **Corrected from 95 on 2026-09-06**, on arithmetic rather than on new bad news: the *Before* column is the mean of its ten dimensions (73.2), while 95 was never the mean of these eleven — they average **92.3**. Two numbers produced two different ways sat in one column. The browser suite has now caught two real bugs the unit tests could not see. What holds it here: a cron that does not fire and cannot be explained (`OPS-001`), one open code finding that needs no permission (`PERF-003`), and three decisions about what to spend — the 6-hour restore window, image optimization, and the CSP nonce. |
 
 ---
 
@@ -1468,3 +1479,5 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | Corrected the still-open list, which was still citing the CSP-nonce argument `PERF-002` disproved, and did not list per-route Cache Components adoption as open at all | `7043365` |
 | 2026-09-06 | **Re-measured performance instead of trusting the score, and the audit was wrong in the shop's favour.** `PERF-002`'s tier 2 pre-step was recorded twice as a deliberate no-op; it was not. Warm TTFB is **0.17–0.24s** against the 0.89–1.13s recorded the day before — about fivefold — because enabling Cache Components dropped `no-store`, letting Vercel's edge hold the HTML. Verified against the obvious objection: three never-requested pages answered `PRERENDER` with `Age: 0`. Performance re-scored **74 → 85**, the first move made on measurement rather than reasoning. A build/edge discrepancy is recorded unresolved rather than explained away | `ed460cc` |
 | 2026-09-06 | `PERF-003` opened — the homepage carries 2.68 MB of images, of which 1.98 MB is JPEG averaging 135 KB while 14 WebPs in the same bucket average 51 KB. Converting them is ~1.2 MB and needs no plan change, which makes it the only open performance item blocked on nobody. Also records a suspicion that did **not** survive checking: the LCP image is not lazy-loaded | `ed460cc` |
+| 2026-09-06 | **Reliability lowered 92 → 88.** Its justification credited "scheduled retention" while `OPS-001` shows the schedule does not run. A job that works only when a human remembers to trigger it is not a reliability feature, and scoring it as one was the error this file exists to catch | _pending_ |
+| 2026-09-06 | **Overall corrected 95 → 92, on arithmetic rather than new bad news.** The *Before* column is the mean of its ten dimensions (73.2 → 74); *Now* read 95 against a mean of 92.3, so one column held two numbers produced two different ways. Recorded the rule under the table so a future edit recomputes rather than re-feels it. Also corrected the P3 counts for `PERF-003`, and the claim that the open P3s were all spending decisions — one of them needs no permission from anyone | _pending_ |
