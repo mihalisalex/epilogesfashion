@@ -150,12 +150,17 @@ test.describe("the purchase funnel", () => {
 
   test("an unknown product slug is at least kept out of the index", async ({ page }) => {
     /**
-     * The mitigation for the above, pinned separately so the two cannot regress together.
+     * Belt as well as braces, and this test has already earned its keep once.
      *
-     * Next injects `<meta name="robots" content="noindex">` when `notFound()` fires mid-stream,
-     * which is what stops a soft 404 becoming an indexed phantom page. That mitigation is the
-     * only reason `SEO-002` is a defect rather than an emergency, so it is worth its own test:
-     * if it ever stops being emitted, the 200 suddenly matters a great deal more.
+     * It was written to pin the *mitigation* for `SEO-002`: while unknown URLs answered 200, Next
+     * injected `noindex` automatically, because `notFound()` firing mid-stream is the one case
+     * where it does. Fixing the finding moved the 404 into `proxy.ts`, so the page is now reached
+     * by a rewrite, `notFound()` never fires, and **the automatic meta silently disappeared** —
+     * caught here, and nowhere else.
+     *
+     * The 404 status more than replaces it. But losing a signal as a side effect of a fix is
+     * exactly the kind of thing that goes unnoticed, so `app/not-found.tsx` now sets it
+     * explicitly and this keeps watching it.
      */
     await page.goto("/products/this-product-does-not-exist-xyz");
     await expect(page.locator('meta[name="robots"][content*="noindex"]')).toHaveCount(1);
