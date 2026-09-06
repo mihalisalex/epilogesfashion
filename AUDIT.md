@@ -1366,6 +1366,24 @@ next time an audit reads clean.
 
 Re-scored after Phases 1–4. The original number is kept beside each so the movement is visible.
 
+### Why 95 → 92 is an improvement, not a regression
+
+Anyone seeing the headline fall will reasonably assume something broke. Nothing did.
+
+| | Printed | Its table's actual mean |
+| --- | ---: | ---: |
+| 5 September | **95** | **91.64** |
+| 6 September | **92** | **92.27** |
+
+The real score **rose by 0.64**. Two dimensions moved, in opposite directions and for
+opposite reasons: Performance **+11** on a measured fivefold TTFB improvement, and Reliability
+**−4** because the retention cron was found not to run — a defect that was **already true** when
+92 was written, not one introduced since. Net **+7** across the dimensions.
+
+The headline fell anyway because it had been carrying about three points it never earned. Both
+corrections landed in the same pass, so a genuine gain and a bookkeeping fix cancelled out in
+the one number most people read.
+
 **Overall is the mean of the dimensions above it, rounded** — not a separate judgement. Stated
 because it had stopped being true: the *Before* column averaged its ten dimensions (73.2 → 74)
 while *Now* read 95 against an average of 92.3, so one column held two numbers produced two
@@ -1384,7 +1402,7 @@ different ways. Anyone changing a dimension should recompute the total rather th
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
 | **Compliance** (new) | — | **88** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. Held below 90 because retention is still not proven to run on a schedule. |
-| **Overall** | **74** | **92** | **Ready to launch.** **Corrected from 95 on 2026-09-06**, on arithmetic rather than on new bad news: the *Before* column is the mean of its ten dimensions (73.2), while 95 was never the mean of these eleven — they average **92.3**. Two numbers produced two different ways sat in one column. The browser suite has now caught two real bugs the unit tests could not see. What holds it here: a cron that does not fire and cannot be explained (`OPS-001`), one open code finding that needs no permission (`PERF-003`), and three decisions about what to spend — the 6-hour restore window, image optimization, and the CSP nonce. |
+| **Overall** | **74** | **92** | **Ready to launch. This is not a drop — read the next paragraph before concluding otherwise.** Yesterday's table, averaged by its own rule, came to **91.64**; it was *printed* as 95. Today's comes to **92.27**. The underlying score moved **up 0.64**, and the only reason the headline appears to fall is that a wrong number was removed in the same pass that improved a real one. |
 
 ---
 
