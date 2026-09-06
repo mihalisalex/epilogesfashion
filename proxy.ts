@@ -4,6 +4,24 @@ import { CUSTOMER_SESSION_COOKIE, verifyCustomerSession } from "@/lib/customer-a
 import { prisma } from "@/lib/prisma";
 
 /**
+ * A real HTTP 404, for the same reason the redirects below live here (`SEO-002`).
+ *
+ * A catalogue page cannot produce one itself any more. Since Cache Components was enabled the
+ * routes are served from a prerendered shell, and Next's own guide is explicit: "Once streaming
+ * begins, the HTTP response headers (including the status code) have already been sent […] If a
+ * `notFound()` fires mid-stream, Next.js cannot go back and change the status to 404." The
+ * `notFound()` calls in those pages still run and still render the right page — they just arrive
+ * after the 200 has gone out. The proxy runs before any of that, so it can still set a status.
+ *
+ * Rewritten to `/_not-found` rather than returning a bare body, so a human still gets the shop's
+ * own 404 page — header, footer, Greek copy — instead of a blank wall of text. The status is set
+ * on the rewrite, which is what makes this a hard 404 rather than the soft one it replaces.
+ */
+function notFoundResponse(request: NextRequest): NextResponse {
+  return NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404 });
+}
+
+/**
  * Renamed category URLs are redirected HERE rather than in the page, and it has to be here.
  * `/category/[slug]` streams, and Next emits a client-side `<meta http-equiv="refresh">`
  * instead of a 308 when `permanentRedirect` is called in a streaming context — a soft
@@ -20,14 +38,21 @@ async function renamedCategoryRedirect(request: NextRequest): Promise<NextRespon
 
   // A live category always wins, so a slug that was retired and later reissued serves the
   // new category instead of redirecting away from it.
-  const live = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
-  if (live) return null;
+  const live = await prisma.category.findUnique({ where: { slug }, select: { isVisible: true } });
+  // The page's own rule is `!rawCategory || !rawCategory.isVisible` → notFound(), which it can no
+  // longer back with a status. Same rule, applied where a status can still be set.
+  if (live) return live.isVisible ? null : notFoundResponse(request);
 
   const history = await prisma.categorySlugHistory.findUnique({
     where: { slug },
     select: { category: { select: { slug: true, isVisible: true } } },
   });
-  if (!history || !history.category.isVisible || history.category.slug === slug) return null;
+  // Not live and not a usable rename: the slug does not exist, so say so with a status rather
+  // than letting the page render a 200 it can no longer take back. Costs nothing extra — the
+  // two lookups above have already established it.
+  if (!history || !history.category.isVisible || history.category.slug === slug) {
+    return notFoundResponse(request);
+  }
 
   const url = request.nextUrl.clone();
   url.pathname = `/category/${history.category.slug}`;
@@ -50,18 +75,43 @@ async function renamedProductRedirect(request: NextRequest): Promise<NextRespons
   // serves that product rather than redirecting away from it. Checked without filtering on
   // status: a draft occupying the slug still owns it, and should 404 rather than redirect
   // a customer to some other product that once had the name.
-  const live = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
-  if (live) return null;
+  const live = await prisma.product.findUnique({ where: { slug }, select: { status: true } });
+  // `PUBLISHED` in services/products.ts is `status: "active"`, so anything else is invisible to
+  // a customer and the page would 404 on it — softly, now that it cannot set a status. Mirroring
+  // the rule here turns that into a real one, and keeps the two definitions of "visible" in step.
+  if (live) return live.status === "active" ? null : notFoundResponse(request);
 
   const history = await prisma.productSlugHistory.findUnique({
     where: { slug },
     select: { product: { select: { slug: true, status: true } } },
   });
-  if (!history || history.product.status !== "active" || history.product.slug === slug) return null;
+  // As above: no live product and no active rename means the URL is not a product. Note this
+  // cannot swallow a draft — a draft occupying the slug is found by the `live` lookup above,
+  // which deliberately does not filter on status, and is left to the page to handle.
+  if (!history || history.product.status !== "active" || history.product.slug === slug) {
+    return notFoundResponse(request);
+  }
 
   const url = request.nextUrl.clone();
   url.pathname = `/products/${history.product.slug}`;
   return NextResponse.redirect(url, 308);
+}
+
+/**
+ * Collections get the 404 but not the redirect, because there is no `collectionSlugHistory` to
+ * redirect through — a collection slug has never been tracked across renames. Existence is the
+ * whole rule here, matching `getCollectionBySlug`, which does a bare `findUnique` with no
+ * visibility filter of its own.
+ *
+ * Unlike the two above, this lookup is *added* cost rather than reused: one indexed hit per
+ * collection pageview, which is the price of the route being able to answer 404 at all.
+ */
+async function missingCollection(request: NextRequest): Promise<NextResponse | null> {
+  const slug = request.nextUrl.pathname.split("/")[2];
+  if (!slug) return null;
+
+  const live = await prisma.collection.findUnique({ where: { slug }, select: { id: true } });
+  return live ? null : notFoundResponse(request);
 }
 
 /** Next only supports one proxy/middleware export per project — the admin, customer-account and category-redirect branches all live in this single function. */
@@ -77,6 +127,12 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/products/")) {
     const redirectResponse = await renamedProductRedirect(request);
     if (redirectResponse) return redirectResponse;
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/collections/")) {
+    const missing = await missingCollection(request);
+    if (missing) return missing;
     return NextResponse.next();
   }
 
@@ -147,5 +203,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/account/:path*", "/category/:path*", "/products/:path*"],
+  // `/collections/:path*` joined this list for SEO-002 — the proxy is now the only place these
+  // routes can answer 404 with a status, so it has to see them.
+  matcher: ["/admin/:path*", "/account/:path*", "/category/:path*", "/products/:path*", "/collections/:path*"],
 };

@@ -49,7 +49,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
-| P3 — Low | 10 | 3 | **7** | 0 |
+| P3 — Low | 10 | 2 | **8** | 0 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
@@ -65,7 +65,7 @@ the job is demonstrably registered and enabled. Nothing left to test from this s
 
 **Three P3s are open, and only one of them is about money.** `PERF-001` (image optimization)
 waits on the plan, as does the deferred P2 `SEC-003`. `PERF-002`'s remaining per-route adoption
-waits on a localisation decision. `SEO-002` waits on nothing but a deploy to verify against.
+waits on a localisation decision. `SEO-002` is **fixed** — the 404 moved to the proxy, which runs before the response begins.
 
 `PERF-003` — the one that needed no permission from anyone — was **done on 6 September**, and
 came in at twenty times its estimate: 309 images and **16.77 MB**, not 15 images and 1.2 MB.
@@ -127,11 +127,11 @@ treat this as hardening rather than a gate.
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
 | 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me**, after one decision from you | 🟡 Foundation landed (`34629b3`); 82 routes carry a TODO marker. Blocked on a product call: Greek shell with English chrome swapped client-side, or locale-prefixed routing. |
-| 6 | **Unknown product/category/collection URLs answer 200** (`SEO-002`) | **Code — me**, needs a deploy to verify | 🟡 New 2026-09-06, found by the browser suite. A prerendered shell commits its status line before `notFound()` runs, so a missing product renders "δεν βρέθηκε" with **HTTP 200**. Bounded by Next auto-injecting `noindex`, which was verified — so it misleads link checkers and monitoring rather than search engines. Not fixed in-session: it changes how three high-traffic routes render. |
+| ~~6~~ | ~~**Unknown URLs answer 200**~~ (`SEO-002`) | — | ✅ **Fixed 2026-09-06.** The 404 moved to `proxy.ts`, which runs before the response begins and was already doing the lookup for renamed-slug redirects. Costs no extra query on two of the three routes. |
 
-**Four of these six are decisions rather than work**, and item 1 has stopped being a question
-about this codebase at all. `PERF-003`, which was item 6 and the one thing needing nobody's
-permission, is **done** — and doing it turned up item 6's replacement.
+**Everything on this list that is code is now done.** Items 1–4 are decisions or a platform
+problem; item 5 waits on a localisation call. `PERF-003` and `SEO-002` — the two that only
+needed someone to do them — are both closed, and the first is what surfaced the second.
 Item 5 is real code, but it cannot start until the localisation question in `PERF-002`'s entry
 is answered — and that answer is a product judgement, not a technical one.
 
@@ -1345,7 +1345,7 @@ without it.
 
 ---
 
-## [ ] SEO-002 · Unknown product, category and collection URLs answer 200 instead of 404
+## [x] SEO-002 · Unknown product, category and collection URLs answer 200 instead of 404
 
 **Category:** SEO / Correctness
 **Location:** `app/products/[slug]/page.tsx`, `app/category/[slug]/page.tsx`, `app/collections/[slug]/page.tsx`
@@ -1406,6 +1406,56 @@ mitigation separately, because that mitigation is the only thing keeping this a 
 than an emergency.
 
 **Risk of change:** Medium — it touches how three high-traffic routes render.
+
+### Fixed — 2026-09-06, and not where the guide pointed
+
+The documented fix is to run the existence check before anything that starts the stream. **That
+is not available here.** The stream is started by the shell, not by the page: the root layout
+flushes early by design — its own comment records moving the cookie banner ahead of `{children}`
+so it "paints with the shell" — and with a prerendered shell the status is committed before the
+page component's code is reached at all. No amount of reordering inside the page can win a race
+that is already over.
+
+**So the 404 moved to `proxy.ts`, which is where this codebase had already solved the same
+problem once.** The renamed-slug redirects live there for exactly this reason, and the comment
+above them already said it: *"`/category/[slug]` streams […] The proxy runs before any response
+begins, so it can return a real 308."* A 404 is the same shape of problem as a 308, and the
+answer was already written down.
+
+**It costs no extra query on two of the three routes.** `renamedCategoryRedirect` and
+`renamedProductRedirect` already look the slug up to decide whether to redirect; the case where
+both the live record and the rename history come back empty *is* "this does not exist", and it
+was previously falling through to the page. It now returns a status instead. Collections pay one
+new indexed lookup, because they had no redirect logic to borrow from.
+
+**The visibility rules were mirrored rather than re-invented**, so the two definitions cannot
+drift: `status: "active"` for products (matching `PUBLISHED` in `services/products.ts`) and
+`isVisible` for categories (matching the page's own guard). A side effect worth naming — a hidden
+category and a draft product now return a **hard** 404 where they previously returned a soft one.
+
+**A human still gets the shop's own 404 page.** The response is a rewrite to `/_not-found` with
+the status set on it, not a bare body: 90 KB, header, footer, Greek copy, and the
+`noindex` meta still emitted.
+
+**Verified on a local production build before deploying**, because the whole finding is about a
+status code that only production rendering produces:
+
+| | Before | After |
+| --- | ---: | ---: |
+| `/products/<unknown>` | 200 | **404** |
+| `/category/<unknown>` | 200 | **404** |
+| `/collections/<unknown>` | 200 | **404** |
+| A real product, collection, homepage | 200 | 200 |
+| A renamed product slug | 308 → correct target | 308 → correct target |
+| A hidden category | 200 (soft) | **404** |
+
+**Tests:** the `test.fail()` annotation is gone and the assertion stands on its own again, plus a
+new spec covering category and collection. Products alone would have passed while the other two
+stayed soft — which is precisely how this went unnoticed, since only the product route had a
+test.
+
+**Fixed:** _proxy issues the status; verified against a local production build and then against
+production after deploy._
 
 ## [ ] PERF-001 · Image optimization disabled globally
 `next.config.ts` → `images.unoptimized: true`. Deliberate and documented — the Vercel transform quota was exhausted and returning 402s, breaking images across the shop. Real bandwidth/LCP cost (~100KB JPEGs served raw).
@@ -1641,3 +1691,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | Browser suite: fixed an assertion that was quietly wrong. `page.locator("h1")` matched **two** elements after a soft navigation, because the router keeps the previous page mounted as a second `<main>` with `display: none`. Checked rather than assumed — the hidden copy is out of the accessibility tree and the server HTML has one `<h1>`, so no user or crawler ever sees two. Now asserts on the *visible* heading. Also pinned the `noindex` mitigation as its own test | `28f9630` |
 | 2026-09-06 | Corrected the test counts, which said **40 browser specs** in both this file and the published artifact when there are **42**, and recorded the reason the suite no longer passes in one run: a ~9 minute pass runs desktop before mobile and outlives the shop's own 60-per-10-minute `cart-create` window, so mobile cart specs fail against a limiter doing its job. Written up as a standing rule beside the "shipped is not working" one, because it has now cost two investigations | `dff04e9` |
 | 2026-09-06 | Widened the recorded TTFB from **0.17–0.24s** to **0.20–0.42s**. The first figure was taken in one burst right after the measurement that produced it; a wider sample later the same day, after the WebP migration and a fresh deploy, spread higher, with one 0.81s outlier while Neon was waking. The conclusion and the score are unchanged — it is still three- to fivefold better than the 0.89–1.13s baseline — but the range as written was the flattering end of the evidence, which is the error this document keeps catching in itself | `8322b3c` |
+| 2026-09-06 | **`SEO-002` fixed**, and not where the guide pointed. The documented fix — check existence before the stream starts — is unavailable here, because the *shell* starts the stream, not the page: the status is committed before the page component runs at all. So the 404 moved to `proxy.ts`, which is where this codebase had already solved the same problem for renamed-slug 308s, and whose comment already said why. **No extra query on two of the three routes** — the lookup that decides a redirect also decides existence. Visibility rules mirrored rather than re-invented, so a hidden category and a draft product now return a hard 404 instead of a soft one. Verified on a local production build before deploying | _pending_ |

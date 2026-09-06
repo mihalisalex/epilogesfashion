@@ -123,22 +123,29 @@ test.describe("the purchase funnel", () => {
 
   test("an unknown product slug 404s rather than erroring", async ({ page }) => {
     /**
-     * KNOWN FAILURE, deliberately left visible — see `SEO-002` in AUDIT.md.
+     * Green again as of `SEO-002`, and the fix is not where you would look for it.
      *
-     * This asserted 404 and passed until Cache Components was enabled (`34629b3`). It now gets
-     * **200**, because a route with a prerendered shell has already committed its status line
-     * before `notFound()` runs. Next's own guide states the constraint plainly: "Once streaming
-     * begins, the HTTP response headers (including the status code) have already been sent […]
-     * If a `notFound()` fires mid-stream, Next.js cannot go back and change the status to 404."
+     * This broke when Cache Components was enabled: a route served from a prerendered shell has
+     * already sent its status line before `notFound()` runs, so the page renders correctly with
+     * a **200**. No amount of reordering inside the page can fix that — the status is gone
+     * before the page's own code is reached.
      *
-     * `test.fail()` rather than a weakened assertion. The expectation is still correct and the
-     * suite stays green, but the defect stays on the report — and if it is ever fixed, Playwright
-     * fails loudly with "expected to fail but passed" rather than quietly agreeing with whatever
-     * the app now does.
+     * The 404 is now issued by `proxy.ts`, which runs before any response begins. It was already
+     * doing the "does this slug exist?" lookup there to serve 308s for renamed slugs, so the
+     * status costs no extra query on this route.
      */
-    test.fail();
     const response = await page.goto("/products/this-product-does-not-exist-xyz");
     expect(response?.status()).toBe(404);
+  });
+
+  test("an unknown category and collection 404 too, not just products", async ({ page }) => {
+    /**
+     * The same defect hit all three catalogue routes, so it is pinned on all three. Products
+     * alone would have passed while `/category` and `/collections` stayed soft — which is exactly
+     * how the original went unnoticed, since only the product route had a test.
+     */
+    expect((await page.goto("/category/this-category-does-not-exist-xyz"))?.status()).toBe(404);
+    expect((await page.goto("/collections/this-collection-does-not-exist-xyz"))?.status()).toBe(404);
   });
 
   test("an unknown product slug is at least kept out of the index", async ({ page }) => {
