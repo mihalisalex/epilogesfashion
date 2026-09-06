@@ -14,6 +14,19 @@ export default defineConfig({
   test: {
     environment: "node",
     /**
+     * 30s, against Vitest's 10s default, because the suites that talk to Postgres run
+     * against a Neon branch that auto-suspends when idle. Waking the compute takes longer
+     * than the default hook timeout, so the first run after a pause failed in `beforeAll` —
+     * both DB suites at once, while the other 45 passed. That looks like a broken database
+     * rather than what it is, and it clears on a re-run, which is the worst way for a test
+     * to fail: the second run "proves" nothing was wrong.
+     *
+     * Applied globally rather than per-suite. A pure-function test does not reach a timeout
+     * at all, so the looser bound costs nothing where it does not apply.
+     */
+    hookTimeout: 30_000,
+    testTimeout: 30_000,
+    /**
      * Loads .env so tests that talk to the real database (services/concurrency-guards.test.ts)
      * can find DATABASE_URL. Vitest does not read .env on its own, and without this those
      * tests SKIP rather than fail — the worst outcome, since a skipped guard test looks

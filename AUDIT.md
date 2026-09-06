@@ -1,10 +1,10 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
-**Remediated:** 2026-09-04 → 2026-09-05 · Phases 1–4 plus post-audit findings
-**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`) and 2026-09-05 (added `BUG-002`, `A11Y-002`)
+**Remediated:** 2026-09-04 → 2026-09-06 · Phases 1–4 plus post-audit findings
+**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`) and 2026-09-06 (`OPS-001` escalated)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **448/448** ✓ · `playwright` **40/40** on live production ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **455/455** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **40/40** on live production ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
 
 ## Verdict
 
@@ -21,7 +21,9 @@ are now closed.
 subsystem nobody has watched run is not a subsystem known to work. It ran down to a live bug:
 the job had never executed, so the GDPR retention `PRIV-001` describes was not actually being
 honoured. A manual trigger has since cleared ~1,700 rows and proved the code, the route and
-`CRON_SECRET` all correct. What remains unverified is the schedule alone.
+`CRON_SECRET` all correct. The schedule itself, re-measured on 6 September, **still does not
+fire** — and by then every proposed explanation had been eliminated, including the plan-limit
+guess this document had been carrying. It is a platform problem, not a code one.
 
 **`PRIV-002` — GDPR access and erasure — is now built.** Export and erasure as admin actions,
 with erasure implemented as anonymisation where tax law requires the record kept: the order
@@ -54,8 +56,9 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 `SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002` and `PRIV-002`. Not one would have been
 found by reading the code again more carefully.
 
-**One P2 is open.** `OPS-001` is half resolved — the retention job is proven to work by a manual
-trigger, and only its schedule is still unverified, which one cron slot settles.
+**One P2 is open.** `OPS-001` got worse rather than better on 6 September. The retention job
+works when triggered by hand, but two consecutive slots have now passed without it firing, and
+the job is demonstrably registered and enabled. Nothing left to test from this side.
 
 The open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions rather
 than engineering ones.
@@ -94,12 +97,16 @@ treat this as hardening rather than a gate.
 
 | # | Item | Owner | Where it stands |
 |---|---|---|---|
-| 1 | **Retention cron has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are correct. The 03:30 trigger still has not fired unaided. One query settles it. |
+| 1 | **The retention cron does not run, and every explanation is exhausted** (`OPS-001`) | You — Vercel support or a plan change | 🔴 Escalated 2026-09-06. Measured again: 33 rows sat past retention through a slot that should have cleared them. The job is written correctly, deployed, authorized, **registered and enabled** (`vercel crons ls`) — and does not fire. Not a code problem, and no longer a question a query can answer. |
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
-| 4 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
+| 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
+| 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me**, after one decision from you | 🟡 Foundation landed (`34629b3`); 82 routes carry a TODO marker. Blocked on a product call: Greek shell with English chrome swapped client-side, or locale-prefixed routing. |
 
-**Nothing on this list is code.** Item 1 is one query tomorrow morning; items 2, 3 and 4 are decisions about what to spend.
+**Four of these five are decisions rather than work** — and item 1 has stopped being a question
+about this codebase at all.
+Item 5 is real code, but it cannot start until the localisation question in `PERF-002`'s entry
+is answered — and that answer is a product judgement, not a technical one.
 
 ### Closed on 4–5 September
 
@@ -255,6 +262,35 @@ The distinction matters more than it looks. The Phase 2 tests prove *Postgres* b
 
 A side effect worth naming: the concurrency and audit-log tests **used to run against production**, creating and deleting rows in the live shop. They cleaned up after themselves, but "careful about it" and "cannot reach it" are different properties, and only one holds at 2am. They now run on the branch too. Production verified untouched afterwards: 6 orders, zero test artefacts.
 
+
+### The suite is flaky on a cold database — found and fixed 2026-09-06
+
+Re-running the suite to verify the count this document claims, it **failed** — two files,
+both of the Postgres-backed ones, while the other 45 passed. A second run passed 455/455.
+
+Not noise, and worth the entry because of how it fails. Neon **auto-suspends an idle**
+**branch**, and waking the compute took longer than Vitest's 10-second default
+`hookTimeout`, so both suites died in `beforeAll` before reaching an assertion. The
+timings say it plainly: collection took **29.2s** on the cold run against **5.8s** warm.
+
+**This is the worst shape a test failure can take.** It presents as the database being
+broken, it hits only the two suites that matter most, and it clears on a re-run — so the
+natural response is to run it again, see green, and conclude nothing was wrong. Nobody
+would have investigated it; they would have learned to ignore a red first run.
+
+**Fixed** in `vitest.config.ts`: `hookTimeout` and `testTimeout` raised to 30s, with the
+reason written next to them. Applied globally rather than per-suite — a pure-function test
+never approaches a timeout, so the looser bound costs nothing where it does not apply.
+
+**What is not proven.** The cause is inferred from the timings and from which suites failed,
+not from a reproduction: forcing a genuinely suspended branch means waiting out Neon's idle
+window, and that was not done. The fix is therefore a well-supported hypothesis, not a
+measured before-and-after. If a cold first run ever fails again, this is the first thing to
+re-examine rather than the settled answer.
+
+**It also means this document's own `455/455 ✓` was true only on a warm branch.** The
+number was accurate; the conditions it needed were undocumented, which is the same class of
+problem as the standing rule at the top of this file about `Fixed` not meaning *works*.
 ---
 
 ## [x] PAY-001 · Webhook does not verify amount or currency ← hard gate for card payments
@@ -732,6 +768,47 @@ It also eliminates one of the two hypotheses. `vercel crons run` invokes the rou
 **Still open: whether the schedule fires on its own.** The next slot is the test. If it fires, this closes. If it does not, the cause is that the third cron is not being scheduled, and the fix is a code change rather than a setting — fold the retention work into one of the two existing cron routes so the project declares two jobs instead of three.
 
 **Fixed:** _partially — the data is cleared and the job is proven to work; automatic scheduling is unproven until a slot fires unaided._
+
+### The slot fired again and again did nothing — measured 2026-09-06 06:56 UTC
+
+Queried production directly (host `ep-shiny-cake-…`, 6 orders — the live database, confirmed
+by printing the host rather than trusting which `.env` was loaded):
+
+| | |
+| --- | ---: |
+| Total rate-limit rows | 925 |
+| Rows older than 2 days | **33** |
+| Oldest row | **2026-09-04 02:03:02 UTC** |
+| Newest row | 2026-09-05 21:41:20 UTC |
+
+**This is conclusive, and it is worth being exact about why.** A row created at 02:03 on
+4 September crosses the two-day retention threshold at **02:03 on 6 September** — an hour and
+a half *before* the 03:30 slot. A run at 03:30 would have deleted it. It was still there at
+06:56. The same holds for 32 other rows.
+
+**A confound checked and dismissed.** `lib/rate-limit.ts` also prunes opportunistically, on
+~1% of `recordAttempt` calls, deleting anything over a day old. That could not produce this
+result: it only ever deletes *more*, so it cannot explain a row surviving.
+
+**Both hypotheses from the table above are now dead.** `vercel crons ls` returns all three
+jobs registered against the current deployment, `"enabled": true`, with nothing `undeployed`
+or `modified` — so the plan-cron-limit guess is wrong, and it should never have been recorded
+with as much weight as it was. `CRON_SECRET` was already cleared by the manual run, which
+goes through the same authorization path the scheduler uses.
+
+So the job is **correctly written, correctly deployed, correctly authorized, registered on the
+schedule, enabled — and does not run.** Every explanation this investigation proposed has been
+eliminated, which means the next step is not another database query; it is Vercel support or a
+plan change, and until then the job needs a manual trigger to be considered enforced.
+
+**The honest limit.** Hobby crons are triggered approximately, and 3.4 hours late is far
+outside any reasonable jitter — but "far outside" is a judgement, not a proof. The remaining
+possibility, that it fires much later in the day, is testable at no cost: the 33 rows above are
+the marker. If they are gone tomorrow without anyone touching them, it runs late. If they are
+still there, it does not run.
+
+**Meanwhile `PRIV-001` is again not being honoured** — 33 rows of IP addresses are past their
+stated retention right now. Small in volume, unchanged in principle.
 
 ---
 
@@ -1290,3 +1367,6 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | `PERF-002` tier 1 done (`92cf413`) — both root-layout queries cached with `updateTag` invalidation on write. **Measured afterwards: no meaningful TTFB change** (0.89–1.05s before, 0.93–1.13s after). Two queries were not the bottleneck; the serverless render is. Kept because it removes real load from a free-tier database and is a prerequisite for tier 2 — but recorded plainly as not having fixed the finding | _this commit_ |
 | 2026-09-05 | `PERF-002` tier 2 **attempted and reverted**. Enabling `cacheComponents` surfaced the real scope: one trivial fix (`force-dynamic` in the health route) and one structural obstacle — `getLocale()` feeds `<html lang>` and the i18n provider, neither of which can sit behind `<Suspense>`, so **a static shell cannot know its language while the locale comes from a cookie**. Tier 2 is a localisation decision before it is a caching change. Build green, tree clean; the sanctioned adoption skill recorded for when it is taken | _this commit_ |
 | 2026-09-05 | `PERF-002` **tier 2 pre-step landed** (`34629b3`). The earlier revert was based on a wrong assumption: Cache Components ships `instant = false`, so the flag can go on with every route untouched. 82 pages and layouts opted out with TODO markers as the work queue; two sync-IO blockers fixed (the Footer's copyright year cached, the blog-post date made dynamic — the Footer one was blocking every route in the app). Nothing is faster yet, by design. Eight admin routes already report Partial Prerender | _this commit_ |
+| 2026-09-06 | Re-ran the suite to verify the count this file claims, and it **failed** — both Postgres-backed suites, in `beforeAll`, on Vitest's 10s default `hookTimeout` while Neon woke a suspended branch (collect 29.2s cold vs 5.8s warm). Passes on a re-run, which is the worst way to fail: it reads as a broken database and clears itself, so nobody investigates. Timeouts raised to 30s with the reason recorded next to them | _this change_ |
+| 2026-09-06 | `OPS-001` **escalated, not closed.** Measured production again: 33 rows sat past retention through the 03:30 slot, one of them having crossed the threshold 87 minutes before it. `vercel crons ls` shows all three jobs registered and `enabled` — which **kills the plan-cron-limit hypothesis** this file had been carrying, and which it had already flagged as recalled rather than verified. With `CRON_SECRET` cleared earlier by the manual run, every proposed cause is now eliminated: the job is correct, deployed, authorized, scheduled, enabled, and does not fire. Next step is Vercel, not code | _this change_ |
+| 2026-09-06 | Corrected the still-open list, which was still citing the CSP-nonce argument `PERF-002` disproved, and did not list per-route Cache Components adoption as open at all | _this change_ |
