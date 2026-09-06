@@ -4,7 +4,7 @@
 **Remediated:** 2026-09-04 → 2026-09-06 · Phases 1–4 plus post-audit findings
 **Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`) and 2026-09-06 (`OPS-001` escalated)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **455/455** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **40/40** on live production ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **455/455** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
 
 ## Verdict
 
@@ -81,6 +81,22 @@ rather than leaving it to sit.
 > **`Fixed` means the code shipped. It does not mean the thing works.**
 > Nothing is finished until it has been *observed working in production*, and the entry says
 > how it was observed.
+
+### And a companion rule the suite keeps teaching
+
+> **A red browser suite is not the same as a broken shop — check what the failures have in**
+> **common before diagnosing the app.**
+
+The suite has 42 specs and **does not pass in a single run**, for a reason that is not a defect.
+A full pass takes ~9 minutes and runs desktop before mobile, which is longer than the shop's own
+`cart-create` window — 60 requests per 10 minutes, in `app/api/cart/route.ts`. Desktop spends the
+budget; every mobile cart test then fails against a limiter doing precisely its job. Run on their
+own, those same tests pass, which is how this is confirmed rather than assumed.
+
+This has now cost two separate investigations in this document — once chasing a phantom mobile
+add-to-cart bug that was 120 of my own requests, and once on 6 September when four mobile cart
+specs failed straight after an unrelated data migration and looked exactly like its fallout. Both
+times the tell was the same: the failures were all mobile, all cart, and all fine alone.
 
 Three times in two days, something was wired, type-checked, built, deployed, reviewed and
 wrong: Sentry reported nothing for a day because the variable was named `SENTRY_DNS`; the
@@ -1615,3 +1631,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | **`PERF-003` done, and it was twenty times bigger than the finding said.** Scoped from the homepage's 15 JPEGs; the catalogue held **311**. 309 converted to WebP at q85, **32.39 MB → 15.61 MB (52% saved)**, 0 failures. Quality measured rather than assumed — PSNR 42.7–48.9 dB — and **q95 rejected on evidence**, since it produced files larger than the JPEGs it replaced. A 10%-minimum-saving guard refused 2 images, one of which would have grown 416 KB → 418 KB. Originals kept, column backup taken, 315 references rewritten in one transaction, 64 images verified unbroken afterwards | `28f9630` |
 | 2026-09-06 | **`SEO-002` opened** — unknown product, category and collection URLs answer **200** instead of 404, because a prerendered shell commits its status line before `notFound()` runs. Regressed at `34629b3`. Cause read from Next's bundled guide rather than guessed. **My first reading was wrong**: I said Google would index the phantom pages, and it will not — Next injects `noindex`, which I then verified against production. Left unfixed deliberately (it changes how three high-traffic routes render) and held visible with `test.fail()` rather than a weakened assertion | `28f9630` |
 | 2026-09-06 | Browser suite: fixed an assertion that was quietly wrong. `page.locator("h1")` matched **two** elements after a soft navigation, because the router keeps the previous page mounted as a second `<main>` with `display: none`. Checked rather than assumed — the hidden copy is out of the accessibility tree and the server HTML has one `<h1>`, so no user or crawler ever sees two. Now asserts on the *visible* heading. Also pinned the `noindex` mitigation as its own test | `28f9630` |
+| 2026-09-06 | Corrected the test counts, which said **40 browser specs** in both this file and the published artifact when there are **42**, and recorded the reason the suite no longer passes in one run: a ~9 minute pass runs desktop before mobile and outlives the shop's own 60-per-10-minute `cart-create` window, so mobile cart specs fail against a limiter doing its job. Written up as a standing rule beside the "shipped is not working" one, because it has now cost two investigations | _pending_ |
