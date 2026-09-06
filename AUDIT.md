@@ -49,12 +49,12 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
-| P3 — Low | 9 | 3 | **6** | 0 |
+| P3 — Low | 10 | 3 | **7** | 0 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
-`SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002`, `PRIV-002`, `PERF-002` and
-`PERF-003`. Not one would have been found by reading the code again more carefully. The last two
+`SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002`, `PRIV-002`, `PERF-002`,
+`PERF-003` and `SEO-002`. Not one would have been found by reading the code again more carefully. The last two
 are the clearest cases: both came from asking why a score was low and then measuring, and the
 same habit later showed that `PERF-002`'s fix had **already worked** while this file was still
 recording it as a deliberate no-op.
@@ -65,9 +65,12 @@ the job is demonstrably registered and enabled. Nothing left to test from this s
 
 **Three P3s are open, and only one of them is about money.** `PERF-001` (image optimization)
 waits on the plan, as does the deferred P2 `SEC-003`. `PERF-002`'s remaining per-route adoption
-waits on a localisation decision. `PERF-003` waits on nothing at all — it is ~1.2 MB of image
-payload removable today, and it is the only open finding in this document that needs no
-permission from anyone.
+waits on a localisation decision. `SEO-002` waits on nothing but a deploy to verify against.
+
+`PERF-003` — the one that needed no permission from anyone — was **done on 6 September**, and
+came in at twenty times its estimate: 309 images and **16.77 MB**, not 15 images and 1.2 MB.
+Doing it is also what surfaced `SEO-002`, which is the argument for clearing the unblocked item
+rather than leaving it to sit.
 
 **Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` deferred (reason required)
 
@@ -108,12 +111,19 @@ treat this as hardening rather than a gate.
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
 | 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me**, after one decision from you | 🟡 Foundation landed (`34629b3`); 82 routes carry a TODO marker. Blocked on a product call: Greek shell with English chrome swapped client-side, or locale-prefixed routing. |
-| 6 | **Re-encode 1.98 MB of JPEG to WebP** (`PERF-003`) | **Code — me**, unblocked | 🟢 New 2026-09-06, and the only performance item waiting on nobody. 15 JPEGs average 135 KB against 14 WebPs averaging 51 KB in the same bucket; converting them takes ~1.2 MB off the homepage without a plan change. |
+| 6 | **Unknown product/category/collection URLs answer 200** (`SEO-002`) | **Code — me**, needs a deploy to verify | 🟡 New 2026-09-06, found by the browser suite. A prerendered shell commits its status line before `notFound()` runs, so a missing product renders "δεν βρέθηκε" with **HTTP 200**. Bounded by Next auto-injecting `noindex`, which was verified — so it misleads link checkers and monitoring rather than search engines. Not fixed in-session: it changes how three high-traffic routes render. |
 
-**Four of these six are decisions rather than work** — item 1 has stopped being a question about
-this codebase at all, and item 6 is the one thing here I can simply go and do.
+**Four of these six are decisions rather than work**, and item 1 has stopped being a question
+about this codebase at all. `PERF-003`, which was item 6 and the one thing needing nobody's
+permission, is **done** — and doing it turned up item 6's replacement.
 Item 5 is real code, but it cannot start until the localisation question in `PERF-002`'s entry
 is answered — and that answer is a product judgement, not a technical one.
+
+### Closed on 6 September
+
+| Item | Evidence |
+|---|---|
+| **`PERF-003` — 311 catalogue JPEGs re-encoded to WebP** | 309 converted, 2 refused by the size guard, **0 failed**. 32.39 MB → 15.61 MB, **16.77 MB saved (52%)**. Quality measured at **PSNR 42.7–48.9 dB**, above the ~40 dB visibility threshold. 315 database references rewritten in one transaction; originals kept, backup taken, reverse mapping saved. Verified after: 64 images across four pages, **zero broken**. |
 
 ### Closed on 4–5 September
 
@@ -1227,7 +1237,7 @@ decision._
 
 ---
 
-## [ ] PERF-003 · Most of the image payload is JPEG the pipeline could already be storing as WebP
+## [x] PERF-003 · Most of the image payload is JPEG the pipeline could already be storing as WebP
 
 **Category:** Performance
 **Location:** Vercel Blob store — `products/*` and `products/wc-import-3x4/*`
@@ -1264,11 +1274,114 @@ for a footwear shop, where the image is the product.
 sizes and modern formats per device, which re-encoding the source does not. This narrows the
 gap; it does not close it.
 
+### Done — 2026-09-06
+
+**The finding understated itself by a factor of twenty.** It was scoped from the homepage's 15
+JPEGs. The catalogue holds **311**, across 182 products, 11 categories and 5 collections.
+
+| | |
+| --- | ---: |
+| JPEGs found in the database | 311 |
+| Converted to WebP | **309** |
+| Kept as JPEG by the size guard | 2 |
+| Failed | **0** |
+| Bytes | 32.39 MB → **15.61 MB** |
+| **Saved** | **16.77 MB (52%)** |
+
+**Quality was measured, not assumed.** WebP q85, no resizing — a pure format change. PSNR
+against the originals' own decoded pixels came out at **42.7–48.9 dB** across a deliberate
+spread of the catalogue, comfortably above the ~40 dB at which photographic differences stop
+being visible. A product page was then loaded and looked at.
+
+**q95 was rejected on evidence:** it produced files *larger* than the JPEGs they replaced
+(266 KB → 296 KB). The intuition that "higher quality is safer" is exactly wrong here.
+
+**The two skipped files are the guard working.** The rule was: replace only if WebP is at least
+10% smaller. One of the two would have grown, 416 KB → 418 KB. Both are larger-dimensioned
+than the catalogue norm (1200×1598 and 934×1400 against 1000×1333) and resist WebP even at q70,
+where the saving would cost visible quality on a photograph that *is* the product. They stay
+JPEG, deliberately.
+
+**Nothing was deleted.** The originals remain in the store, a column-level backup was taken
+before the write, and `migration-map.json` holds the reverse mapping — so rollback is a single
+scripted pass, not a restore. The 315 database references were rewritten in **one transaction**.
+
+**Verified after:** 64 images across four pages, **zero broken**; homepage payload
+**2.68 MB → 2.07 MB**; a product page loaded and inspected.
+
+**Why the homepage moved less than the catalogue (23% against 52%).** The two images the guard
+refused are among the heaviest on it — 0.65 MB of the 0.76 MB of JPEG still there. The
+page-level number is dominated by exactly the files that could not be improved for free.
+
 **Checked and found NOT to be a problem**, having first suspected it: the LCP image is **not**
 lazy-loaded. The hero renders as the first `<img>` with no `loading` attribute, which is
 eager, and `Hero.tsx` sets `priority` correctly. An initial count of 29 `loading="lazy"`
 attributes was mistaken for *all* images being lazy when there are 30 — the hero is the one
 without it.
+
+---
+
+## [ ] SEO-002 · Unknown product, category and collection URLs answer 200 instead of 404
+
+**Category:** SEO / Correctness
+**Location:** `app/products/[slug]/page.tsx`, `app/category/[slug]/page.tsx`, `app/collections/[slug]/page.tsx`
+**Confidence:** Confirmed — reproduced on production against uncached (`X-Vercel-Cache: MISS`) requests
+**Found:** 2026-09-06, by the browser suite, while verifying an unrelated change
+
+**Problem.** A URL for a product that does not exist renders the "δεν βρέθηκε" page — with
+**HTTP 200**. The same holds for `/category/*` and `/collections/*`. That is a soft 404: an
+infinite space of URLs that report themselves as real pages.
+
+**This was passing until `34629b3`.** The test `an unknown product slug 404s rather than
+erroring` is older than the finding and was green on the 40/40 run recorded in this file. The
+only rendering change since is Cache Components.
+
+**Cause, from Next's own bundled guide** (`node_modules/next/dist/docs/01-app/02-guides/streaming.md`),
+read rather than guessed:
+
+> Once streaming begins, the HTTP response headers (including the status code) have already been
+> sent to the client. **You cannot change the status code or headers after streaming starts.**
+> […] If a `notFound()` fires mid-stream, Next.js cannot go back and change the status to 404.
+
+A route with a prerendered shell has already committed `200` before the code that decides the
+page does not exist has run. The `notFound()` calls are all correctly placed and all still
+execute — they simply cannot alter a status line that is already gone.
+
+**Severity is bounded by a mitigation, and it was verified rather than trusted.** The same guide
+says Next injects `<meta name="robots" content="noindex">` in this situation, and production
+does:
+
+| URL | `robots` meta |
+| --- | --- |
+| A product that does not exist | `noindex` |
+| A real product | `index, follow` |
+
+So the phantom pages are not indexable. **My first reading of this finding was that Google would
+index them, and that was wrong** — the framework already handles the part that would have made
+this urgent.
+
+**What is still wrong.** A 200 for a missing resource misleads everything that is not a search
+crawler: link checkers, uptime and broken-link monitoring, analytics, and any client that trusts
+status codes. It is also simply incorrect.
+
+**Fix, per the guide:** perform a cheap existence check *before* anything that can start the
+stream, so the status is still open when `notFound()` runs. In this codebase the lookup is
+already early — it sits behind three `await`s (translations, shipping rates, params) that come
+first — but with a prerendered shell the stream may already have begun regardless, so the real
+fix likely involves how these routes opt into prerendering rather than statement order alone.
+
+**Deliberately not fixed in this session.** It changes the rendering model of a live shop, it
+cannot be verified without deploying, and this was found at the end of a long session while
+doing unrelated work. That is the same reasoning that governed the `PERF-002` tier 2 revert, and
+it applies here for the same reasons.
+
+**Held visible rather than hidden.** The test now carries `test.fail()` with the cause written
+next to it, so the suite is green while the defect stays on the report — and if it is ever fixed,
+Playwright fails loudly with "expected to fail but passed". A second test pins the `noindex`
+mitigation separately, because that mitigation is the only thing keeping this a defect rather
+than an emergency.
+
+**Risk of change:** Medium — it touches how three high-traffic routes render.
 
 ## [ ] PERF-001 · Image optimization disabled globally
 `next.config.ts` → `images.unoptimized: true`. Deliberate and documented — the Vercel transform quota was exhausted and returning 402s, breaking images across the shop. Real bandwidth/LCP cost (~100KB JPEGs served raw).
@@ -1499,3 +1612,6 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | `PERF-003` opened — the homepage carries 2.68 MB of images, of which 1.98 MB is JPEG averaging 135 KB while 14 WebPs in the same bucket average 51 KB. Converting them is ~1.2 MB and needs no plan change, which makes it the only open performance item blocked on nobody. Also records a suspicion that did **not** survive checking: the LCP image is not lazy-loaded | `ed460cc` |
 | 2026-09-06 | **Reliability lowered 92 → 88.** Its justification credited "scheduled retention" while `OPS-001` shows the schedule does not run. A job that works only when a human remembers to trigger it is not a reliability feature, and scoring it as one was the error this file exists to catch | `3911be7` |
 | 2026-09-06 | **Overall corrected 95 → 92, on arithmetic rather than new bad news.** The *Before* column is the mean of its ten dimensions (73.2 → 74); *Now* read 95 against a mean of 92.3, so one column held two numbers produced two different ways. Recorded the rule under the table so a future edit recomputes rather than re-feels it. Also corrected the P3 counts for `PERF-003`, and the claim that the open P3s were all spending decisions — one of them needs no permission from anyone | `3911be7` |
+| 2026-09-06 | **`PERF-003` done, and it was twenty times bigger than the finding said.** Scoped from the homepage's 15 JPEGs; the catalogue held **311**. 309 converted to WebP at q85, **32.39 MB → 15.61 MB (52% saved)**, 0 failures. Quality measured rather than assumed — PSNR 42.7–48.9 dB — and **q95 rejected on evidence**, since it produced files larger than the JPEGs it replaced. A 10%-minimum-saving guard refused 2 images, one of which would have grown 416 KB → 418 KB. Originals kept, column backup taken, 315 references rewritten in one transaction, 64 images verified unbroken afterwards | _pending_ |
+| 2026-09-06 | **`SEO-002` opened** — unknown product, category and collection URLs answer **200** instead of 404, because a prerendered shell commits its status line before `notFound()` runs. Regressed at `34629b3`. Cause read from Next's bundled guide rather than guessed. **My first reading was wrong**: I said Google would index the phantom pages, and it will not — Next injects `noindex`, which I then verified against production. Left unfixed deliberately (it changes how three high-traffic routes render) and held visible with `test.fail()` rather than a weakened assertion | _pending_ |
+| 2026-09-06 | Browser suite: fixed an assertion that was quietly wrong. `page.locator("h1")` matched **two** elements after a soft navigation, because the router keeps the previous page mounted as a second `<main>` with `display: none`. Checked rather than assumed — the hidden copy is out of the accessibility tree and the server HTML has one `<h1>`, so no user or crawler ever sees two. Now asserts on the *visible* heading. Also pinned the `noindex` mitigation as its own test | _pending_ |

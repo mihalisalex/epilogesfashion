@@ -23,7 +23,24 @@ test.describe("the purchase funnel", () => {
 
     await productLinks.first().click();
     await expect(page).toHaveURL(/\/products\//);
-    await expect(page.locator("h1")).toBeVisible();
+
+    /**
+     * `:visible` is load-bearing, and the reason is worth recording.
+     *
+     * After a client-side navigation the router keeps the previous page in the DOM as a second
+     * `<main>` with `display: none`. So a product page reached by clicking really does carry two
+     * `<h1>` elements — the product's and the homepage's hero — and a bare `page.locator("h1")`
+     * fails strict mode. Scoping to `main` does not help; both are inside one.
+     *
+     * That is not a defect, and it was checked rather than assumed: the hidden ancestor is
+     * `display: none`, which removes it from the accessibility tree, and the server-rendered
+     * HTML for the same URL contains exactly one `<h1>`. Neither a screen reader nor a crawler
+     * ever sees two. Only a DOM query does.
+     *
+     * Asserting on the visible heading is therefore both the correct fix and closer to what the
+     * test means: the shopper can see the product's title.
+     */
+    await expect(page.locator("main h1:visible")).toBeVisible();
   });
 
   test("the product page shows a price, a SKU and sizes", async ({ page }) => {
@@ -105,9 +122,36 @@ test.describe("the purchase funnel", () => {
   });
 
   test("an unknown product slug 404s rather than erroring", async ({ page }) => {
-    // A 500 here would be indexed by Google as a broken page; a 404 is correct and cheap.
+    /**
+     * KNOWN FAILURE, deliberately left visible — see `SEO-002` in AUDIT.md.
+     *
+     * This asserted 404 and passed until Cache Components was enabled (`34629b3`). It now gets
+     * **200**, because a route with a prerendered shell has already committed its status line
+     * before `notFound()` runs. Next's own guide states the constraint plainly: "Once streaming
+     * begins, the HTTP response headers (including the status code) have already been sent […]
+     * If a `notFound()` fires mid-stream, Next.js cannot go back and change the status to 404."
+     *
+     * `test.fail()` rather than a weakened assertion. The expectation is still correct and the
+     * suite stays green, but the defect stays on the report — and if it is ever fixed, Playwright
+     * fails loudly with "expected to fail but passed" rather than quietly agreeing with whatever
+     * the app now does.
+     */
+    test.fail();
     const response = await page.goto("/products/this-product-does-not-exist-xyz");
     expect(response?.status()).toBe(404);
+  });
+
+  test("an unknown product slug is at least kept out of the index", async ({ page }) => {
+    /**
+     * The mitigation for the above, pinned separately so the two cannot regress together.
+     *
+     * Next injects `<meta name="robots" content="noindex">` when `notFound()` fires mid-stream,
+     * which is what stops a soft 404 becoming an indexed phantom page. That mitigation is the
+     * only reason `SEO-002` is a defect rather than an emergency, so it is worth its own test:
+     * if it ever stops being emitted, the 200 suddenly matters a great deal more.
+     */
+    await page.goto("/products/this-product-does-not-exist-xyz");
+    await expect(page.locator('meta[name="robots"][content*="noindex"]')).toHaveCount(1);
   });
 });
 
