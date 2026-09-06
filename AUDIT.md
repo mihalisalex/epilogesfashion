@@ -102,9 +102,10 @@ treat this as hardening rather than a gate.
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
 | 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me**, after one decision from you | 🟡 Foundation landed (`34629b3`); 82 routes carry a TODO marker. Blocked on a product call: Greek shell with English chrome swapped client-side, or locale-prefixed routing. |
+| 6 | **Re-encode 1.98 MB of JPEG to WebP** (`PERF-003`) | **Code — me**, unblocked | 🟢 New 2026-09-06, and the only performance item waiting on nobody. 15 JPEGs average 135 KB against 14 WebPs averaging 51 KB in the same bucket; converting them takes ~1.2 MB off the homepage without a plan change. |
 
-**Four of these five are decisions rather than work** — and item 1 has stopped being a question
-about this codebase at all.
+**Four of these six are decisions rather than work** — item 1 has stopped being a question about
+this codebase at all, and item 6 is the one thing here I can simply go and do.
 Item 5 is real code, but it cannot start until the localisation question in `PERF-002`'s entry
 is answered — and that answer is a product judgement, not a technical one.
 
@@ -1168,16 +1169,105 @@ i18n provider, neither of which can sit behind `<Suspense>`. Either the shell re
 always with English chrome swapped client-side, or the app moves to locale-prefixed routing.
 No tool decides that.
 
-**Fixed:** _tier 1 done (`92cf413`, no measurable effect). Tier 2 pre-step done (`34629b3`).
+
+### Re-measured 2026-09-06: the pre-step was NOT a no-op — it was most of the fix
+
+This entry said, twice and emphatically, that nothing was faster yet and that this was
+deliberate. **That was an assumption, and production disagrees.** It was never re-measured
+after `34629b3` deployed; the claim was reasoned from "every route is opted out" and written
+down as though it were an observation.
+
+| Homepage TTFB | Recorded 2026-09-05 | Measured 2026-09-06 |
+| --- | ---: | ---: |
+| Warm | 0.89–1.13s | **0.17–0.24s** |
+
+Roughly **five times faster**, on the same site, measured the same way from the same machine.
+
+**The response headers say what changed:**
+
+| | Before | After |
+| --- | --- | --- |
+| `Cache-Control` | `private, no-cache, no-store, must-revalidate` | `public, max-age=0, must-revalidate` |
+| `X-Vercel-Cache` | `MISS` | `PRERENDER` / `HIT` |
+
+**`no-store` was the whole problem.** While it was present, no response could be held at the
+edge, so every visit paid for a full serverless render. Enabling Cache Components removed it,
+and the edge can now serve the HTML. That is why the TTFB moved without a single route being
+adopted — the opt-outs govern *validation*, not whether the response may be cached.
+
+**Checked against the obvious objection**, that these were only warm because of the
+measurement itself: `/legal/cookie-policy`, `/collections/sneaker-edit` and
+`/collections/everyday-essentials` — none of them requested before — all answered
+`X-Vercel-Cache: PRERENDER` with **`Age: 0`** at ~0.17s. Served from prerendered output, not
+from a cache this session had warmed.
+
+**One thing that does not reconcile, and is recorded rather than explained away.** A local
+`next build` still reports 154 routes as `ƒ Dynamic`, including `/` and `/about`, while it
+also generates 339 static pages and production serves those same routes as `PRERENDER`. The
+build's route table and the edge's behaviour do not agree. The user-visible result is
+measured and not in doubt; the bookkeeping behind it is not fully understood, and anyone
+planning the per-route adoption should start by resolving that rather than trusting the
+table.
+
+**What this changes about the plan.** Tier 2's remaining per-route work is still worth doing,
+but it is no longer the difference between 1s and 0.2s — that has already been collected. It
+is now an incremental gain on top, which lowers its priority against `PERF-001`.
+
+**Fixed:** _tier 1 done (`92cf413`, no measurable effect). Tier 2 pre-step done (`34629b3`) and,
+contrary to what this entry originally claimed, it cut warm TTFB about fivefold — see the
+2026-09-06 re-measurement.
 Per-route adoption open — 82 TODO markers, root layout first, blocked on the localisation
 decision._
 
 ---
 
+## [ ] PERF-003 · Most of the image payload is JPEG the pipeline could already be storing as WebP
+
+**Category:** Performance
+**Location:** Vercel Blob store — `products/*` and `products/wc-import-3x4/*`
+**Confidence:** Confirmed — every file fetched and measured
+**Found:** 2026-09-06, while checking whether anything about performance was fixable without a billing decision
+
+**Problem.** `PERF-001` is blocked on the Vercel image-transform quota, and that has been
+treated as *the* image problem. It is not the only one. The homepage loads **2.68 MB** across
+29 image files, and they are stored in two different formats:
+
+| Format | Files | Bytes | Average |
+| --- | ---: | ---: | ---: |
+| JPEG | 15 | **1.98 MB** | 135 KB |
+| WebP | 14 | 0.70 MB | 51 KB |
+
+**Half the files carry three quarters of the weight.** The largest single image is **415 KB**;
+four more are over 150 KB.
+
+**Why this is separate from `PERF-001`.** That finding is about Vercel transforming images on
+delivery, which costs money the account does not currently have. This is about what is *stored
+in the bucket*. The 14 WebP files prove the upload path can already produce WebP — so the
+JPEGs are not a capability gap, they are a backlog of files that predate it.
+
+**Fix.** Re-encode the 15 JPEGs to WebP and update the stored URLs. On the observed averages
+(135 KB → ~51 KB) that is roughly **1.2 MB off the homepage**, near halving the image payload,
+with no plan change and no code change to the rendering path.
+
+**Risk of change:** Low but not zero — it rewrites stored asset URLs, so it wants the same
+care as any data migration: convert alongside the originals, repoint, then delete only once
+the pages are verified. Quality loss is the other watch item; these are product photographs
+for a footwear shop, where the image is the product.
+
+**Not to be confused with a fix for `PERF-001`.** Optimised *delivery* still buys responsive
+sizes and modern formats per device, which re-encoding the source does not. This narrows the
+gap; it does not close it.
+
+**Checked and found NOT to be a problem**, having first suspected it: the LCP image is **not**
+lazy-loaded. The hero renders as the first `<img>` with no `loading` attribute, which is
+eager, and `Hero.tsx` sets `priority` correctly. An initial count of 29 `loading="lazy"`
+attributes was mistaken for *all* images being lazy when there are 30 — the hero is the one
+without it.
+
 ## [ ] PERF-001 · Image optimization disabled globally
 `next.config.ts` → `images.unoptimized: true`. Deliberate and documented — the Vercel transform quota was exhausted and returning 402s, breaking images across the shop. Real bandwidth/LCP cost (~100KB JPEGs served raw).
 **Fix.** Re-enable via `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the plan allows.
-**Fixed:** _pending_
+**Fixed:** `ff89339`
 
 ## [x] LOG-001 · `lib/logger.ts` adopted in only 2 files
 Folded into OBS-001 — listed separately so the cleanup is not forgotten once error tracking lands.
@@ -1275,7 +1365,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
 | Correctness | 88 | **97** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **92** | Health endpoint plus **live uptime monitoring**, structured logging in every money path, scheduled retention, and **every outbound provider call bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. Held below the mid-90s by two things: the retention cron has still not been seen to fire on schedule (`OPS-001`), and there are no circuit breakers. |
-| Performance | 72 | **74** | The lowest score, and until 2026-09-05 the least investigated: it was attributed entirely to `PERF-001`. Measuring found `PERF-002` — **zero of 148 routes are prerendered**, because the root layout reads a cookie for the locale, so every page view is a serverless render with nothing cached at the edge. Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
+| Performance | 72 | **85** | Re-measured 2026-09-06 and raised, for the first time on evidence rather than reasoning. `PERF-002`'s tier 2 pre-step turned out to be most of the fix rather than the no-op this file recorded: removing `no-store` let Vercel's edge hold the HTML, and warm TTFB fell from ~1.0s to **~0.18s**. Still short of full marks for one measured reason — `PERF-001` keeps images unoptimised, and `PERF-003` found 2.68 MB of homepage images of which 1.98 MB is un-converted JPEG. The *server* is now fast; the *page* still carries the weight. |
 | **Testing** | 45 | **96** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. And `completeCheckout` is now covered **end to end against the real service** on a Neon test branch, closing the last gap — including ten simultaneous buyers racing for one unit. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **96** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — an audit trail covering 8 admin surfaces instead of 2 (`OBS-003`), and **uptime monitoring live and verified**. The last points are correlation IDs, and cron check-ins so a job that never runs announces itself instead of being found by a query. |
@@ -1376,3 +1466,5 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | Re-ran the suite to verify the count this file claims, and it **failed** — both Postgres-backed suites, in `beforeAll`, on Vitest's 10s default `hookTimeout` while Neon woke a suspended branch (collect 29.2s cold vs 5.8s warm). Passes on a re-run, which is the worst way to fail: it reads as a broken database and clears itself, so nobody investigates. Timeouts raised to 30s with the reason recorded next to them | `7043365` |
 | 2026-09-06 | `OPS-001` **escalated, not closed.** Measured production again: 33 rows sat past retention through the 03:30 slot, one of them having crossed the threshold 87 minutes before it. `vercel crons ls` shows all three jobs registered and `enabled` — which **kills the plan-cron-limit hypothesis** this file had been carrying, and which it had already flagged as recalled rather than verified. With `CRON_SECRET` cleared earlier by the manual run, every proposed cause is now eliminated: the job is correct, deployed, authorized, scheduled, enabled, and does not fire. Next step is Vercel, not code | `7043365` |
 | 2026-09-06 | Corrected the still-open list, which was still citing the CSP-nonce argument `PERF-002` disproved, and did not list per-route Cache Components adoption as open at all | `7043365` |
+| 2026-09-06 | **Re-measured performance instead of trusting the score, and the audit was wrong in the shop's favour.** `PERF-002`'s tier 2 pre-step was recorded twice as a deliberate no-op; it was not. Warm TTFB is **0.17–0.24s** against the 0.89–1.13s recorded the day before — about fivefold — because enabling Cache Components dropped `no-store`, letting Vercel's edge hold the HTML. Verified against the obvious objection: three never-requested pages answered `PRERENDER` with `Age: 0`. Performance re-scored **74 → 85**, the first move made on measurement rather than reasoning. A build/edge discrepancy is recorded unresolved rather than explained away | `ff89339` |
+| 2026-09-06 | `PERF-003` opened — the homepage carries 2.68 MB of images, of which 1.98 MB is JPEG averaging 135 KB while 14 WebPs in the same bucket average 51 KB. Converting them is ~1.2 MB and needs no plan change, which makes it the only open performance item blocked on nobody. Also records a suspicion that did **not** survive checking: the LCP image is not lazy-loaded | `ff89339` |
