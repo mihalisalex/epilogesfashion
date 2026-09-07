@@ -2,25 +2,18 @@ import "server-only";
 import type { AppliedDiscount, AppliedGiftCard, CartTotals, ShippingRate } from "@/lib/commerce/types";
 import type { Money } from "@/types";
 import { computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
+import { round2 } from "@/lib/money";
 import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
 
 /**
- * Rounds a money amount to cents, correcting for binary floating point (MONEY-001).
+ * `round2` now lives in `lib/money.ts`, with the MONEY-001 explanation that used to sit here.
  *
- * The obvious `Math.round(value * 100) / 100` is wrong at exactly the boundary it exists to
- * handle. 1.005 is not representable in binary: it is stored as 1.00499999999999989…, so
- * `1.005 * 100` is 100.49999999999999 and `Math.round` gives 100 — a cent lost, on the one
- * input a person would point at to check the function works.
- *
- * `Number.EPSILON` scaled to the magnitude of the value nudges it back across the boundary
- * without disturbing any amount that was not already sitting on one. Amounts are stored as
- * `Decimal(10,2)` in Postgres, so this only has to survive arithmetic done in between —
- * percentage discounts and payment fees, which is precisely where halves appear.
+ * It moved because this module is `server-only`: anything client-side needing the same
+ * rounding could not import it, and `lib/commerce/checkout-totals.ts` had duly grown a private
+ * copy — of the version from *before* MONEY-001 was fixed. Re-exported here so every existing
+ * import from this module keeps working.
  */
-export function round2(value: number): number {
-  const scaled = value * 100;
-  return Math.round(scaled + Math.sign(scaled) * Math.abs(scaled) * Number.EPSILON) / 100;
-}
+export { round2 };
 
 function money(amount: number, currencyCode: string): Money {
   return { amount: round2(amount), currencyCode };

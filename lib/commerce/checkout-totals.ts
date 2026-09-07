@@ -2,10 +2,9 @@ import type { CartTotals, ShippingRate } from "@/lib/commerce/types";
 import { computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
 import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
 
-/** Matches resolveCartAmounts: VAT is extracted from the pre-gift-card total, not added to it. */
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
+// Was a private copy that predated MONEY-001's epsilon fix, so these display overlays could
+// round a half-cent down while the server rounded it up. Same function as the server now.
+import { round2 } from "@/lib/money";
 
 /**
  * Every overlay below substitutes one VAT-INCLUSIVE component of the total, so the
