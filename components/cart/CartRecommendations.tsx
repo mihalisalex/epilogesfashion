@@ -28,8 +28,16 @@ export function CartRecommendations() {
 
   if (recommendations.length === 0) return null;
 
+  /**
+   * `mt-8 pt-8` rather than the `mt-16 pt-10` this used to carry.
+   *
+   * That was 104px of whitespace sitting directly between the checkout button and the first
+   * product image — on a phone, the single largest thing keeping the recommendations off
+   * screen, more than the summary's padding and gaps put together. The border still reads as a
+   * separator; it just no longer costs a third of the visible peek to draw one.
+   */
   return (
-    <section className="mt-16 border-t border-border pt-10">
+    <section className="mt-8 border-t border-border pt-8">
       <h2 className="font-heading text-2xl">{t("youMightAlsoLike")}</h2>
       <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
         {recommendations.map((product) => (

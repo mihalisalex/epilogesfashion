@@ -77,7 +77,13 @@ export function CartPageContent() {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="sticky top-24 space-y-6 border border-border p-6">
+          {/*
+            `p-5`/`space-y-5` rather than 6, to lift the products below into view a little sooner
+            on a phone. Deliberately a trim and not a squeeze: the checkout button keeps its full
+            height, because the one element on this page that must never look secondary is the one
+            that takes the money.
+          */}
+          <div className="sticky top-24 space-y-5 border border-border p-5">
             {cart ? <CartTotalsSummary totals={cart.totals} /> : null}
             <CartPromoForm />
             <div>
