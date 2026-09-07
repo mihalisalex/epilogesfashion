@@ -1,23 +1,45 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import { contactSchema, type ContactFormValues } from "@/lib/validation/checkout";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export function ContactStep() {
   const t = useTranslations("Checkout");
   const { email, setEmail } = useCheckout();
+  const { customer, isLoading: isAuthLoading } = useAuth();
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    reset,
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
     defaultValues: { email },
   });
+
+  /**
+   * Prefill the signed-in customer's own email — guest checkout stays blank.
+   *
+   * `ShippingAddressStep` has done exactly this with the default address since it was
+   * written, which made the omission here an inconsistency rather than a gap: the shop
+   * already knew who the shopper was, filled in their street address two steps later, and
+   * still asked them to type the address it mails their receipt to.
+   *
+   * Same guards as the address prefill, and for the same reasons: skipped once the checkout
+   * session already carries an email, and once the shopper has started typing, so it can
+   * never clobber in-progress input or a deliberate choice to order under a different
+   * address from the account one.
+   */
+  useEffect(() => {
+    if (email || isAuthLoading || !customer || isDirty) return;
+    if (customer.email) reset({ email: customer.email });
+  }, [customer, isAuthLoading, email, isDirty, reset]);
 
   const onSubmit = async (values: ContactFormValues) => {
     await setEmail(values.email);
