@@ -140,7 +140,14 @@ export function CartTotalsSummary({
       */}
       {remainingForFreeShipping !== null && remainingForFreeShipping > 0 ? (
         <p className="pt-1 text-xs text-luxe-gray-dark">
+          {/*
+            The threshold is interpolated, never written into the copy. It is whatever the admin
+            last saved — a "100 €" typed into the message would keep claiming 100 after someone
+            changed it to 80, and the sentence would be confidently wrong rather than merely out
+            of date.
+          */}
           {t("freeShippingRemaining", {
+            threshold: formatMoney(freeShippingThreshold!),
             amount: formatMoney({ amount: remainingForFreeShipping, currencyCode: totals.total.currencyCode }),
           })}
         </p>

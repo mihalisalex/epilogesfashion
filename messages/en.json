@@ -42,7 +42,7 @@
     "free": "Free",
     "shippingCalculatedAtCheckout": "Calculated at checkout",
     "shippingAddedAtCheckout": "Shipping is added at checkout, depending on the delivery method.",
-    "freeShippingRemaining": "Add {amount} more for free shipping.",
+    "freeShippingRemaining": "Free shipping on orders over {threshold}, add {amount} more for free shipping.",
     "freeShippingEarned": "You have earned free shipping!",
     "estimatedTax": "Includes VAT",
     "total": "Total",
