@@ -111,6 +111,45 @@ optimization (`PERF-001`), the CSP nonce (`SEC-003`), and `PERF-002` — now del
    any of that work, produces the same three. Unexplained, not investigated, and the build still
    succeeds. Worth an entry of its own if anyone has an hour.
 
+## ACS courier — waiting on ACS for the API key (2026-09-07)
+
+**Blocked on a third party, not on code.** The owner emailed ACS on 7 September asking for web
+services access. Everything else is in place.
+
+**There is a trap in `.env` right now.** `ACS_API_KEY` holds a **3-character placeholder**, and
+`getCourierProvider()` only checks that each credential is non-empty — so a placeholder passes
+the guard. Set `COURIER_PROVIDER=acs` today and it will **not** fall back to `manual` as
+designed; it will build a real ACS client with a junk key and fail every shipment against ACS's
+auth. Delete the line, or leave `COURIER_PROVIDER` unset, until the real key arrives.
+
+**What was verified on 2026-09-07, and what was not.** The spec was fetched from
+`https://webservices.acscourier.net/ACSRestServices/swagger/docs/v1` — the Swagger UI at
+`/swagger/` cannot load its own definition because of CORS, which is worth knowing before
+concluding the API is down.
+
+- **Request side: verified.** Endpoint, `ACSAlias`/`ACSInputParameters` envelope, `AcsApiKey`
+  header and every field sent all appear in ACS's documented `ACS_Create_Voucher` example.
+  `Reference_Key1` was missing and is now sent (the order id), which is what makes
+  `ACS_POD_FROM_REFERENCE_NO` usable and cannot be added to a voucher after the fact.
+- **Response side: NOT verified, and not verifiable from the spec.** ACS declares
+  `"responses": {"200": {}}` for every operation and ships an empty `"definitions"` object.
+  The envelope names that circulate for it — `ACSOutputResponse`, `ACSExecution_HasError`,
+  `ACSValueOutput` — appear **nowhere** in the file; they came from a summariser and did not
+  survive a grep. The defensive multi-key parsing in `lib/courier/providers/acs.ts` stays until
+  a real voucher comes back. Do not "tidy" it into a single confident key name.
+
+**Ask ACS for TEST credentials, not production.** Their documented onboarding sends test web
+services first, and you are expected to exercise voucher issue/print/delete against them. That
+removes the awkward part — `ACS_Create_Voucher` creates a real, billable label with no
+idempotency key, so testing against production means a voucher ACS expects to collect.
+
+**When the key arrives:** put it in `.env`, run ONE voucher through a script that calls
+`createAcsCourierProvider(...)` directly — bypassing `COURIER_PROVIDER`, so the live shop is
+untouched — capture the raw response body, and pin the parser to what ACS actually returned.
+Only then set `COURIER_PROVIDER=acs`, and in Vercel as well as locally. The newest official
+guide is *ACS Rest API Web Services, English, Sep 2024*; its response-format section is the
+one thing that could settle the parsing without a live call.
+
 ## `PERF-002` is deferred, deliberately — do not "resume" it
 
 Its headline benefit **already landed**: enabling Cache Components dropped `no-store`, which let the
