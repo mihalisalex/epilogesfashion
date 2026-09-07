@@ -267,7 +267,7 @@ export async function removeGiftCard(cartId: string, code: string): Promise<Cart
  */
 export async function estimateShipping(cartId: string, address?: Partial<Address>): Promise<ShippingRate[]> {
   await requireCartExists(cartId);
-  return getShippingRatesFor(address?.postalCode);
+  return getShippingRatesFor({ countryCode: address?.countryCode, postalCode: address?.postalCode });
 }
 
 

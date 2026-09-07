@@ -35,7 +35,15 @@ export function ShippingMethodStep() {
   const tCart = useTranslations("Cart");
   const { shippingRates, selectedRateId, selectShippingRate } = useCheckout();
   const { cart } = useCart();
-  const [selected, setSelected] = useState<string | null>(selectedRateId ?? shippingRates[0]?.id ?? null);
+  /**
+   * Defaults to the first rate the destination can actually use, not simply the first.
+   *
+   * With a non-Greek address `shippingRates[0]` is home delivery, which is disabled — so
+   * preselecting it left the step with nothing selectable highlighted and the continue button
+   * submitting a rate the server would refuse.
+   */
+  const firstAvailable = shippingRates.find((rate) => rate.available !== false);
+  const [selected, setSelected] = useState<string | null>(selectedRateId ?? firstAvailable?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = async () => {
@@ -68,7 +76,17 @@ export function ShippingMethodStep() {
 
       <div role="radiogroup" aria-label={t("shippingMethodLabel")} className="divide-y divide-border border-y border-border">
         {shippingRates.map((rate) => {
-          const isSelected = selected === rate.id;
+          /**
+           * Options that do not apply to this address are shown, greyed and unselectable,
+           * rather than removed. A Greek shopper should not have to wonder whether collection
+           * from the store exists, and someone in Portugal is better told that home delivery
+           * is Greece-only than left to assume the shop simply has one option.
+           *
+           * The disabling is a courtesy, not the control. `resolveShippingRate` refuses these
+           * server-side, so a crafted request cannot buy a Greek rate to a Portuguese address.
+           */
+          const isAvailable = rate.available !== false;
+          const isSelected = isAvailable && selected === rate.id;
           const charge = cart ? shippingChargeForRate(cart.totals, rate) : rate.price.amount;
           return (
             <button
@@ -76,8 +94,12 @@ export function ShippingMethodStep() {
               type="button"
               role="radio"
               aria-checked={isSelected}
-              onClick={() => setSelected(rate.id)}
-              className="flex w-full items-center justify-between gap-4 px-1 py-4 text-left"
+              disabled={!isAvailable}
+              onClick={() => isAvailable && setSelected(rate.id)}
+              className={cn(
+                "flex w-full items-center justify-between gap-4 px-1 py-4 text-left",
+                !isAvailable && "cursor-not-allowed opacity-40"
+              )}
             >
               <div className="flex items-center gap-3">
                 <span

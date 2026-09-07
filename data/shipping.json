@@ -501,7 +501,8 @@
           "85800",
           "85900"
         ]
-      }
+      },
+      "scope": "domestic"
     },
     {
       "id": "pickup",
@@ -510,7 +511,8 @@
       "estimatedDelivery": "Έτοιμη προς παραλαβή σε 1–2 εργάσιμες ημέρες",
       "amount": 0,
       "enabled": true,
-      "freeShippingEligible": false
+      "freeShippingEligible": false,
+      "scope": "domestic"
     },
     {
       "id": "express",
@@ -519,7 +521,18 @@
       "estimatedDelivery": "1–2 εργάσιμες ημέρες",
       "amount": 14.95,
       "enabled": true,
-      "freeShippingEligible": false
+      "freeShippingEligible": false,
+      "scope": "domestic"
+    },
+    {
+      "id": "eu-standard",
+      "label": "Standard Shipping",
+      "description": "Χώρες της Ευρωπαϊκής Ένωσης",
+      "estimatedDelivery": "5–8 εργάσιμες ημέρες",
+      "amount": 14.95,
+      "enabled": true,
+      "freeShippingEligible": false,
+      "scope": "international"
     }
   ]
 }

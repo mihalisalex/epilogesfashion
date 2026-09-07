@@ -46,6 +46,20 @@ export interface ShippingRateSetting {
     /** Digits only, no spaces — see `buildShippingRates`, which normalises before comparing. */
     postalCodes: string[];
   };
+  /**
+   * Which destinations this rate is offered to.
+   *
+   * `domestic` is the shop's own country (`DEFAULT_COUNTRY_CODE`), `international` is
+   * everywhere else it ships, and absent means both. It exists because the two Greek options
+   * are not merely priced differently abroad — they are not on offer at all. An ACS domestic
+   * voucher does not reach Lisbon, and collecting from Έβανς 9 is not a delivery method for
+   * someone in Portugal.
+   *
+   * Enforced where it counts rather than only greyed out in the browser: `buildShippingRates`
+   * marks a rate unavailable for the destination and `resolveShippingRate` refuses to return
+   * it, so `setShippingRate` fails rather than storing a price the shop never offered.
+   */
+  scope?: "domestic" | "international";
 }
 
 export interface ShippingSettings {

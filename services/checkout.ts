@@ -6,7 +6,7 @@ import { cartInclude, toCart, toCheckout, toJsonInput, toOrder } from "@/lib/com
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
 import { storedAddressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema } from "@/lib/validation/commerce";
-import { buildShippingRates, resolveShippingRate } from "@/lib/shipping";
+import { buildShippingRates, resolveShippingRate, type ShippingDestination } from "@/lib/shipping";
 import { getShippingSettings } from "@/services/shipping";
 import { GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
 import { CommerceError, type Address, type Checkout, type CompleteCheckoutResult, type Order } from "@/lib/commerce/types";
@@ -45,6 +45,20 @@ async function resolveValidCartDiscounts(
     select: { code: true, active: true, expiresAt: true },
   });
   return filterValidDiscounts(discounts, live);
+}
+
+/**
+ * The parts of a stored address that decide which delivery options apply and what they cost:
+ * the country picks the scope, the postal code picks between the ordinary and remote price.
+ *
+ * One helper rather than the same two-field object written out at each of the three places
+ * that build rates — they must agree, and the one that disagrees would be the one nobody
+ * looked at, silently pricing an order against the wrong destination.
+ */
+function destinationOf(storedAddress: unknown): ShippingDestination {
+  if (!storedAddress) return {};
+  const address = storedAddressSchema.parse(storedAddress);
+  return { countryCode: address.countryCode, postalCode: address.postalCode };
 }
 
 async function requireCheckoutRow(checkoutId: string) {
@@ -119,9 +133,7 @@ export async function setShippingRate(checkoutId: string, rateId: string): Promi
    * without the postal code here would store the ordinary price and go on to charge it, no
    * matter how correctly the delivery step had displayed the surcharge.
    */
-  const destination = checkoutRow.shippingAddress
-    ? storedAddressSchema.parse(checkoutRow.shippingAddress).postalCode
-    : null;
+  const destination = destinationOf(checkoutRow.shippingAddress);
   // No rate at all means the store has none enabled — a misconfiguration rather than bad
   // input, so this reports the same "checkout can't proceed" shape the other gates use.
   const rate = resolveShippingRate(buildShippingRates(await getShippingSettings(), "EUR", destination), rateId);
@@ -174,11 +186,7 @@ export async function resolveCheckoutAmounts(checkoutId: string, paymentFeeOverr
   const shippingRate = checkoutRow.shippingRate
     ? shippingRateSchema.parse(checkoutRow.shippingRate)
     : resolveShippingRate(
-        buildShippingRates(
-          await getShippingSettings(),
-          "EUR",
-          checkoutRow.shippingAddress ? storedAddressSchema.parse(checkoutRow.shippingAddress).postalCode : null
-        )
+        buildShippingRates(await getShippingSettings(), "EUR", destinationOf(checkoutRow.shippingAddress))
       );
 
   const resolved = resolveCartAmounts({
@@ -244,7 +252,7 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
   // path: a fallback built without it would charge the ordinary price for a remote address.
   const shippingRate = checkoutRow.shippingRate
     ? shippingRateSchema.parse(checkoutRow.shippingRate)
-    : resolveShippingRate(buildShippingRates(await getShippingSettings(), "EUR", shippingAddress.postalCode));
+    : resolveShippingRate(buildShippingRates(await getShippingSettings(), "EUR", destinationOf(checkoutRow.shippingAddress)));
 
   const cartRow = await prisma.cart.findUnique({ where: { id: checkoutRow.cartId }, include: cartInclude });
   if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");

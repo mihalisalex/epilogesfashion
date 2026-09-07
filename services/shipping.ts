@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import shippingFallback from "@/data/shipping.json";
 import { getSiteContent, setSiteContent } from "@/lib/site-content";
-import { buildShippingRates, resolveShippingRate } from "@/lib/shipping";
+import { buildShippingRates, resolveShippingRate, type ShippingDestination } from "@/lib/shipping";
 import type { ShippingSettings } from "@/types";
 
 /**
@@ -35,8 +35,8 @@ export const getShippingRates = cache(async function getShippingRates() {
  * arguments and is read repeatedly while pricing a cart, whereas this varies by postal code and
  * caching it per request would return the first destination's prices for the second.
  */
-export async function getShippingRatesFor(postalCode?: string | null) {
-  return buildShippingRates(await getShippingSettings(), "EUR", postalCode);
+export async function getShippingRatesFor(destination: ShippingDestination) {
+  return buildShippingRates(await getShippingSettings(), "EUR", destination);
 }
 
 /**

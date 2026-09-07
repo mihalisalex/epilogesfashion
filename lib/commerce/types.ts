@@ -125,6 +125,16 @@ export interface ShippingRate {
   price: Money;
   estimatedDelivery: string;
   /**
+   * False when the destination these rates were built for cannot use this option — a Greek
+   * courier rate or store collection against an address in Portugal.
+   *
+   * Optional, and absence means available. Rates persisted on existing checkouts and orders
+   * predate the field, and `shippingRateSchema` drops unknown keys when parsing them back, so
+   * a stored rate always reads as available — which is correct: it was offered when it was
+   * chosen, and a completed order is a record rather than a fresh choice.
+   */
+  available?: boolean;
+  /**
    * Basket value at or above which THIS rate costs nothing, or null/absent when it never
    * does. Carried on the rate rather than passed alongside it so the pure pricing functions
    * need no configuration parameter — which is what keeps them usable from a client
