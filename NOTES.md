@@ -111,6 +111,30 @@ optimization (`PERF-001`), the CSP nonce (`SEC-003`), and `PERF-002` — now del
    any of that work, produces the same three. Unexplained, not investigated, and the build still
    succeeds. Worth an entry of its own if anyone has an hour.
 
+## A shipping rate does not know which courier carries it (2026-09-07)
+
+Checkout now shows **"Παράδοση κατ' οίκον / ACS Courier · 3–5 εργάσιμες ημέρες"**, and that
+carrier name is **presentation only** — free text in the rate's `description` field.
+
+`ShippingRateSetting` has no carrier or provider field, and `lib/courier/index.ts` picks its
+provider from the `COURIER_PROVIDER` environment variable alone. So adding, say, ΕΛΤΑ as a
+second rate would display correctly and then create its voucher through whichever single
+provider that variable names. **It would look right and route wrong**, which is the worst
+combination — nothing fails, and the parcel goes to the wrong courier.
+
+Closing that means a `carrier` (or `courierProvider`) field on the rate, carried onto the
+order, with `getCourierProvider()` taking it as an argument instead of reading one global. Not
+worth building before a second courier actually exists — but worth knowing the gap is there
+rather than discovering it the day one is added.
+
+Related, and the reason this is not urgent: the ACS integration itself has still never been
+exercised (see below), so there is exactly one courier path today and it is unproven.
+
+**Presentation rule, while there is one courier:** method in the label, carrier in the
+description. Flip it when a second courier appears — two rows both titled "Παράδοση κατ'
+οίκον" and distinguishable only by their subtitles is worse than putting the carrier first,
+because by then the carrier is what is being chosen.
+
 ## ACS courier — waiting on ACS for the API key (2026-09-07)
 
 **Blocked on a third party, not on code.** The owner emailed ACS on 7 September asking for web
