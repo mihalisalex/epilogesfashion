@@ -84,7 +84,7 @@ export function CartPageContent() {
             that takes the money.
           */}
           <div className="sticky top-24 space-y-5 border border-border p-5">
-            {cart ? <CartTotalsSummary totals={cart.totals} /> : null}
+            {cart ? <CartTotalsSummary totals={cart.totals} shippingEstimated /> : null}
             <CartPromoForm />
             <div>
               <Link

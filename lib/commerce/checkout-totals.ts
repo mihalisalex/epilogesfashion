@@ -46,10 +46,27 @@ function withTotal(totals: CartTotals, nextTotal: number): CartTotals {
  * The shipping charge is VAT-inclusive like every other amount here, so `withTotal`
  * re-derives the informational tax line rather than leaving it alone.
  */
+/**
+ * What one rate would actually cost THIS basket — the listed price, or nothing once the
+ * basket has cleared that rate's free-shipping threshold.
+ *
+ * Extracted so the delivery step can price each option the shopper is choosing between, and
+ * extracted rather than copied because the two must never disagree. They did: the step listed
+ * `rate.price` raw, so a 113,90 EUR basket against a 100 EUR threshold showed "Μεταφορικά
+ * Δωρεάν" in the cart and "Παράδοση κατ' οίκον 4,95 €" one screen later.
+ *
+ * `subtotal - discountTotal` is the same "order value after discounts, before shipping" the
+ * server prices against; it is defined here once, and `applySelectedShippingRate` now reads it
+ * from here too rather than repeating it.
+ */
+export function shippingChargeForRate(totals: CartTotals, rate: ShippingRate): number {
+  const taxableAmount = totals.subtotal.amount - totals.discountTotal.amount;
+  return computeShippingChargeForRate(rate, taxableAmount, totals.subtotal.amount > 0);
+}
+
 export function applySelectedShippingRate(totals: CartTotals, selectedRate: ShippingRate | undefined | null): CartTotals {
   if (!selectedRate) return totals;
-  const taxableAmount = totals.subtotal.amount - totals.discountTotal.amount;
-  const shippingAmount = computeShippingChargeForRate(selectedRate, taxableAmount, totals.subtotal.amount > 0);
+  const shippingAmount = shippingChargeForRate(totals, selectedRate);
   return withTotal(
     { ...totals, shippingTotal: { amount: shippingAmount, currencyCode: totals.shippingTotal.currencyCode } },
     totals.total.amount - totals.shippingTotal.amount + shippingAmount

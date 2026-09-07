@@ -68,7 +68,7 @@ export function CartDrawer() {
 
             {cart ? (
               <div className="shrink-0 border-t border-border px-6 py-5">
-                <CartTotalsSummary totals={cart.totals} />
+                <CartTotalsSummary totals={cart.totals} shippingEstimated />
                 <Link
                   href="/cart"
                   onClick={closeDrawer}

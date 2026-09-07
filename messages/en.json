@@ -40,6 +40,7 @@
     "giftWrapping": "Gift Wrapping",
     "paymentFee": "Payment Fee",
     "free": "Free",
+    "shippingEstimateNote": "Calculated at checkout, depending on the delivery method",
     "estimatedTax": "Includes VAT",
     "total": "Total",
     "yourBag": "Your Bag",

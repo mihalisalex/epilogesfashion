@@ -6,6 +6,8 @@ import { ArrowRight } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
+import { useCart } from "@/components/providers/CartProvider";
+import { shippingChargeForRate } from "@/lib/commerce/checkout-totals";
 
 /**
  * Gift wrapping is no longer offered, at the merchant's request, so the checkbox and its
@@ -32,6 +34,7 @@ export function ShippingMethodStep() {
    */
   const tCart = useTranslations("Cart");
   const { shippingRates, selectedRateId, selectShippingRate } = useCheckout();
+  const { cart } = useCart();
   const [selected, setSelected] = useState<string | null>(selectedRateId ?? shippingRates[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,6 +69,7 @@ export function ShippingMethodStep() {
       <div role="radiogroup" aria-label={t("shippingMethodLabel")} className="divide-y divide-border border-y border-border">
         {shippingRates.map((rate) => {
           const isSelected = selected === rate.id;
+          const charge = cart ? shippingChargeForRate(cart.totals, rate) : rate.price.amount;
           return (
             <button
               key={rate.id}
@@ -90,18 +94,15 @@ export function ShippingMethodStep() {
                 </span>
               </div>
               {/*
-                A zero-cost option reads as "Δωρεάν", not "0 €" — matching what
-                `CartTotalsSummary` already does with a zero shipping total, so the two do not
-                describe the same thing in two different ways one step apart.
-
-                Keyed on the rate's OWN price being zero, which is store pickup. A rate that
-                costs nothing only because this basket cleared the free-shipping threshold is
-                deliberately not covered: that depends on the order value after discounts, which
-                `CartTotals` does not expose, and deriving it here would mean reimplementing
-                pricing in the UI — the one thing this codebase is consistent about never doing.
+                What this rate actually costs THIS basket, not its list price, and rendered as
+                "Δωρεάν" rather than "0 €" to match what `CartTotalsSummary` already does.
+                Covers both ways a delivery option can be free: store pickup, which costs
+                nothing outright, and a rate whose free-shipping threshold this basket has
+                cleared. The second used to be wrong here — a 113,90 EUR basket against a
+                100 EUR threshold read "Δωρεάν" in the cart and "4,95 €" one screen later.
               */}
               <span className="shrink-0 text-sm">
-                {rate.price.amount === 0 ? tCart("free") : formatMoney(rate.price)}
+                {charge === 0 ? tCart("free") : formatMoney({ amount: charge, currencyCode: rate.price.currencyCode })}
               </span>
             </button>
           );
