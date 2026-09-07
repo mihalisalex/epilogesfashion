@@ -34,6 +34,17 @@ export interface Address {
   postalCode: string;
   countryCode: string;
   phone?: string;
+  /**
+   * Τιμολόγιο details, present only when the shopper asked for an invoice rather than a
+   * receipt. See `invoiceSchema` for why this rides inside the address rather than in columns
+   * of its own.
+   */
+  invoice?: {
+    companyName: string;
+    vatNumber: string;
+    taxOffice: string;
+    activity?: string;
+  };
 }
 
 /** An address that's been saved to a customer's account — has a stable id, unlike a one-off checkout address. */

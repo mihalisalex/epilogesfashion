@@ -140,7 +140,12 @@
     "streetAddress": "Οδός και αριθμός",
     "city": "Πόλη",
     "postalCode": "Ταχυδρομικός κώδικας",
-    "country": "Χώρα"
+    "country": "Χώρα",
+    "invoiceToggle": "Θέλω τιμολόγιο",
+    "invoiceCompanyName": "Επωνυμία",
+    "invoiceVatNumber": "ΑΦΜ",
+    "invoiceTaxOffice": "ΔΟΥ",
+    "invoiceActivity": "Δραστηριότητα"
   },
   "Plp": {
     "filter": "Φίλτρο",
@@ -354,7 +359,8 @@
     "country": "Χώρα",
     "phone": "Τηλέφωνο",
     "phoneHelp": "Για να μπορεί η εταιρεία ταχυμεταφορών να επικοινωνήσει μαζί σας.",
-    "cancel": "Ακύρωση"
+    "cancel": "Ακύρωση",
+    "optional": "προαιρετικό"
   },
   "Returns": {
     "startReturn": "Έναρξη επιστροφής",

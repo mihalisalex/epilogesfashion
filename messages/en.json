@@ -140,7 +140,12 @@
     "streetAddress": "Street address",
     "city": "City",
     "postalCode": "Postal code",
-    "country": "Country"
+    "country": "Country",
+    "invoiceToggle": "I need an invoice",
+    "invoiceCompanyName": "Company name",
+    "invoiceVatNumber": "VAT number (ΑΦΜ)",
+    "invoiceTaxOffice": "Tax office (ΔΟΥ)",
+    "invoiceActivity": "Business activity"
   },
   "Plp": {
     "filter": "Filter",
@@ -354,7 +359,8 @@
     "country": "Country",
     "phone": "Phone",
     "phoneHelp": "So the courier can reach you about your delivery.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "optional": "optional"
   },
   "Returns": {
     "startReturn": "Start a Return",

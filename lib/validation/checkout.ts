@@ -1,10 +1,51 @@
 import { z } from "zod";
+import { isValidGreekVatNumber, normaliseGreekVatNumber } from "@/lib/greek-vat";
 import { isSupportedCountryCode } from "@/constants/countries";
 
 export const contactSchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
 });
 export type ContactFormValues = z.infer<typeof contactSchema>;
+
+/**
+ * Τιμολόγιο — the details a Greek business needs on a tax invoice rather than a receipt.
+ *
+ * Present only when the shopper asked for one; absent means a receipt, which is what almost
+ * every order is. It rides along inside the address JSON rather than in columns of its own,
+ * and that is a deployment decision as much as a modelling one: `Checkout.shippingAddress` and
+ * `Order.shippingAddress` are already `Json`, and this shop applies migrations BY HAND — a new
+ * column would mean the feature ships one manual step after the deploy that needs it, or
+ * breaks until someone runs it.
+ *
+ * `companyName` is separate from the address's own optional `company` on purpose. That field is
+ * a delivery convenience ("leave it at reception at Acme"); this one is the legal επωνυμία the
+ * invoice is issued to, and the two are not reliably the same string.
+ */
+export const invoiceSchema = z.object({
+  companyName: z.string().trim().min(1, "Η επωνυμία είναι υποχρεωτική"),
+  vatNumber: z
+    .string()
+    .trim()
+    .transform(normaliseGreekVatNumber)
+    .refine(isValidGreekVatNumber, "Το ΑΦΜ δεν είναι έγκυρο"),
+  taxOffice: z.string().trim().min(1, "Η ΔΟΥ είναι υποχρεωτική"),
+  activity: z.string().trim().optional(),
+});
+export type InvoiceDetails = z.infer<typeof invoiceSchema>;
+
+/**
+ * The stored form is deliberately looser: it validates nothing about the ΑΦΜ.
+ *
+ * Same rule the phone field learned the hard way — tightening what the app ACCEPTS must never
+ * retroactively invalidate what it already WROTE. An invoice recorded before a rule changed is
+ * a fact about a sale that happened, and the admin has to be able to read it.
+ */
+const storedInvoiceSchema = z.object({
+  companyName: z.string(),
+  vatNumber: z.string(),
+  taxOffice: z.string(),
+  activity: z.string().optional(),
+});
 
 /**
  * The fields that never changed their rules, shared by both schemas below.
@@ -36,6 +77,7 @@ export const storedAddressSchema = z.object({
   ...addressBase,
   countryCode: z.string().trim().min(2),
   phone: z.string().trim().optional(),
+  invoice: storedInvoiceSchema.optional(),
 });
 export type StoredAddress = z.infer<typeof storedAddressSchema>;
 
@@ -66,6 +108,10 @@ export const addressSchema = z.object({
     .min(1, "Phone number is required so the courier can reach you")
     .refine((value) => (value.match(/\d/g)?.length ?? 0) >= 8, "Enter a valid phone number")
     .refine((value) => /^[+\d][\d\s()./-]*$/.test(value), "Phone number can only contain digits, spaces and + ( ) - . /"),
+  // Optional because a receipt is the default and almost every order. Present only when the
+  // shopper ticked "τιμολόγιο", and then fully validated — a half-filled invoice is worse than
+  // none, since it looks like a tax document and is not one.
+  invoice: invoiceSchema.optional(),
 });
 export type AddressFormValues = z.infer<typeof addressSchema>;
 

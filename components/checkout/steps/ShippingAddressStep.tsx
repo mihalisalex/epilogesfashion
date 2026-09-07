@@ -1,11 +1,11 @@
 "use client";
 import { useTranslations } from "next-intl";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
-import { contactAndAddressSchema, type ContactAndAddressFormValues } from "@/lib/validation/checkout";
+import { contactAndAddressSchema, invoiceSchema, type ContactAndAddressFormValues, type InvoiceDetails } from "@/lib/validation/checkout";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -78,12 +78,46 @@ export function ShippingAddressStep() {
     void setEmail(next).catch((error) => console.error("Failed to save checkout email", error));
   };
 
+  /**
+   * The invoice fields sit outside react-hook-form and are validated by hand on submit.
+   *
+   * Deliberate rather than lazy. `invoice` is optional in the schema, but RHF would still hold
+   * the four inputs as empty strings whether or not the box is ticked, so the resolver would
+   * have to be taught to ignore them conditionally — and getting that subtly wrong means either
+   * blocking every ordinary receipt order or letting a half-filled invoice through. Parsing the
+   * object only when it is wanted keeps the address form exactly as it was.
+   */
+  const [wantsInvoice, setWantsInvoice] = useState(Boolean(shippingAddress?.invoice));
+  const [invoice, setInvoice] = useState<Record<string, string>>({
+    companyName: shippingAddress?.invoice?.companyName ?? "",
+    vatNumber: shippingAddress?.invoice?.vatNumber ?? "",
+    taxOffice: shippingAddress?.invoice?.taxOffice ?? "",
+    activity: shippingAddress?.invoice?.activity ?? "",
+  });
+  const [invoiceErrors, setInvoiceErrors] = useState<Record<string, string>>({});
+
   const onSubmit = async (values: ContactAndAddressFormValues) => {
     const { email: submittedEmail, ...address } = values;
+
+    let invoiceDetails: InvoiceDetails | undefined;
+    if (wantsInvoice) {
+      const parsed = invoiceSchema.safeParse(invoice);
+      if (!parsed.success) {
+        // Shown against the individual fields rather than as one message: "check your invoice
+        // details" tells someone nothing about which of four is wrong.
+        setInvoiceErrors(
+          Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path[0]), issue.message]))
+        );
+        return;
+      }
+      setInvoiceErrors({});
+      invoiceDetails = parsed.data;
+    }
+
     // Ordered, not parallel: the address submit is what advances the step, so the email must
     // already be stored when it does.
     if (submittedEmail.trim() !== email) await setEmail(submittedEmail.trim());
-    await setShippingAddress(address);
+    await setShippingAddress({ ...address, ...(invoiceDetails ? { invoice: invoiceDetails } : {}) });
   };
 
   return (
@@ -280,6 +314,59 @@ export function ShippingAddressStep() {
             {tAddr("phoneHelp")}
           </p>
         )}
+      </div>
+
+      {/*
+        Τιμολόγιο, collapsed behind a checkbox.
+
+        Almost every order is a receipt, so the four business fields stay out of the way until
+        someone says they need them — and a shopper who does need one is looking for exactly
+        this word and will find it. Expanding in place rather than on a step of its own keeps
+        it where the rest of the buyer's details are.
+      */}
+      <div className="border-t border-border pt-6">
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={wantsInvoice}
+            onChange={(event) => {
+              setWantsInvoice(event.target.checked);
+              if (!event.target.checked) setInvoiceErrors({});
+            }}
+            className="size-4 accent-luxe-black"
+          />
+          <span>{t("invoiceToggle")}</span>
+        </label>
+
+        {wantsInvoice ? (
+          <div className="mt-4 space-y-4">
+            {(
+              [
+                ["companyName", t("invoiceCompanyName"), true],
+                ["vatNumber", t("invoiceVatNumber"), true],
+                ["taxOffice", t("invoiceTaxOffice"), true],
+                ["activity", t("invoiceActivity"), false],
+              ] as const
+            ).map(([field, label, required]) => (
+              <div key={field}>
+                <label htmlFor={`invoice-${field}`} className="mb-1.5 block text-eyebrow">
+                  {label}
+                  {required ? "" : ` (${tAddr("optional")})`}
+                </label>
+                <input
+                  id={`invoice-${field}`}
+                  value={invoice[field] ?? ""}
+                  onChange={(event) => setInvoice((prev) => ({ ...prev, [field]: event.target.value }))}
+                  aria-invalid={Boolean(invoiceErrors[field])}
+                  className={inputClass}
+                />
+                {invoiceErrors[field] ? (
+                  <p className="mt-1.5 text-xs text-destructive">{invoiceErrors[field]}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <button

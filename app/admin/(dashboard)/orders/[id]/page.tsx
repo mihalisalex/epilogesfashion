@@ -161,6 +161,37 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
               <p className="text-sm">{order.giftMessage ? `"${order.giftMessage}"` : "No message added"}</p>
             </div>
           ) : null}
+          {/*
+            Τιμολόγιο, shown FIRST and outlined, because it is the one thing on this page that
+            changes what the merchant has to do: an order carrying invoice details cannot be
+            closed with an ordinary receipt. Buried among the addresses it would be read after
+            the decision it should inform.
+          */}
+          {order.shippingAddress.invoice ? (
+            <div className="border-2 border-luxe-black bg-luxe-white p-4">
+              <h3 className="mb-3 text-xs font-medium tracking-[0.05em] uppercase">Τιμολόγιο — issue an invoice, not a receipt</h3>
+              <dl className="space-y-1 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-luxe-gray-dark">Επωνυμία</dt>
+                  <dd className="text-right">{order.shippingAddress.invoice.companyName}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-luxe-gray-dark">ΑΦΜ</dt>
+                  <dd className="text-right font-mono">{order.shippingAddress.invoice.vatNumber}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-luxe-gray-dark">ΔΟΥ</dt>
+                  <dd className="text-right">{order.shippingAddress.invoice.taxOffice}</dd>
+                </div>
+                {order.shippingAddress.invoice.activity ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-luxe-gray-dark">Δραστηριότητα</dt>
+                    <dd className="text-right">{order.shippingAddress.invoice.activity}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+          ) : null}
           <div className="border border-border bg-luxe-white p-4">
             <h3 className="mb-3 text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Shipping Address</h3>
             <div className="text-sm">
