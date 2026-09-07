@@ -30,6 +30,23 @@ async function requireCartRow(cartId: string): Promise<CartRow> {
   return row;
 }
 
+/**
+ * "Does this cart exist?" without reading the cart.
+ *
+ * Every mutation below opens by proving the cart is real, and nine of them then threw the row
+ * away — `await requireCartRow(cartId);`, no assignment. That is a full `cartInclude` read (line
+ * items and all) fetched purely to see whether one row exists, and each of those mutations
+ * *already* re-reads the whole cart at the end to return the new state. Two full reads per
+ * mutation, one of them wasted.
+ *
+ * Measured on production before this existed: adding to the cart took ~1250ms warm, of which
+ * roughly eight sequential Neon round trips. This removes one of them from every cart write.
+ */
+async function requireCartExists(cartId: string): Promise<void> {
+  const row = await prisma.cart.findUnique({ where: { id: cartId }, select: { id: true } });
+  if (!row) throw new CommerceError("CART_NOT_FOUND", `Cart ${cartId} not found.`);
+}
+
 async function reloadCart(cartId: string): Promise<Cart> {
   const row = await requireCartRow(cartId);
   return toCart(row, await getDefaultShippingRate());
@@ -84,8 +101,11 @@ function resolveColorName(product: Product, requested: string): string {
 }
 
 export async function addLineItem(cartId: string, input: AddLineItemInput): Promise<Cart> {
-  await requireCartRow(cartId);
-  const product = await getProductById(input.productId);
+  // Run together rather than in sequence: whether the cart exists and what the product is are
+  // independent questions, and asking them one after the other cost a round trip for nothing.
+  // `Promise.all` still rejects on the first failure, so a missing cart raises CART_NOT_FOUND
+  // exactly as before — the product read is a read, so there is nothing to undo if it loses.
+  const [, product] = await Promise.all([requireCartExists(cartId), getProductById(input.productId)]);
   if (!product) throw new CommerceError("OUT_OF_STOCK", "Product no longer available.");
   if (!isSizePurchasable(product, input.size)) {
     throw new CommerceError("OUT_OF_STOCK", `${product.name} (${input.size}) is out of stock.`);
@@ -144,7 +164,7 @@ async function requireOwnLineItem(cartId: string, lineItemId: string) {
 }
 
 export async function updateLineItemQuantity(cartId: string, lineItemId: string, quantity: number): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   const item = await requireOwnLineItem(cartId, lineItemId);
   const nextQuantity = item.maxQuantity > 0 ? Math.min(Math.max(quantity, 1), item.maxQuantity) : Math.max(quantity, 1);
   await prisma.cartLineItem.update({ where: { id: lineItemId }, data: { quantity: nextQuantity } });
@@ -152,20 +172,20 @@ export async function updateLineItemQuantity(cartId: string, lineItemId: string,
 }
 
 export async function removeLineItem(cartId: string, lineItemId: string): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   await prisma.cartLineItem.deleteMany({ where: { id: lineItemId, cartId } });
   return reloadCart(cartId);
 }
 
 export async function saveForLater(cartId: string, lineItemId: string): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   await requireOwnLineItem(cartId, lineItemId);
   await prisma.cartLineItem.update({ where: { id: lineItemId }, data: { savedForLater: true } });
   return reloadCart(cartId);
 }
 
 export async function moveToCart(cartId: string, lineItemId: string): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   await requireOwnLineItem(cartId, lineItemId);
   await prisma.cartLineItem.update({ where: { id: lineItemId }, data: { savedForLater: false } });
   return reloadCart(cartId);
@@ -197,7 +217,7 @@ export async function applyDiscountCode(cartId: string, code: string): Promise<C
 }
 
 export async function removeDiscountCode(cartId: string, code: string): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   await prisma.cartDiscount.deleteMany({ where: { cartId, code } });
   return reloadCart(cartId);
 }
@@ -233,13 +253,13 @@ export async function applyGiftCard(cartId: string, code: string): Promise<Cart>
 }
 
 export async function removeGiftCard(cartId: string, code: string): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   await prisma.cartGiftCard.deleteMany({ where: { cartId, code } });
   return reloadCart(cartId);
 }
 
 export async function estimateShipping(cartId: string, _address?: Partial<Address>): Promise<ShippingRate[]> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   return getShippingRates();
 }
 
@@ -329,7 +349,7 @@ export async function getRecommendations(cartId: string, limit = 4): Promise<Pro
 }
 
 export async function clearCart(cartId: string): Promise<Cart> {
-  await requireCartRow(cartId);
+  await requireCartExists(cartId);
   await prisma.$transaction([
     prisma.cartLineItem.deleteMany({ where: { cartId } }),
     prisma.cartDiscount.deleteMany({ where: { cartId } }),

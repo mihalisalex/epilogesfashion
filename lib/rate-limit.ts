@@ -101,6 +101,26 @@ export async function enforceRateLimit(
   const key = `${name}:ip:${getClientIp(request.headers)}`;
   const status = await isRateLimited({ key, limit, windowMs });
   if (status.limited) return rateLimitedResponse(status.retryAfterSeconds);
-  await recordAttempt(key);
+
+  /**
+   * The attempt is recorded WITHOUT awaiting it, which buys a round trip on every request that
+   * passes the limit — the write has no bearing on the answer already given above.
+   *
+   * **This is safe here and would not be in the sign-in paths, so the distinction matters.**
+   * Nothing that guards a credential goes through `enforceRateLimit`: sign-in, sign-up,
+   * password reset, change-password, admin login and the OAuth routes all call `isRateLimited`
+   * and `recordAttempt` separately, because they need to choose what counts as an attempt (a
+   * failed sign-in, not a successful one). Those still await their writes. `enforceRateLimit`
+   * covers volume limits only — cart, checkout, search, products, media — where a request
+   * slipping through a wider window costs nothing worth protecting.
+   *
+   * The window was never airtight in any case: the read and the write are not atomic, so
+   * concurrent requests could already read before either wrote. This widens a gap that exists
+   * rather than opening a new one. `.catch` because an unhandled rejection in a floating promise
+   * takes the function down, and a lost rate-limit row must not be able to do that.
+   */
+  void recordAttempt(key).catch((error) => {
+    console.error("[rate-limit] failed to record attempt", { key, error });
+  });
   return null;
 }
