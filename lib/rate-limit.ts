@@ -1,5 +1,5 @@
 import "server-only";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { runDataRetentionIfDue } from "@/services/data-retention";
@@ -74,17 +74,33 @@ export async function recordAttempt(key: string): Promise<void> {
    * regression — two days is the stated policy (`RATE_LIMIT_RETENTION_DAYS`), and the old
    * one-day figure was an unrelated number chosen for a different mechanism.
    *
-   * Not awaited, for the same reason `enforceRateLimit` does not await this function: a
-   * retention pass has no bearing on the answer the caller is waiting for, and a customer
-   * adding to their cart should never pay for it. `.catch` because an unhandled rejection in
-   * a floating promise takes the whole function down, and housekeeping must not be able to
-   * do that.
+   * Off the response path, so a customer adding to their cart never pays for it — but via
+   * `after` rather than a floating promise, and the difference is the whole fallback working
+   * or not. Vercel freezes the instance once the response is sent; a bare `void promise()`
+   * can therefore be suspended mid-pass. That failure is silent and, worse, self-locking:
+   * the daily slot has already been claimed, so nothing retries for 25 hours and retention
+   * quietly does half its job every day. `after` is Next's primitive for exactly this — it
+   * keeps the invocation alive until the callback settles.
+   *
+   * Every caller of `recordAttempt` is a Route Handler or a server action, which is where
+   * `after` is available. The `try` is there because outside a request scope it throws, and
+   * this module's own rule — the one that keeps `enforceRateLimit`'s floating write inside a
+   * `.catch` — is that housekeeping must never be able to break the request it rode in on.
    */
   if (Date.now() - lastRetentionCheckAt >= RETENTION_CHECK_INTERVAL_MS) {
     lastRetentionCheckAt = Date.now();
-    void runDataRetentionIfDue().catch((error) => {
-      console.error("[rate-limit] data retention fallback failed", error);
-    });
+    const pass = async () => {
+      try {
+        await runDataRetentionIfDue();
+      } catch (error) {
+        console.error("[rate-limit] data retention fallback failed", error);
+      }
+    };
+    try {
+      after(pass);
+    } catch {
+      void pass();
+    }
   }
 }
 
