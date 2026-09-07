@@ -41,8 +41,20 @@ export interface CheckoutPaymentMethod {
   sortOrder: number;
 }
 
-export type CheckoutStep = "contact" | "shipping" | "delivery" | "payment" | "review";
-const STEP_ORDER: CheckoutStep[] = ["contact", "shipping", "delivery", "payment", "review"];
+/**
+ * Four steps, not five. Email used to be a step of its own that asked for a single field and
+ * then handed straight over to the address form; it now opens that form instead, which is the
+ * arrangement most shoppers have already seen elsewhere.
+ *
+ * The split was not pointless, and what it bought had to be kept: an email captured on its own
+ * step is saved before the address is filled in, so someone who abandons midway through the
+ * address is still reachable by the abandoned-cart cron, which resolves its recipient from
+ * `checkouts[].email`. The merged step therefore persists the email on BLUR rather than only on
+ * submit — see `ShippingAddressStep`. Without that, merging would have quietly cost real
+ * recovery mail.
+ */
+export type CheckoutStep = "shipping" | "delivery" | "payment" | "review";
+const STEP_ORDER: CheckoutStep[] = ["shipping", "delivery", "payment", "review"];
 
 interface CheckoutContextValue {
   step: CheckoutStep;
@@ -87,8 +99,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("Checkout");
 
   const [checkout, setCheckout] = useState<Checkout | null>(null);
-  const [step, setStep] = useState<CheckoutStep>("contact");
-  const [furthestStep, setFurthestStep] = useState<CheckoutStep>("contact");
+  const [step, setStep] = useState<CheckoutStep>("shipping");
+  const [furthestStep, setFurthestStep] = useState<CheckoutStep>("shipping");
   const [email, setEmailState] = useState("");
   const [shippingAddress, setShippingAddressState] = useState<Address | null>(null);
   const [billingAddress, setBillingAddressState] = useState<Address | null>(null);
@@ -138,15 +150,20 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     [furthestStep]
   );
 
+  /**
+   * Persists the email and nothing else. It used to advance to the shipping step as a side
+   * effect, which made sense while email WAS a step; now that the two share one form, advancing
+   * is the address submit's job and doing it here would skip the shopper past the fields they
+   * are still filling in.
+   */
   const setEmail = useCallback(
     async (value: string) => {
       if (!checkout) return;
       const updated = await commerce.checkout.updateEmail(checkout.id, value);
       setCheckout(updated);
       setEmailState(value);
-      advanceTo("shipping");
     },
-    [checkout, commerce, advanceTo]
+    [checkout, commerce]
   );
 
   const setShippingAddress = useCallback(

@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
-import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
+import { contactAndAddressSchema, type ContactAndAddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -18,7 +18,7 @@ const inputClass =
 export function ShippingAddressStep() {
   const t = useTranslations("Checkout");
   const tAddr = useTranslations("Address");
-  const { shippingAddress, setShippingAddress } = useCheckout();
+  const { email, setEmail, shippingAddress, setShippingAddress } = useCheckout();
   const { customer, isLoading: isAuthLoading } = useAuth();
   const {
     register,
@@ -26,39 +26,94 @@ export function ShippingAddressStep() {
     setValue,
     control,
     reset,
+    getValues,
     formState: { errors, isSubmitting, isDirty },
-  } = useForm<AddressFormValues>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: shippingAddress ?? {
-      firstName: "",
-      lastName: "",
-      company: "",
-      address1: "",
-      address2: "",
-      city: "",
-      region: "",
-      postalCode: "",
-      countryCode: DEFAULT_COUNTRY_CODE,
-      phone: "",
+  } = useForm<ContactAndAddressFormValues>({
+    resolver: zodResolver(contactAndAddressSchema),
+    defaultValues: {
+      email,
+      ...(shippingAddress ?? {
+        firstName: "",
+        lastName: "",
+        company: "",
+        address1: "",
+        address2: "",
+        city: "",
+        region: "",
+        postalCode: "",
+        countryCode: DEFAULT_COUNTRY_CODE,
+        phone: "",
+      }),
     },
   });
 
-  // Prefill from the signed-in customer's default address — guest checkout stays blank.
-  // Skipped once the checkout session already has an address, or once the shopper has
-  // started typing, so this never clobbers in-progress or already-confirmed input.
+  // Prefill from the signed-in customer — their email, and their default address. Guest
+  // checkout stays blank. Skipped once the checkout session already holds the value, or once
+  // the shopper has started typing, so this never clobbers in-progress or confirmed input.
   useEffect(() => {
-    if (shippingAddress || isAuthLoading || !customer || isDirty) return;
+    if (isAuthLoading || !customer || isDirty) return;
     const defaultAddress = customer.addresses.find((a) => a.id === customer.defaultAddressId) ?? customer.addresses[0];
-    if (defaultAddress) reset(defaultAddress);
-  }, [customer, isAuthLoading, shippingAddress, isDirty, reset]);
+    const nextEmail = email || customer.email || "";
+    if (shippingAddress && !nextEmail) return;
+    reset({ ...(shippingAddress ?? defaultAddress ?? getValues()), email: nextEmail });
+  }, [customer, isAuthLoading, email, shippingAddress, isDirty, reset, getValues]);
 
-  const onSubmit = async (values: AddressFormValues) => {
-    await setShippingAddress(values);
+  /**
+   * Save the email as soon as the shopper leaves the field, not only when the whole form is
+   * submitted.
+   *
+   * This is what makes merging the old contact step into this one safe. While email had a step
+   * of its own it was persisted before the address was even shown, so anyone who gave up
+   * partway through the address was still reachable by the abandoned-cart cron — which resolves
+   * its recipient from `checkouts[].email`. Waiting for submit would have silently ended that
+   * for exactly the shoppers worth recovering: the ones who left without finishing.
+   *
+   * Guarded on a real change and a valid-looking value so a tab-through does not fire a write,
+   * and `void`-ed with a catch because a failed bookkeeping write must never block someone from
+   * completing their order.
+   */
+  const persistEmailOnBlur = (value: string) => {
+    const next = value.trim();
+    if (!next || next === email || !contactAndAddressSchema.shape.email.safeParse(next).success) return;
+    void setEmail(next).catch((error) => console.error("Failed to save checkout email", error));
+  };
+
+  const onSubmit = async (values: ContactAndAddressFormValues) => {
+    const { email: submittedEmail, ...address } = values;
+    // Ordered, not parallel: the address submit is what advances the step, so the email must
+    // already be stored when it does.
+    if (submittedEmail.trim() !== email) await setEmail(submittedEmail.trim());
+    await setShippingAddress(address);
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
       <div>
+        <h2 className="font-heading text-xl">{t("contactTitle")}</h2>
+        <p className="mt-1 text-sm text-luxe-gray-dark">{t("contactSubtitle")}</p>
+      </div>
+
+      <div>
+        <label htmlFor="checkout-email" className="mb-1.5 block text-eyebrow">
+          {t("emailAddress")}
+        </label>
+        <input
+          id="checkout-email"
+          type="email"
+          autoComplete="email"
+          aria-invalid={Boolean(errors.email)}
+          aria-describedby={errors.email ? "checkout-email-error" : undefined}
+          className={inputClass}
+          {...register("email", { onBlur: (event) => persistEmailOnBlur(event.target.value) })}
+        />
+        {errors.email ? (
+          <p id="checkout-email-error" className="mt-1.5 text-xs text-destructive">
+            {errors.email.message}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="border-t border-border pt-6">
         <h2 className="font-heading text-xl">{t("shippingAddressTitle")}</h2>
         <p className="mt-1 text-sm text-luxe-gray-dark">{t("shippingAddressSubtitle")}</p>
       </div>

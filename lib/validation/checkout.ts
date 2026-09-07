@@ -69,6 +69,18 @@ export const addressSchema = z.object({
 });
 export type AddressFormValues = z.infer<typeof addressSchema>;
 
+/**
+ * Email and delivery address as one form — the merged first checkout step.
+ *
+ * Composed from the two schemas rather than restating the email rule, so the field cannot
+ * drift from `contactSchema`, which still validates it on its own wherever email is collected
+ * outside checkout.
+ */
+export const contactAndAddressSchema = addressSchema.extend({
+  email: contactSchema.shape.email,
+});
+export type ContactAndAddressFormValues = z.infer<typeof contactAndAddressSchema>;
+
 /*
  * `cardSchema` (cardName / cardNumber / expiry / cvc) used to live here, backing a
  * demo card form on the payment step. It has been REMOVED deliberately, not

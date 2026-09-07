@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 import { useCheckout, type CheckoutStep } from "@/components/providers/CheckoutProvider";
 
 const STEPS: { id: CheckoutStep; labelKey: string }[] = [
-  { id: "contact", labelKey: "stepContact" },
-  { id: "shipping", labelKey: "stepShipping" },
+  { id: "shipping", labelKey: "stepContact" },
   { id: "delivery", labelKey: "stepDelivery" },
   { id: "payment", labelKey: "stepPayment" },
   { id: "review", labelKey: "stepReview" },

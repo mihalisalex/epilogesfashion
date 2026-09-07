@@ -116,7 +116,15 @@ test.describe("the cart", () => {
 });
 
 test.describe("checkout, up to the point of paying", () => {
-  test("the contact step refuses an invalid email and does not advance", async ({ page }) => {
+  /**
+   * Email and the delivery address are ONE step now — four steps, not five.
+   *
+   * These specs used to assert the handover between them: fill the email, press "continue to
+   * shipping", see an address form appear. That transition no longer exists, because the
+   * address form is on screen from the start. Rewritten to assert what is still true and still
+   * worth protecting, rather than deleted.
+   */
+  test("the first step refuses an invalid email and does not advance", async ({ page }) => {
     await addOneToCart(page);
     await page.goto("/checkout");
     await dismissConsent(page);
@@ -125,27 +133,24 @@ test.describe("checkout, up to the point of paying", () => {
     await expect(email).toBeVisible({ timeout: 20_000 });
 
     await email.fill("not-an-email");
-    await page.getByRole("button", { name: /συνέχεια στην αποστολή/i }).click();
+    await page.getByRole("button", { name: /συνέχεια στην παράδοση/i }).click();
 
-    // Still on the contact step. An address form appearing here would mean a checkout can be
-    // built on an address nobody can send a confirmation to.
+    // Still on step one. A checkout must never be built on an address nobody can send a
+    // confirmation to, and merging the steps must not have weakened that.
     await expect(email).toBeVisible();
     await expect(page).toHaveURL(/\/checkout/);
   });
 
-  test("a valid email advances to the shipping step", async ({ page }) => {
+  test("the email and the delivery address are on the same step", async ({ page }) => {
     await addOneToCart(page);
     await page.goto("/checkout");
     await dismissConsent(page);
 
-    const email = page.locator('input[name="email"]');
-    await expect(email).toBeVisible({ timeout: 20_000 });
-    await email.fill("e2e-test@example.com");
-    await page.getByRole("button", { name: /συνέχεια στην αποστολή/i }).click();
-
-    // The shipping step asks for a delivery address; reaching it is the proof the contact
-    // step accepted and persisted.
-    await expect(page.locator("#main")).toContainText(/διεύθυνση|address/i, { timeout: 20_000 });
+    // All three visible at once, with nothing submitted. This is the merge itself: were email
+    // split back onto a step of its own, the address fields would not be here yet.
+    await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('input[name="firstName"]')).toBeVisible();
+    await expect(page.locator('input[name="address1"]')).toBeVisible();
   });
 
   test("the order total carried into checkout matches the cart", async ({ page }) => {

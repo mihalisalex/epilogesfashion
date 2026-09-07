@@ -6,14 +6,12 @@ import { useCart } from "@/components/providers/CartProvider";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { CheckoutSteps } from "@/components/checkout/CheckoutSteps";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
-import { ContactStep } from "@/components/checkout/steps/ContactStep";
 import { ShippingAddressStep } from "@/components/checkout/steps/ShippingAddressStep";
 import { ShippingMethodStep } from "@/components/checkout/steps/ShippingMethodStep";
 import { PaymentStep } from "@/components/checkout/steps/PaymentStep";
 import { ReviewStep } from "@/components/checkout/steps/ReviewStep";
 
 const STEP_COMPONENTS = {
-  contact: ContactStep,
   shipping: ShippingAddressStep,
   delivery: ShippingMethodStep,
   payment: PaymentStep,
