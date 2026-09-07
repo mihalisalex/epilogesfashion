@@ -85,6 +85,13 @@ optimization (`PERF-001`), the CSP nonce (`SEC-003`), and `PERF-002` — now del
 5. **Dates come from the commit, not from memory.** This session ran past midnight and six entries
    were stamped a day early before the owner caught it. Use `git log`.
 
+6. **`next build` is not silent, and it was not silent before this session either.** It prints
+   three `cookies() rejects when the prerender is complete` errors, on `/api/customer/referrals`,
+   `/api/admin/media` and `/api/customer/orders`. The message names `after`, so the obvious
+   assumption is that the retention fallback caused them — it did not: building `5c4bee6`, before
+   any of that work, produces the same three. Unexplained, not investigated, and the build still
+   succeeds. Worth an entry of its own if anyone has an hour.
+
 ## `PERF-002` is deferred, deliberately — do not "resume" it
 
 Its headline benefit **already landed**: enabling Cache Components dropped `no-store`, which let the
