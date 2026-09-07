@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "postinstall": "prisma generate",
+    "cron:status": "node --conditions=react-server --import tsx scripts/cron-status.ts",
     "instagram:status": "node --conditions=react-server --import tsx scripts/connect-instagram.ts status",
     "instagram:connect": "node --conditions=react-server --import tsx scripts/connect-instagram.ts connect",
     "instagram:refresh": "node --conditions=react-server --import tsx scripts/connect-instagram.ts refresh",

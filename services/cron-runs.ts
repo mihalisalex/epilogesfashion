@@ -163,6 +163,18 @@ export async function runCron<T>(job: CronJob, trigger: CronTrigger, work: () =>
 }
 
 /**
+ * The last few runs of one job, newest first.
+ *
+ * A single `lastRun` answers "did it fire last night". The question that actually decides
+ * OPS-001 is whether it fires *repeatedly* — one scheduled run after three failed slots is
+ * as likely to be a coincidence as a recovery — and that needs more than one row.
+ */
+export async function getCronRunHistory(job: CronJob): Promise<CronRunRecord[]> {
+  const document = await getSiteContent<CronRunDocument>(documentKey(job), EMPTY_DOCUMENT);
+  return document.history;
+}
+
+/**
  * A daily job is stale once it has missed a full cycle, not the moment it is a minute late.
  *
  * 36 hours, which is one day plus the slack a daily job legitimately has: Hobby crons are
