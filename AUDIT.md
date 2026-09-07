@@ -760,10 +760,30 @@ their order confirmation.
 side (`example.com.gr`, `examples.com`, `myexample.com`, `protest.com`, `contest.gr`,
 `invalidation.com`, `test@gmail.com` must all still be mailable).
 
-**Not fixed here:** the residue itself — six checkouts and their carts still sit in
-production, now inert. And the suite still leaves ~500 empty guest carts, which
-`playwright.config.ts` already warns about for a different reason. Neither affects money
-(`orders` holding a reserved address: **0**, so `QA-012` has not regressed).
+**The residue** is cleared by `scripts/purge-e2e-data.ts` — six carts carrying a test checkout
+and 140 empty guest carts over a week old, 146 of 516. Neither group affects money (`orders`
+holding a reserved address: **0**, so `QA-012` has not regressed), which is why the mail guard
+above was the urgent half and this is the tidy-up.
+
+Two deliberate differences from `purge-test-orders.ts`, both in the safe direction:
+
+**Dry run is the default; deleting needs `--apply`.** That script worked from a hand-checked
+list of six known order ids. This one selects *by rule*, and a rule that is slightly wrong on
+a live shop deletes a real shopper's basket — silently, instantly, looking to them like the
+site losing their items.
+
+**`Order.checkoutId` has no foreign key, and the script compensates.** There is no
+`orders_checkoutId_fkey` in any migration; it is a plain unique column, while
+`checkouts.cartId` is `ON DELETE CASCADE`. So deleting a cart silently deletes its checkouts,
+and **nothing in the database prevents that from orphaning an order's pointer** to the session
+that produced it — the pointer `services/checkout.ts` calls permanent. Postgres will not catch
+this, so the script loads every ordered checkout id up front and excludes any cart touching
+one. Worth knowing beyond this script: that FK gap applies to anything that ever deletes a
+cart.
+
+The empty-cart group is gated on **age**, which is its entire safety margin: a visitor reading
+a product page right now owns a cart with no items, no customer and no checkout — byte for
+byte what the suite leaves behind. Only age separates them.
 
 **Risk of change:** Low — additive, and it can only ever prevent a send to a domain that has
 no MX record by standard.
