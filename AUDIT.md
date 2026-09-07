@@ -127,7 +127,7 @@ treat this as hardening rather than a gate.
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
-| 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me** | 🟡 The localisation decision is **made** (Greek-static shell) and the locale blocker was solved and then reverted — see the entry. It unblocks 5 storefront routes, not 82: 47 of the opt-outs are admin pages that do not want PPR, and 25 storefront pages each need their own conversion. Next blocker is undiagnosed: a `"use cache"` layout read still counts as uncached during prerender. |
+| 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me** | 🟡 The localisation decision is **made** (Greek-static shell) and the locale blocker was solved and then reverted — see the entry. It unblocks 5 storefront routes, not 82: 47 of the opt-outs are admin pages that do not want PPR, and 25 storefront pages each need their own conversion. The blocker is now **diagnosed**: `"use cache"` works — the error simply names the nearest render position, not the real access. What is left is a services-layer migration (`"use cache"` is in **1 of 48** service files) plus server-side locale reads that live in *components*, not only pages. |
 | ~~6~~ | ~~**Unknown URLs answer 200**~~ (`SEO-002`) | — | ✅ **Fixed 2026-09-06.** The 404 moved to `proxy.ts`, which runs before the response begins and was already doing the lookup for renamed-slug redirects. Costs no extra query on two of the three routes. |
 
 **Everything on this list that is code is now done.** Items 1–4 are decisions or a platform
@@ -1274,11 +1274,48 @@ Route "/_not-found": Next.js encountered uncached or runtime data during prerend
   at RootLayout (app/layout.tsx:70)  const seo = await getSeoDefaultsCached();
 ```
 
-That call was already cached — and converting it and `getAllCategoriesCached` from
-`unstable_cache` to `"use cache"` with the same tags and TTLs **did not satisfy it**. A clean
-`.next` rebuild behaved the same. Why a `"use cache"` function still counts as uncached data
-here is **not diagnosed**, and is the first thing to pick up next.
+That call was already cached, and converting it to `"use cache"` appeared not to satisfy the
+validator. **That reading was wrong — see the diagnosis below.**
 
+#### Diagnosed 2026-09-07 — `"use cache"` was never the problem
+
+The entry above recorded this as undiagnosed. It is now diagnosed, and **the earlier reading was
+my mistake, not a framework defect.**
+
+**Next's prerender error names the nearest render position, not the actual uncached access.** It
+pointed at `getSeoDefaultsCached()` in the root layout, so I concluded that call was being
+rejected despite its `"use cache"`. It was not. Clearing the blockers nearer the leaf makes the
+message walk inward until it finally names the real one — the error is a starting point, not an
+address.
+
+**Proven by bisection**, on a throwaway build that was reverted:
+
+| Step | Where the error moved to |
+| --- | --- |
+| Locale out of the layout, layout opt-out off | `getSeoDefaultsCached()` — layout line 71 |
+| `/_not-found` opted out, homepage opt-out off | `<JsonLd>` — layout line 106, a *JSX* line |
+| `getNavigation`, `getSiteSettings`, `getVisibleHomepageSections` given `"use cache"`, page switched to `getSeoDefaultsCached` | **`SectionRenderer.tsx:27` — `await getLocale()`** |
+
+The third row is the answer. `"use cache"` worked on every function it was applied to; the error
+moved *past* all of them. What actually blocks the homepage is a **server-side locale read in a
+component** — `SectionRenderer` — not in the page.
+
+**Which also corrects the scope figure above.** "5 storefront routes are locale-free" was
+measured by grepping page files. It missed component-level locale reads: `app/page.tsx` is clean,
+but the `SectionRenderer` it renders is not. The real count of ready routes is lower and cannot
+be established by grepping pages.
+
+**So `PERF-002` is open for two concrete reasons, neither of them mysterious:**
+
+1. **Almost nothing in the service layer is cached.** `"use cache"` appears in **1 of 48**
+   service files. Prerendering a route requires *every* read in its tree to be cached or
+   suspended, and each storefront route pulls several.
+2. **Server-side locale reads live in components, not only pages.** Each has to be moved to the
+   client or lifted out, and 58 client components consume the provider that must keep working
+   throughout.
+
+That is a services-layer migration, not a per-route flag flip — but it is now a list of ordinary
+work with a build that names the next item each time, rather than an unexplained wall.
 **Reverted rather than left half-done**, on the same reasoning as the first tier 2 attempt: the
 groundwork alone delivers nothing measurable — the layout opt-out has to go back on for the
 build to pass — while changing how locale is provided across a live shop carries real risk. A
@@ -1823,3 +1860,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-07 | Restored `noindex` on the 404 page, which fixing `SEO-002` had silently removed. Next injects it only when `notFound()` fires mid-stream; routing the 404 through the proxy means it never fires. The status code more than replaces the tag, but it was lost as a **side effect of a fix** rather than by decision — caught by the one test written to pin the old mitigation, which is the argument for pinning mitigations even when they look redundant | `45dc8cb` |
 | 2026-09-07 | **`PERF-002` adoption attempted and reverted, second time — but the documented blocker is gone.** The owner chose the Greek-static shell; the locale came out of the root layout, a client provider took over the swap, and the language switcher moved off a server action that had stopped being able to work. Then the build named the *next* blocker: a root-layout read that is already `"use cache"` still counts as uncached during prerender. Undiagnosed, so reverted rather than shipped half-done. Also measured the real scope: of 77 opt-outs, **47 are admin pages that do not want PPR** and 25 storefront pages each need their own conversion — the layout fix unblocks **5**, including the homepage. And corrected `i18n/config.ts`, which claims categories and collections have no translation columns: they do, fully populated | `7e9cb56` |
 | 2026-09-07 | **`PERF-004` opened and fixed** — the owner noticed adding to the cart felt slow and asked why. It was: **1245ms warm, 2931ms cold, over eight sequential round trips**, two of which bought nothing. Nine cart mutations opened with a full cart read they discarded, and each already re-read the cart at the end. Fixed with a cheap existence check, one parallelised pair, and a non-blocking rate-limit write — checked first that no credential path uses that helper. **~1245ms → ~1045ms**, measured. I predicted 400ms and got 200ms; parallelising two queries saves the shorter one, not a round trip | `570fdba` |
+| 2026-09-07 | **Diagnosed why `PERF-002` stalled, and the previous entry was wrong.** `"use cache"` was never being rejected: Next's prerender error names the **nearest render position**, not the actual uncached access, so it kept pointing at a cached layout call. Bisected on a throwaway build — caching the homepage's four reads moved the error *past* all of them to the real blocker, `SectionRenderer.tsx:27` calling `getLocale()`. That also corrects the "5 locale-free routes" figure, which was grepped from page files and missed component-level locale reads. `PERF-002` is now ordinary work: `"use cache"` is in **1 of 48** service files | _pending_ |
