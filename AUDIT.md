@@ -126,7 +126,7 @@ treat this as hardening rather than a gate.
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
-| 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me**, after one decision from you | 🟡 Foundation landed (`34629b3`); 82 routes carry a TODO marker. Blocked on a product call: Greek shell with English chrome swapped client-side, or locale-prefixed routing. |
+| 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me** | 🟡 The localisation decision is **made** (Greek-static shell) and the locale blocker was solved and then reverted — see the entry. It unblocks 5 storefront routes, not 82: 47 of the opt-outs are admin pages that do not want PPR, and 25 storefront pages each need their own conversion. Next blocker is undiagnosed: a `"use cache"` layout read still counts as uncached during prerender. |
 | ~~6~~ | ~~**Unknown URLs answer 200**~~ (`SEO-002`) | — | ✅ **Fixed 2026-09-06.** The 404 moved to `proxy.ts`, which runs before the response begins and was already doing the lookup for renamed-slug redirects. Costs no extra query on two of the three routes. |
 
 **Everything on this list that is code is now done.** Items 1–4 are decisions or a platform
@@ -1253,6 +1253,63 @@ table.
 but it is no longer the difference between 1s and 0.2s — that has already been collected. It
 is now an incremental gain on top, which lowers its priority against `PERF-001`.
 
+### Adoption attempted 2026-09-06 — the documented blocker fell, a new one did not
+
+The owner chose the **Greek-static shell**: render `<html lang="el">` and Greek chrome
+unconditionally, swap the ~90 English strings client-side after hydration. That decision stands
+and is the right one for this shop — all 182 product names are Greek-only, and a crawler
+arriving without a cookie already gets Greek.
+
+**The locale blocker is genuinely solvable, and was solved.** `getLocale()`/`getMessages()` came
+out of the root layout, a client `LocaleProvider` took over the swap, and `LanguageSwitcher`
+moved off its server action — which had stopped being able to work, since re-rendering a
+locale-independent shell on the server returns identical markup. Typecheck and lint clean.
+**This entry can stop describing the locale as the thing standing in the way.**
+
+**But it was not the last blocker.** With the cookie read gone, the build named the next one:
+
+```
+Route "/_not-found": Next.js encountered uncached or runtime data during prerendering.
+  at RootLayout (app/layout.tsx:70)  const seo = await getSeoDefaultsCached();
+```
+
+That call was already cached — and converting it and `getAllCategoriesCached` from
+`unstable_cache` to `"use cache"` with the same tags and TTLs **did not satisfy it**. A clean
+`.next` rebuild behaved the same. Why a `"use cache"` function still counts as uncached data
+here is **not diagnosed**, and is the first thing to pick up next.
+
+**Reverted rather than left half-done**, on the same reasoning as the first tier 2 attempt: the
+groundwork alone delivers nothing measurable — the layout opt-out has to go back on for the
+build to pass — while changing how locale is provided across a live shop carries real risk. A
+partially migrated rendering model is worse than an unmigrated one. Tree clean, build green,
+339 static pages.
+
+**The real scope, measured rather than estimated.** The "82 TODO markers" framing overstated the
+work and understated its shape:
+
+| Opted-out pages | 77 |
+| --- | ---: |
+| Admin | 47 — personalised and behind auth; **PPR is not wanted there at all** |
+| Storefront reading locale server-side | 25 — each needs its own conversion |
+| Storefront already locale-free | **5** |
+
+So the layout fix does not unblock 82 routes. It unblocks **five** — but they include
+`app/page.tsx`, the homepage, plus legal, campaigns, landing and shipping-returns. The other 25
+are a per-page refactor, and 58 client components call `useTranslations`, so the provider has to
+keep working throughout.
+
+**A red herring worth naming.** The build output is dominated by `ENVIRONMENT_FALLBACK` errors
+pointing at `useTranslations` in `CookieConsentBanner`. They are **not** the prerender failure —
+reading next-intl's source shows the code is raised for a missing `timeZone` config, a markup
+mismatch warning. Anyone debugging this will chase them first; they are noise.
+
+**A correction to the codebase's own claim, found while checking.** `i18n/config.ts` states that
+categories, collections and legal pages "have no translation column at all". They do, and they
+are populated: `categories.nameEl` **11 of 11**, `collections.titleEl` and `subtitleEl` **5 of
+5**. Only products are untranslated — **0 of 182** — which is the bulk, so the one-URL-set
+decision still holds. But the sentence it rests on is out of date, and the day products get
+translated is the day that decision needs re-taking.
+
 **Fixed:** _tier 1 done (`92cf413`, no measurable effect). Tier 2 pre-step done (`34629b3`) and,
 contrary to what this entry originally claimed, it cut warm TTFB three- to fivefold — see the
 2026-09-06 re-measurement.
@@ -1695,3 +1752,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | Widened the recorded TTFB from **0.17–0.24s** to **0.20–0.42s**. The first figure was taken in one burst right after the measurement that produced it; a wider sample later the same day, after the WebP migration and a fresh deploy, spread higher, with one 0.81s outlier while Neon was waking. The conclusion and the score are unchanged — it is still three- to fivefold better than the 0.89–1.13s baseline — but the range as written was the flattering end of the evidence, which is the error this document keeps catching in itself | `8322b3c` |
 | 2026-09-06 | **`SEO-002` fixed**, and not where the guide pointed. The documented fix — check existence before the stream starts — is unavailable here, because the *shell* starts the stream, not the page: the status is committed before the page component runs at all. So the 404 moved to `proxy.ts`, which is where this codebase had already solved the same problem for renamed-slug 308s, and whose comment already said why. **No extra query on two of the three routes** — the lookup that decides a redirect also decides existence. Visibility rules mirrored rather than re-invented, so a hidden category and a draft product now return a hard 404 instead of a soft one. Verified on a local production build before deploying | `5732d95` |
 | 2026-09-06 | Restored `noindex` on the 404 page, which fixing `SEO-002` had silently removed. Next injects it only when `notFound()` fires mid-stream; routing the 404 through the proxy means it never fires. The status code more than replaces the tag, but it was lost as a **side effect of a fix** rather than by decision — caught by the one test written to pin the old mitigation, which is the argument for pinning mitigations even when they look redundant | `45dc8cb` |
+| 2026-09-06 | **`PERF-002` adoption attempted and reverted, second time — but the documented blocker is gone.** The owner chose the Greek-static shell; the locale came out of the root layout, a client provider took over the swap, and the language switcher moved off a server action that had stopped being able to work. Then the build named the *next* blocker: a root-layout read that is already `"use cache"` still counts as uncached during prerender. Undiagnosed, so reverted rather than shipped half-done. Also measured the real scope: of 77 opt-outs, **47 are admin pages that do not want PPR** and 25 storefront pages each need their own conversion — the layout fix unblocks **5**, including the homepage. And corrected `i18n/config.ts`, which claims categories and collections have no translation columns: they do, fully populated | _pending_ |
