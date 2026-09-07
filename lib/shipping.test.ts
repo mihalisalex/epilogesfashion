@@ -26,7 +26,14 @@ describe("buildShippingRates", () => {
       ...DEFAULTS,
       rates: DEFAULTS.rates.map((rate) => (rate.id === "express" ? { ...rate, enabled: false } : rate)),
     };
-    expect(buildShippingRates(settings).map((rate) => rate.id)).toEqual(["standard"]);
+    const ids = buildShippingRates(settings).map((rate) => rate.id);
+
+    // Derived from the fixture rather than written out as a literal. This assertion used to
+    // read `toEqual(["standard"])`, which silently encoded "the defaults contain exactly two
+    // rates" into a test about something else entirely — so adding store pickup to
+    // data/shipping.json failed it, for no reason connected to what it checks.
+    expect(ids).not.toContain("express");
+    expect(ids).toEqual(DEFAULTS.rates.filter((rate) => rate.enabled && rate.id !== "express").map((rate) => rate.id));
   });
 
   it("carries no threshold at all when free shipping is switched off", () => {

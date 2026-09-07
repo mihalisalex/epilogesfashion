@@ -6,23 +6,31 @@ import { ArrowRight } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
-import { GIFT_WRAP_FEE, GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
 
+/**
+ * Gift wrapping is no longer offered, at the merchant's request, so the checkbox and its
+ * message box are gone from this step.
+ *
+ * The machinery behind it deliberately is NOT: `Checkout.giftWrap`, `Order.giftWrap`,
+ * `giftMessage` and `giftWrapTotal` all remain. Two reasons. Orders already placed with
+ * wrapping have to keep rendering correctly in the admin and in their own confirmation
+ * emails, and ripping the field out would break exactly the historical records that are
+ * hardest to reconstruct. And a shoe shop plausibly wants this back in December — with the
+ * plumbing intact that is a UI change, whereas removing it now would make it a rebuild.
+ *
+ * Nothing sets `giftWrap` any more, so it stays `false` and `giftWrapTotal` stays zero on
+ * every new order.
+ */
 export function ShippingMethodStep() {
   const t = useTranslations("Checkout");
-  const { shippingRates, selectedRateId, selectShippingRate, giftWrap, giftMessage, setGiftWrap } = useCheckout();
+  const { shippingRates, selectedRateId, selectShippingRate } = useCheckout();
   const [selected, setSelected] = useState<string | null>(selectedRateId ?? shippingRates[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [wrapChecked, setWrapChecked] = useState(giftWrap);
-  const [message, setMessage] = useState(giftMessage);
 
   const onSubmit = async () => {
     if (!selected) return;
     setIsSubmitting(true);
     try {
-      if (wrapChecked !== giftWrap || (wrapChecked && message !== giftMessage)) {
-        await setGiftWrap(wrapChecked, wrapChecked ? message : undefined);
-      }
       await selectShippingRate(selected);
     } finally {
       setIsSubmitting(false);
@@ -77,30 +85,6 @@ export function ShippingMethodStep() {
             </button>
           );
         })}
-      </div>
-
-      <div className="border border-border p-4">
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            checked={wrapChecked}
-            onChange={(e) => setWrapChecked(e.target.checked)}
-            className="mt-0.5 size-4 accent-luxe-black"
-          />
-          <span>
-            {t("addGiftWrapping")} <span className="text-luxe-gray-dark">(+{formatMoney({ amount: GIFT_WRAP_FEE, currencyCode: shippingRates[0]?.price.currencyCode ?? "EUR" })})</span>
-          </span>
-        </label>
-        {wrapChecked ? (
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value.slice(0, GIFT_MESSAGE_MAX_LENGTH))}
-            placeholder={t("giftMessagePlaceholder")}
-            rows={2}
-            maxLength={GIFT_MESSAGE_MAX_LENGTH}
-            className="mt-3 w-full border border-border px-3 py-2 text-sm outline-none focus:border-luxe-black"
-          />
-        ) : null}
       </div>
 
       <button

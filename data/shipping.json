@@ -11,6 +11,15 @@
       "freeShippingEligible": true
     },
     {
+      "id": "pickup",
+      "label": "Παραλαβή από το κατάστημα",
+      "description": "Έβανς 9, Ηράκλειο Κρήτης",
+      "estimatedDelivery": "Έτοιμη προς παραλαβή σε 1–2 εργάσιμες ημέρες",
+      "amount": 0,
+      "enabled": true,
+      "freeShippingEligible": false
+    },
+    {
       "id": "express",
       "label": "Ταχεία παράδοση",
       "description": "1–2 εργάσιμες ημέρες",
