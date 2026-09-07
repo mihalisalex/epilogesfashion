@@ -15,39 +15,58 @@ commits pushed to `origin/main`. `tsc` / `eslint` / `next build` green, **455 un
 
 ## The one thing that is actually wrong
 
-**`OPS-001` — the data-retention cron still does not run**, and a third slot failed on 09-07:
-198 rows sat past retention four hours after it, the oldest already two days old before the
-slot began. The job is correctly written, deployed, authorized, **registered and enabled**
-(`vercel crons ls` lists all three). **Next step is Vercel support, not another query.**
+**`OPS-001` is much smaller than this repo has been saying, and the correction is the useful
+part.** As of 09-07 the position is: **Vercel's scheduler works here**, retention is being
+enforced automatically, and the one thing genuinely outstanding is that the `data-retention`
+slot has never been *watched*.
 
-**Two things changed on 09-07, and both matter to whoever picks this up.**
+**Vercel's cron fires.** `email-followups` (`0 8 * * *`) has sent abandoned-cart mail at 08:56,
+08:57, 08:03, 08:32 and 08:56 UTC across five dates — every one inside its slot's hour, which
+is exactly how Hobby crons behave. It fired at 08:56 on 09-07. The other days it ran and had
+no eligible cart, so it left no trace: the blind spot the run log now fills.
 
-1. **The marker test this repo left behind was invalid.** `AUDIT.md` had set 33 rows as the
-   discriminator — "if they are gone tomorrow it runs late, if they are still there it does
-   not run". They are gone, and it proves nothing: `lib/rate-limit.ts` prunes rows over a day
-   old on ~1% of calls, so it deletes those rows too. The entry had already dismissed that
-   prune as a confound for a row *surviving*, then used its *deletion* as evidence. Only a row
-   that survives can settle it.
+**The evidence that retention was "still failing" was three measurement defects, not a bug.**
 
-2. **Retention no longer depends on the cron.** `runDataRetentionIfDue` runs the full pass from
-   ordinary request traffic when a day has gone by with no recorded run, so `PRIV-001` is
-   honoured whether or not Vercel ever fires. And all three cron jobs now record their own runs
-   (`services/cron-runs.ts`) — including **what triggered them**, from Vercel's
-   `x-vercel-cron-schedule` header — so the question stops being forensic:
+1. **The marker test could not discriminate.** 33 rows were nominated as "gone means it ran
+   late, still there means it never runs". `lib/rate-limit.ts` prunes rows over a day old on
+   ~1% of calls, so it deletes them too.
+2. **A non-zero overdue count is the NORMAL state of a working daily job.** A job deleting
+   rows older than two days always leaves those created between its last cutoff and two days
+   ago — a set that grows all day and empties at the next run. The 33 rows and the 198 rows
+   recorded as proof of failure are what a healthy job produces. Only rows older than the last
+   *pass's own cutoff* mean anything.
+3. **Every timestamp the ad-hoc tooling printed was three hours early.** `createdAt` is
+   `TIMESTAMP(3)` **without** time zone, and node-postgres parses such columns in the client's
+   local zone — Athens, UTC+3. The DB session is `GMT`, so the SQL counts were right and only
+   the displayed instants were wrong, which is the dangerous combination. It flipped the 09-07
+   reading on its own: the oldest surviving row was 04:55 UTC, not 01:55, which is *newer* than
+   the 03:30 slot's cutoff and was supposed to survive.
 
-   ```sql
-   SELECT data->'lastRun'->>'trigger' FROM site_content WHERE key = 'cron:data-retention';
-   ```
+**The 09-05 finding survives all of it** — 1,639 rows with the oldest 45 days old was real, and
+retention genuinely had never run until the manual trigger. What is not established is that it
+has failed since.
 
-   `schedule` closes the finding. `fallback` means retention is fine and Vercel is still
-   broken — which is when the support ticket is worth opening, with a dated log to attach.
-   No row at all is a new problem.
+**Retention no longer depends on the cron either way.** `runDataRetentionIfDue` runs the full
+pass from ordinary request traffic when a day passes with no recorded run — verified in
+production on 09-07: 492 overdue rows to zero, no human involved. And all three jobs now record
+their own runs, so the check is one command:
 
-Three more explanations died on 09-07, one of them a hypothesis this repo had been carrying:
-**the plan cron limit is a myth** — Vercel documents 100 cron jobs per project on *every* plan,
-Hobby included. Also dead: a cached response masking the run (`X-Vercel-Cache: MISS`, so the
-function really does execute), and redeploy churn resetting the schedule (nothing deployed in
-the six hours spanning the slot).
+```bash
+npm run cron:status
+```
+
+It refuses to conclude anything until a slot has actually elapsed under observation. Telling
+you the cron is dead before it has had a chance is the precise error this finding made three
+times.
+
+Two explanations also died on 09-07, one of them a hypothesis this repo had been carrying:
+**the plan cron limit is a myth** — Vercel documents 100 cron jobs per project on *every* plan.
+Also dead: a cached response masking the run (`X-Vercel-Cache: MISS`, so the function really
+does execute).
+
+**If you read one thing into this:** all three defects share a shape. Each was a number
+trusted because it was a number, without first asking *what a passing result would look like*.
+None survives that question.
 
 Everything else open is a choice about money or timing: the 6-hour restore window, image
 optimization (`PERF-001`), the CSP nonce (`SEC-003`), and `PERF-002` — now deliberately deferred.

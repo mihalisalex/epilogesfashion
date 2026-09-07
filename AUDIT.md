@@ -2,7 +2,7 @@
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
 **Remediated:** 2026-09-04 → 2026-09-07 · Phases 1–4 plus post-audit findings
-**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`), 2026-09-06 (`OPS-001` escalated) and 2026-09-07 (`OPS-001` third failed slot; its marker test found invalid)
+**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`), 2026-09-06 (`OPS-001` escalated) and 2026-09-07 (`OPS-001` **de-escalated** — its evidence of failure turned out to be three measurement defects, and Vercel's scheduler is demonstrably firing)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
 **Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **455/455** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
 
@@ -25,12 +25,21 @@ honoured. A manual trigger has since cleared ~1,700 rows and proved the code, th
 fire** — and by then every proposed explanation had been eliminated, including the plan-limit
 guess this document had been carrying. It is a platform problem, not a code one.
 
-On 7 September a third slot failed, three more explanations died, and **the marker test this
-file had set to settle it turned out not to discriminate** — the rows it was watching can be
-deleted by the rate limiter's own prune. Two things then shipped: every scheduled job now
+On 7 September the finding turned out to have been **measuring itself wrongly since the 5th**.
+Three separate defects: the marker test it set could not discriminate (the rate limiter's own
+prune deletes the same rows); the overdue-row count it treated as proof of failure is the
+*normal steady state* of a working daily job; and every timestamp the tooling printed was
+three hours early, because `createdAt` is a timezone-less column and node-postgres reads such
+columns in the client's local zone. Meanwhile the `email-followups` cron is demonstrably
+firing inside its slot on five dated occasions — **Vercel's scheduler works on this project.**
+
+The 09-05 finding survives all of that: 1,639 rows with the oldest 45 days old was real, and
+retention genuinely had never run. What is no longer established is that it has failed since.
+Two things shipped regardless, and both earn their place either way: every scheduled job now
 records when it ran and **what triggered it**, and retention runs from ordinary request
-traffic when a day passes with no recorded run. The scheduler is still Vercel's problem; the
-GDPR position no longer waits on it, and the next slot leaves a dated record either way.
+traffic when a day passes with no recorded run — verified in production, 492 overdue rows to
+zero without a human. The next slot answers the remaining question with a dated record instead
+of another inference.
 
 **`PRIV-002` — GDPR access and erasure — is now built.** Export and erasure as admin actions,
 with erasure implemented as anonymisation where tax law requires the record kept: the order
@@ -67,13 +76,14 @@ are the clearest cases: both came from asking why a score was low and then measu
 same habit later showed that `PERF-002`'s fix had **already worked** while this file was still
 recording it as a deliberate no-op.
 
-**One P2 is open.** `OPS-001` got worse rather than better on 6 September, and a third slot
-failed on the 7th. The job is demonstrably registered and enabled and there is nothing left
-to test from this side — but it is no longer *load-bearing*: retention runs from ordinary
-traffic when a day passes with no recorded run, so `PRIV-001` is honoured whether or not
-Vercel ever fires the cron. What keeps the finding open is that neither the scheduler nor the
-replacement has yet been **observed** working in production, which is the same standard the
-finding was opened to enforce.
+**One P2 is open**, and on 7 September it moved in the opposite direction to the one this file
+had been recording. Its evidence of continued failure turned out to be three separate
+measurement defects, and `email-followups` is demonstrably firing inside its slot — so
+Vercel's scheduler works, and `data-retention` is no longer *shown* to be broken. It is also
+no longer load-bearing: retention runs from ordinary traffic when a day passes with no
+recorded run, verified in production. What keeps the finding open is that the schedule has
+still never been **observed** running, which is the standard it was opened to enforce and
+which the run log now makes answerable in one command.
 
 **One P3 is open and one is deferred.** `PERF-001` (image optimization) waits on the plan, as
 does the deferred P2 `SEC-003`. **`PERF-002` is now deliberately deferred** — its fivefold TTFB
@@ -136,7 +146,7 @@ treat this as hardening rather than a gate.
 
 | # | Item | Owner | Where it stands |
 |---|---|---|---|
-| 1 | **The retention cron does not run, and every explanation is exhausted** (`OPS-001`) | You — Vercel support | 🟠 **Third slot failed 2026-09-07**; 198 rows sat past retention four hours after it. Three further explanations eliminated, including the plan-cron-limit guess this file was carrying — Vercel documents **100 crons per project on every plan**. **But retention no longer waits for it**: it now runs from ordinary traffic when a day passes with no recorded run, so `PRIV-001` is honoured without anyone remembering. The scheduler itself is still Vercel's to explain, and every run is now logged with what triggered it, so the evidence to hand them is a dated record rather than an inference. |
+| 1 | **The retention schedule has never been observed running** (`OPS-001`) | You — one command after the next slot | 🟡 **Downgraded 2026-09-07.** The evidence that it was still failing was three measurement defects, not a broken cron, and `email-followups` fires inside its slot on five dated occasions — so **Vercel's scheduler works here**. `data-retention` is no longer shown to be broken; it has simply never been watched. Retention is enforced regardless, from ordinary traffic, verified in production. Run `npm run cron:status` after 04:30 UTC to settle it. |
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
@@ -864,6 +874,10 @@ stated retention right now. Small in volume, unchanged in principle.
 
 ### The marker test was invalid, and the third slot also failed — 2026-09-07 07:42 UTC
 
+> **⚠ Superseded eight hours later. The "third slot failed" conclusion below is WRONG** — see
+> the CORRECTION further down. The part about the marker test being invalid stands; the part
+> that replaced it was invalid too, for two further reasons found the same afternoon.
+
 **The 33 marker rows are gone. That proves nothing, and the test should not have been set.**
 
 `lib/rate-limit.ts` prunes rate-limit rows older than **one day** on ~1% of `recordAttempt`
@@ -900,7 +914,73 @@ So the 09-06 conclusion stands and is better evidenced than it was: correct, dep
 authorized, registered, enabled, uncached, unredirected — and it does not run. **Next step is
 still Vercel, not code.**
 
-### What shipped instead — 2026-09-07
+### CORRECTION — 2026-09-07 15:45 UTC. The scheduler works, and the last two "failures" were measurement artifacts
+
+**Read this before the section above.** Everything it concludes about the 09-06 and 09-07
+slots is wrong, for two independent reasons, and the finding is in a materially better place
+than this file has been saying.
+
+**Vercel's scheduler fires on this project.** The `email-followups` cron (`0 8 * * *`) has
+sent abandoned-cart mail on five dated occasions, and every one lands inside its slot's hour:
+
+| Sent (UTC) | |
+|---|---|
+| 2026-09-07 08:56 | four emails, this morning |
+| 2026-08-24 08:57 | |
+| 2026-08-20 08:03 | |
+| 2026-08-19 08:32 | |
+| 2026-07-31 08:56 | |
+
+That is textbook Hobby behaviour — triggered within the hour, never to the minute. The other
+dates are simply days it had no eligible cart and therefore left no trace, which is precisely
+the blind spot the run log was built to fill. **"No cron on this project fires" is dead.**
+
+**Defect 1 — the test cannot detect success.** A daily job that deletes rows older than two
+days leaves, at any later moment, every row created between its last cutoff and two days ago.
+That set grows all day and empties at the next run; its width is exactly the time since the
+last run. **A non-zero count is the normal state of a job that is working.** So the two
+measurements recorded above as proof of failure —
+
+- 33 rows at 06:56 on 09-06, about three hours after a ~04:00 run, and
+- 198 rows at 07:42 on 09-07, about four hours after one
+
+— are the numbers a healthy job produces. The only valid test is whether rows predate the
+*last pass's own cutoff*, which is what `npm run cron:status` now reports instead.
+
+**Defect 2 — every timestamp this investigation printed was three hours early.**
+`rate_limit_attempts."createdAt"` is `TIMESTAMP(3)` **without** time zone. node-postgres parses
+such a column in the *client's* local zone, and this machine is Athens (UTC+3), so an ad-hoc
+script displays every stored instant three hours before it happened. The session timezone is
+`GMT`, so the SQL comparisons were correct throughout — only the printed instants were wrong,
+which is the worst of both worlds: the counts looked trustworthy and the reasoning built on
+top of them was not.
+
+It flipped the 09-07 conclusion on its own. The oldest surviving row was reported as
+`2026-09-05 01:55:34`; it is actually **04:55:34**. A run at 03:30 deletes rows older than
+`09-05 03:30` (04:29 at the edge of Hobby's jitter), so a row from `09-05 04:55` is *newer
+than the cutoff and is supposed to survive*. It was never evidence of anything. The same
+correction applies to the 09-06 entry's `02:03` row, which is really `05:03`.
+
+**What survives.** The original 09-05 finding was real and neither defect touches it: 1,639
+rows with the oldest **45 days** old cannot be produced by a three-hour shift or by a job
+running normally. The cron genuinely had never run, the manual trigger genuinely fixed it,
+and `PRIV-001` genuinely was not being honoured until then.
+
+**What is now unknown.** Whether `data-retention` has been running on its own since 09-05.
+The evidence is *consistent* with it working and no longer shows it failing — but consistent
+is not proven, and this finding has now been wrong in three different ways while feeling
+certain each time (a marker test that could not discriminate, a steady-state count read as a
+defect, and a timezone shift in the tooling). The run log settles it at the next slot, which
+is why it was worth building.
+
+**The lesson is not "be more careful."** All three defects share one shape: a measurement was
+trusted because it was *numeric*, without asking what a passing result would have looked like.
+None of them would have survived the question "what would I expect to see if this were
+working?" — the marker rows would be gone either way, the overdue count is non-zero either
+way, and the timestamps were never checked against a second source. That question belongs
+next to this file's existing rule about `Fixed` meaning shipped.
+
+### What shipped — 2026-09-07
 
 Two things, and neither of them claims to fix Vercel.
 
@@ -1928,12 +2008,12 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 
 ### Yours — no code, and the first four are minutes each
 
-1. **Read the cron run log after the next 03:30 UTC slot** (`OPS-001`) — one SQL query, and
-   it now answers the question directly instead of by inference:
-   `SELECT data->'lastRun'->>'trigger' FROM site_content WHERE key = 'cron:data-retention';`
-   `schedule` means Vercel's scheduler is alive and this closes. `fallback` means retention
-   is being honoured while the scheduler is still dead — which is the point at which it is
-   worth opening a Vercel support ticket, with a dated run log to attach.
+1. **Run `npm run cron:status` after 04:30 UTC** (`OPS-001`) — one command, and it now answers
+   the question directly instead of by inference. `schedule` means the scheduler is alive and
+   this closes; `fallback` after a slot has fully elapsed means it is not. Note the script
+   deliberately refuses to conclude anything until a slot has passed *under observation* —
+   telling you the cron is dead before it has had a chance is the exact error this finding
+   made three times.
 2. **Decide on the 6-hour restore window.** Found by drilling the restore: a problem noticed
    the next morning **cannot be restored away**. Either accept that and keep destructive work
    early in the day, or pay for longer history retention. See `ROLLBACK.md`.
@@ -2035,3 +2115,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-07 | **Diagnosed why `PERF-002` stalled, and the previous entry was wrong.** `"use cache"` was never being rejected: Next's prerender error names the **nearest render position**, not the actual uncached access, so it kept pointing at a cached layout call. Bisected on a throwaway build — caching the homepage's four reads moved the error *past* all of them to the real blocker, `SectionRenderer.tsx:27` calling `getLocale()`. That also corrects the "5 locale-free routes" figure, which was grepped from page files and missed component-level locale reads. `PERF-002` is now ordinary work: `"use cache"` is in **1 of 48** service files | `06292e7` |
 | 2026-09-07 | **`PERF-002` recorded as a deliberate deferral, not open work.** Measured first: three routes the build classifies as `ƒ Dynamic` all serve in **~0.2–0.3s** from the edge — the CDN is already doing what Partial Prerendering would, because the pre-step dropped `no-store`. Adoption would improve only the **cache-miss** path (~0.7–0.84s), which is a minority of views and shrinks as traffic grows, at the cost of a services-layer migration on a live shop. Deferred with two triggers: traffic making misses material, or products getting translated — which forces the locale decision anyway. Also notes that `OPS-001` is the one item left that is actually *wrong* rather than a choice | `8afdb47` |
 | 2026-09-07 | **`OPS-001`: the marker test was invalid, the third slot failed, and retention stopped depending on the scheduler.** The 33 rows this file left as its discriminator can be deleted by `lib/rate-limit.ts`'s own 1-day prune — the same prune the entry had already dismissed as a confound, then used as evidence anyway. What settles it is a row that *survived*: 198 rows sat past retention four hours after the 03:30 slot, the oldest of them two days old before it. Three more explanations eliminated — the plan cron limit (Vercel documents **100 per project on every plan**, killing the guess this file carried), a cached response masking the run (`X-Vercel-Cache: MISS`), and redeploy churn (nothing deployed for the six hours spanning the slot). Shipped: `services/cron-runs.ts`, so all three jobs record when they ran and **what triggered them**, surfaced on `/api/health`; and `runDataRetentionIfDue`, which runs the full pass from ordinary traffic when a day passes with no recorded run, replacing a 1%-chance prune that had an expected 0.6 firings on a 61-request day. Scores deliberately unchanged — none of it has been observed running yet | `3c8805d` |
+| 2026-09-07 | **`OPS-001` de-escalated: the evidence of continued failure was three measurement defects.** `email-followups` has sent mail at 08:56, 08:57, 08:03, 08:32 and 08:56 UTC on five dates — every one inside the hour of its `0 8 * * *` slot, which is textbook Hobby behaviour. **Vercel's scheduler works on this project**, killing the "no cron fires here" reading. The three defects: the marker test could not discriminate (the rate limiter's prune deletes the same rows); **a non-zero overdue count is the steady state of a working daily job**, not a failure — 33 rows and 198 rows were what a healthy job produces; and node-postgres reads `TIMESTAMP` columns in the *client's* zone, so every printed instant was three hours early, which alone flipped the 09-07 conclusion (the oldest row was 04:55, not 01:55 — newer than the slot's cutoff and supposed to survive). The 09-05 finding survives untouched: 1,639 rows, oldest 45 days, was real. What is left is that the schedule has never been *observed*, which the run log answers at the next slot. Also: the fallback shipped that morning was **verified in production** — 492 overdue rows to 0 with no human involved | _this commit_ |
