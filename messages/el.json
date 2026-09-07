@@ -501,5 +501,22 @@
     "invalidResetLink": "Ο σύνδεσμος επαναφοράς δεν είναι έγκυρος ή έχει λήξει. Ζητήστε νέον.",
     "invalidCredentials": "Λανθασμένο email ή κωδικός.",
     "notAuthorized": "Δεν έχετε πρόσβαση σε αυτόν τον πελάτη."
+  },
+  "Validation": {
+    "emailRequired": "Το email είναι υποχρεωτικό",
+    "emailInvalid": "Εισαγάγετε έγκυρη διεύθυνση email",
+    "firstNameRequired": "Το όνομα είναι υποχρεωτικό",
+    "lastNameRequired": "Το επώνυμο είναι υποχρεωτικό",
+    "address1Required": "Εισαγάγετε τη διεύθυνσή σας",
+    "cityRequired": "Η πόλη είναι υποχρεωτική",
+    "postalCodeInvalid": "Εισαγάγετε έγκυρο ταχυδρομικό κώδικα",
+    "countryRequired": "Επιλέξτε χώρα",
+    "countryUnsupported": "Δεν στέλνουμε ακόμα σε αυτή τη χώρα",
+    "phoneRequired": "Το τηλέφωνο είναι υποχρεωτικό για να μπορεί να σας βρει η εταιρεία ταχυμεταφορών",
+    "phoneInvalid": "Εισαγάγετε έγκυρο αριθμό τηλεφώνου",
+    "phoneCharacters": "Το τηλέφωνο μπορεί να περιέχει μόνο ψηφία, κενά και + ( ) - . /",
+    "invoiceCompanyRequired": "Η επωνυμία είναι υποχρεωτική",
+    "invoiceVatInvalid": "Το ΑΦΜ δεν είναι έγκυρο",
+    "invoiceTaxOfficeRequired": "Η ΔΟΥ είναι υποχρεωτική"
   }
 }

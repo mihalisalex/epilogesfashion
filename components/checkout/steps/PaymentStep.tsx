@@ -1,11 +1,11 @@
 "use client";
 import { useTranslations } from "next-intl";
 
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
-import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
+import { buildAddressSchema, type AddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES } from "@/constants/countries";
 import { useCheckout, type CheckoutPaymentMethod } from "@/components/providers/CheckoutProvider";
 import { PaymentMethodIcon } from "@/components/checkout/PaymentMethodIcon";
@@ -60,6 +60,10 @@ function subscribeToNothing(): () => void {
  */
 export function PaymentStep() {
   const t = useTranslations("Checkout");
+  // Validation messages in the shopper's language — useTranslations has exactly the resolver
+  // signature the schema factory takes. Memoised so zodResolver keeps a stable identity.
+  const tValidation = useTranslations("Validation");
+  const addressValidation = useMemo(() => buildAddressSchema(tValidation), [tValidation]);
   const {
     shippingAddress,
     sameBillingAsShipping,
@@ -83,7 +87,7 @@ export function PaymentStep() {
   );
 
   const billingForm = useForm<AddressFormValues>({
-    resolver: zodResolver(addressSchema),
+    resolver: zodResolver(addressValidation),
     defaultValues: {
       firstName: shippingAddress?.firstName ?? "",
       lastName: shippingAddress?.lastName ?? "",

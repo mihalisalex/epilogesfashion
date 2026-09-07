@@ -1,11 +1,11 @@
 "use client";
 import { useTranslations } from "next-intl";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
-import { contactAndAddressSchema, invoiceSchema, type ContactAndAddressFormValues, type InvoiceDetails } from "@/lib/validation/checkout";
+import { buildContactAndAddressSchema, buildInvoiceSchema, type ContactAndAddressFormValues, type InvoiceDetails } from "@/lib/validation/checkout";
 import { isValidGreekVatNumber, normaliseGreekVatNumber } from "@/lib/greek-vat";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
@@ -19,6 +19,16 @@ const inputClass =
 export function ShippingAddressStep() {
   const t = useTranslations("Checkout");
   const tAddr = useTranslations("Address");
+  /**
+   * The validation messages, in the shopper's language. `useTranslations` returns exactly the
+   * resolver signature the schema factories take, so this is the whole wiring.
+   *
+   * Memoised because a new schema object on every render would give `zodResolver` a new
+   * identity each time and re-run validation for no reason.
+   */
+  const tValidation = useTranslations("Validation");
+  const schema = useMemo(() => buildContactAndAddressSchema(tValidation), [tValidation]);
+  const invoiceValidator = useMemo(() => buildInvoiceSchema(tValidation), [tValidation]);
   const { email, setEmail, shippingAddress, setShippingAddress } = useCheckout();
   const { customer, isLoading: isAuthLoading } = useAuth();
   const {
@@ -30,7 +40,7 @@ export function ShippingAddressStep() {
     getValues,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ContactAndAddressFormValues>({
-    resolver: zodResolver(contactAndAddressSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       email,
       ...(shippingAddress ?? {
@@ -74,7 +84,7 @@ export function ShippingAddressStep() {
    */
   const persistEmailOnBlur = (value: string) => {
     const next = value.trim();
-    if (!next || next === email || !contactAndAddressSchema.shape.email.safeParse(next).success) return;
+    if (!next || next === email || !schema.shape.email.safeParse(next).success) return;
     void setEmail(next).catch((error) => console.error("Failed to save checkout email", error));
   };
 
@@ -191,7 +201,7 @@ export function ShippingAddressStep() {
 
     let invoiceDetails: InvoiceDetails | undefined;
     if (wantsInvoice) {
-      const parsed = invoiceSchema.safeParse(invoice);
+      const parsed = invoiceValidator.safeParse(invoice);
       if (!parsed.success) {
         // Shown against the individual fields rather than as one message: "check your invoice
         // details" tells someone nothing about which of four is wrong.

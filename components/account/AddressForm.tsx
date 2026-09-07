@@ -1,9 +1,10 @@
 "use client";
 import { useTranslations } from "next-intl";
 
+import { useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
+import { buildAddressSchema, type AddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { AddressAutocompleteInput } from "@/components/checkout/AddressAutocompleteInput";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,10 @@ interface AddressFormProps {
 
 export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "Save Address" }: AddressFormProps) {
   const tAddr = useTranslations("Address");
+  // Validation messages in the shopper's language — useTranslations has exactly the resolver
+  // signature the schema factory takes. Memoised so zodResolver keeps a stable identity.
+  const tValidation = useTranslations("Validation");
+  const addressValidation = useMemo(() => buildAddressSchema(tValidation), [tValidation]);
   const {
     register,
     handleSubmit,
@@ -27,7 +32,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
     control,
     formState: { errors, isSubmitting },
   } = useForm<AddressFormValues>({
-    resolver: zodResolver(addressSchema),
+    resolver: zodResolver(addressValidation),
     defaultValues: defaultValues ?? {
       firstName: "",
       lastName: "",

@@ -501,5 +501,22 @@
     "invalidResetLink": "This reset link is invalid or has expired. Request a new one.",
     "invalidCredentials": "Invalid email or password.",
     "notAuthorized": "Not authorized for that customer."
+  },
+  "Validation": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Enter a valid email address",
+    "firstNameRequired": "First name is required",
+    "lastNameRequired": "Last name is required",
+    "address1Required": "Enter a street address",
+    "cityRequired": "City is required",
+    "postalCodeInvalid": "Enter a valid postal code",
+    "countryRequired": "Select a country",
+    "countryUnsupported": "We do not ship to that country yet",
+    "phoneRequired": "Phone number is required so the courier can reach you",
+    "phoneInvalid": "Enter a valid phone number",
+    "phoneCharacters": "Phone number can only contain digits, spaces and + ( ) - . /",
+    "invoiceCompanyRequired": "Company name is required",
+    "invoiceVatInvalid": "That VAT number is not valid",
+    "invoiceTaxOfficeRequired": "Tax office is required"
   }
 }
