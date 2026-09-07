@@ -9,8 +9,9 @@ import { CartPromoForm } from "@/components/cart/CartPromoForm";
 import { CartTotalsSummary } from "@/components/cart/CartTotalsSummary";
 import { CartRecommendations } from "@/components/cart/CartRecommendations";
 import { useCart } from "@/components/providers/CartProvider";
+import type { Money } from "@/types";
 
-export function CartPageContent() {
+export function CartPageContent({ freeShippingThreshold = null }: { freeShippingThreshold?: Money | null }) {
   const t = useTranslations("Cart");
   const { cart, isLoading, itemCount } = useCart();
   const [showSaved, setShowSaved] = useState(true);
@@ -84,7 +85,7 @@ export function CartPageContent() {
             that takes the money.
           */}
           <div className="sticky top-24 space-y-5 border border-border p-5">
-            {cart ? <CartTotalsSummary totals={cart.totals} shippingEstimated /> : null}
+            {cart ? <CartTotalsSummary totals={cart.totals} shippingEstimated freeShippingThreshold={freeShippingThreshold} /> : null}
             <CartPromoForm />
             <div>
               <Link

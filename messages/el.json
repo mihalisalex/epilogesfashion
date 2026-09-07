@@ -42,6 +42,8 @@
     "free": "Δωρεάν",
     "shippingCalculatedAtCheckout": "Υπολογίζονται στο ταμείο",
     "shippingAddedAtCheckout": "Τα μεταφορικά προστίθενται στο ταμείο, ανάλογα με τον τρόπο παράδοσης.",
+    "freeShippingRemaining": "Προσθέστε ακόμη {amount} για δωρεάν αποστολή.",
+    "freeShippingEarned": "Κερδίσατε δωρεάν αποστολή!",
     "estimatedTax": "Περιλαμβάνει ΦΠΑ",
     "total": "Σύνολο",
     "yourBag": "Το καλάθι σας",

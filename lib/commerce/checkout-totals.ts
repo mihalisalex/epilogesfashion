@@ -58,9 +58,23 @@ function withTotal(totals: CartTotals, nextTotal: number): CartTotals {
  * server prices against; it is defined here once, and `applySelectedShippingRate` now reads it
  * from here too rather than repeating it.
  */
+/**
+ * The order value the free-shipping threshold is measured against: subtotal less discounts,
+ * before shipping.
+ *
+ * Gift cards are deliberately not subtracted. A gift card is a means of payment rather than a
+ * price reduction — `resolveCartAmounts` says the same about VAT for the same reason — so
+ * paying with one does not make an order smaller, and must not take free delivery away.
+ *
+ * Exported so the "spend X more" prompt measures against exactly what the charge is decided by.
+ * Written out separately in two places, the two would eventually disagree by a discount.
+ */
+export function taxableAmountFor(totals: CartTotals): number {
+  return totals.subtotal.amount - totals.discountTotal.amount;
+}
+
 export function shippingChargeForRate(totals: CartTotals, rate: ShippingRate): number {
-  const taxableAmount = totals.subtotal.amount - totals.discountTotal.amount;
-  return computeShippingChargeForRate(rate, taxableAmount, totals.subtotal.amount > 0);
+  return computeShippingChargeForRate(rate, taxableAmountFor(totals), totals.subtotal.amount > 0);
 }
 
 export function applySelectedShippingRate(totals: CartTotals, selectedRate: ShippingRate | undefined | null): CartTotals {

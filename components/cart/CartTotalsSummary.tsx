@@ -2,7 +2,9 @@ import { useTranslations } from "next-intl";
 import { formatMoney } from "@/lib/format";
 import { vatIncludedIn } from "@/lib/shipping";
 import { round2 } from "@/lib/money";
+import { taxableAmountFor } from "@/lib/commerce/checkout-totals";
 import type { CartTotals } from "@/lib/commerce/types";
+import type { Money } from "@/types";
 
 interface CartTotalsSummaryProps {
   totals: CartTotals;
@@ -23,10 +25,36 @@ interface CartTotalsSummaryProps {
    * looks like an arithmetic error besides.
    */
   shippingEstimated?: boolean;
+  /**
+   * The store's free-shipping threshold, when the cart should prompt toward it.
+   *
+   * Passed in rather than read here: the figure lives on the shipping rates, which only the
+   * server has, and it is whatever the admin last saved rather than a number written into a
+   * component. Absent means no prompt — which is also what happens when free shipping is
+   * switched off, since then no rate carries a threshold at all.
+   */
+  freeShippingThreshold?: Money | null;
 }
 
-export function CartTotalsSummary({ totals, shippingEstimated = false }: CartTotalsSummaryProps) {
+export function CartTotalsSummary({
+  totals,
+  shippingEstimated = false,
+  freeShippingThreshold = null,
+}: CartTotalsSummaryProps) {
   const t = useTranslations("Cart");
+
+  /**
+   * How much more this basket needs for free delivery.
+   *
+   * Measured against `taxableAmountFor`, the same value `computeShippingChargeForRate` compares
+   * to the threshold — so the prompt cannot promise free shipping a euro before the shop
+   * actually gives it, which is what writing `subtotal` here instead would eventually do once
+   * someone applied a discount code.
+   */
+  const remainingForFreeShipping =
+    shippingEstimated && freeShippingThreshold && totals.subtotal.amount > 0
+      ? round2(freeShippingThreshold.amount - taxableAmountFor(totals))
+      : null;
 
   /**
    * With no shipping figure shown, the total must not contain one either — otherwise
@@ -101,7 +129,24 @@ export function CartTotalsSummary({ totals, shippingEstimated = false }: CartTot
         <span>{t("estimatedTax")}</span>
         <span>{formatMoney({ ...totals.taxTotal, amount: displayTax })}</span>
       </div>
-      {shippingEstimated ? (
+      {/*
+        The prompt replaces the plain "shipping is added at checkout" note rather than joining
+        it. The shipping row already says the cost is worked out later, so a second line saying
+        the same thing was spending the only space here on information already given — whereas
+        this one tells the shopper something they can act on.
+
+        Once the threshold is cleared it turns into a confirmation instead of disappearing: the
+        shopper earned it, and silence reads as though nothing happened.
+      */}
+      {remainingForFreeShipping !== null && remainingForFreeShipping > 0 ? (
+        <p className="pt-1 text-xs text-luxe-gray-dark">
+          {t("freeShippingRemaining", {
+            amount: formatMoney({ amount: remainingForFreeShipping, currencyCode: totals.total.currencyCode }),
+          })}
+        </p>
+      ) : remainingForFreeShipping !== null ? (
+        <p className="pt-1 text-xs font-medium text-luxe-black">{t("freeShippingEarned")}</p>
+      ) : shippingEstimated ? (
         <p className="pt-1 text-xs text-luxe-gray-dark">{t("shippingAddedAtCheckout")}</p>
       ) : null}
     </div>
