@@ -11,8 +11,9 @@
  * two, take the remainder modulo 11, then modulo 10, and compare with the ninth digit.
  *
  * What this deliberately does NOT do is claim the number is registered, or that it belongs to
- * the name given. Only a VIES/AADE lookup can say that, and this shop has no such integration —
- * so this rejects the impossible rather than confirming the real.
+ * the name given — it rejects the impossible rather than confirming the real. `lib/tax-registry.ts`
+ * answers the other half against AADE's registry, and runs only after this passes: the checksum is
+ * the free filter that keeps a mistyped number from ever reaching a logged government API call.
  */
 export function isValidGreekVatNumber(value: string): boolean {
   const digits = value.replace(/\D/g, "");

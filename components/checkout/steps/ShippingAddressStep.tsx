@@ -1,11 +1,12 @@
 "use client";
 import { useTranslations } from "next-intl";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
 import { contactAndAddressSchema, invoiceSchema, type ContactAndAddressFormValues, type InvoiceDetails } from "@/lib/validation/checkout";
+import { isValidGreekVatNumber, normaliseGreekVatNumber } from "@/lib/greek-vat";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -37,7 +38,6 @@ export function ShippingAddressStep() {
         lastName: "",
         company: "",
         address1: "",
-        address2: "",
         city: "",
         region: "",
         postalCode: "",
@@ -95,6 +95,96 @@ export function ShippingAddressStep() {
     activity: shippingAddress?.invoice?.activity ?? "",
   });
   const [invoiceErrors, setInvoiceErrors] = useState<Record<string, string>>({});
+
+  /**
+   * Autofilling Επωνυμία, ΔΟΥ and δραστηριότητα from the ΑΦΜ, via AADE's company registry.
+   *
+   * Three rules, all of them about not taking the form away from the person filling it in:
+   *
+   *   - It never blocks. Every failure — service down, no credentials configured, ΑΦΜ not in
+   *     the registry — leaves the fields exactly as they were and the shopper types them. The
+   *     submit path does not consult this at all.
+   *   - It only writes into a field that is empty or that it filled itself. Correcting an
+   *     autofilled ΔΟΥ and then fixing a typo in the ΑΦΜ must not silently undo the
+   *     correction, so `autofilled` tracks what is still ours to overwrite.
+   *   - It fires on blur, not per keystroke, and only once the checksum passes. That is what
+   *     keeps a shopper to one call: nine digits are not a valid ΑΦΜ until they are all there.
+   */
+  const [vatLookup, setVatLookup] = useState<"loading" | "found" | "inactive" | "not_found" | null>(null);
+  const [autofilled, setAutofilled] = useState<Set<string>>(new Set());
+  const lastLookedUp = useRef<string | null>(null);
+  // Set once the endpoint says the shop has no AADE credentials, so we stop asking it.
+  const registryUnavailable = useRef(false);
+
+  const lookupVat = useCallback(
+    async (raw: string) => {
+      const vatNumber = normaliseGreekVatNumber(raw);
+      if (registryUnavailable.current || !isValidGreekVatNumber(vatNumber)) return;
+      // Tabbing back out of an unchanged field should not spend another AADE call.
+      if (lastLookedUp.current === vatNumber) return;
+      lastLookedUp.current = vatNumber;
+
+      setVatLookup("loading");
+      let data: { status?: string; companyName?: string; taxOffice?: string; activity?: string; active?: boolean | null };
+      try {
+        const res = await fetch("/api/vat-lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vatNumber }),
+        });
+        data = await res.json();
+      } catch {
+        // Offline or blocked. Say nothing and let them type — a network error under the ΑΦΜ
+        // field would read as "your VAT number is wrong", which it is not.
+        setVatLookup(null);
+        return;
+      }
+
+      if (data.status === "unavailable") {
+        registryUnavailable.current = true;
+        setVatLookup(null);
+        return;
+      }
+      if (data.status !== "found") {
+        setVatLookup("not_found");
+        return;
+      }
+
+      const incoming: Record<string, string> = {
+        companyName: data.companyName ?? "",
+        taxOffice: data.taxOffice ?? "",
+        activity: data.activity ?? "",
+      };
+      const filled = new Set(autofilled);
+      setInvoice((prev) => {
+        const next = { ...prev };
+        for (const [field, value] of Object.entries(incoming)) {
+          if (!value) continue;
+          const isOursToWrite = !prev[field]?.trim() || autofilled.has(field);
+          if (!isOursToWrite) continue;
+          next[field] = value;
+          filled.add(field);
+        }
+        return next;
+      });
+      setAutofilled(filled);
+      // Clear any stale "required" errors on the fields we just filled.
+      setInvoiceErrors((prev) => {
+        const next = { ...prev };
+        for (const field of filled) delete next[field];
+        return next;
+      });
+      /**
+       * `active === false` is shown as a warning and nothing more. The registry says this ΑΦΜ
+       * is deactivated, which usually means the shopper mistyped a digit into another real
+       * business — but `interpretActive` is explicit that these flag values are the unverified
+       * part of the integration, and a wrong reading would refuse a real customer's invoice.
+       * Warn, fill the fields anyway, let them submit.
+       */
+      setVatLookup(data.active === false ? "inactive" : "found");
+    },
+    [autofilled]
+  );
 
   const onSubmit = async (values: ContactAndAddressFormValues) => {
     const { email: submittedEmail, ...address } = values;
@@ -219,12 +309,15 @@ export function ShippingAddressStep() {
         )}
       />
 
-      <div>
-        <label htmlFor="address2" className="mb-1.5 block text-eyebrow">
-          {tAddr("apartment")}
-        </label>
-        <input id="address2" autoComplete="address-line2" className={inputClass} {...register("address2")} />
-      </div>
+      {/*
+        No apartment/floor field. The merchant removed it as unused, and on a Greek address it
+        was mostly noise: the street line already carries the number, and the courier gets a
+        phone number to ring for anything finer.
+
+        `address2` itself stays optional in the schemas and keeps rendering wherever a stored
+        address is shown, because orders already placed have one and the standing rule holds —
+        tightening what the form ACCEPTS must never invalidate what the shop already WROTE.
+      */}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -340,10 +433,15 @@ export function ShippingAddressStep() {
 
         {wantsInvoice ? (
           <div className="mt-4 space-y-4">
+            {/*
+              ΑΦΜ first, because it is now the field that fills the other three. The order
+              on screen is the order of work: type the number, watch Επωνυμία, ΔΟΥ and
+              δραστηριότητα arrive, correct anything that is wrong.
+            */}
             {(
               [
-                ["companyName", t("invoiceCompanyName"), true],
                 ["vatNumber", t("invoiceVatNumber"), true],
+                ["companyName", t("invoiceCompanyName"), true],
                 ["taxOffice", t("invoiceTaxOffice"), true],
                 ["activity", t("invoiceActivity"), false],
               ] as const
@@ -356,10 +454,41 @@ export function ShippingAddressStep() {
                 <input
                   id={`invoice-${field}`}
                   value={invoice[field] ?? ""}
-                  onChange={(event) => setInvoice((prev) => ({ ...prev, [field]: event.target.value }))}
+                  onChange={(event) => {
+                    setInvoice((prev) => ({ ...prev, [field]: event.target.value }));
+                    // Typing over an autofilled value takes ownership of it, so a later
+                    // lookup will not overwrite what this person just decided to correct.
+                    if (field !== "vatNumber") {
+                      setAutofilled((prev) => {
+                        if (!prev.has(field)) return prev;
+                        const next = new Set(prev);
+                        next.delete(field);
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={field === "vatNumber" ? () => void lookupVat(invoice.vatNumber ?? "") : undefined}
                   aria-invalid={Boolean(invoiceErrors[field])}
                   className={inputClass}
                 />
+                {field === "vatNumber" && vatLookup ? (
+                  <p
+                    className={cn(
+                      "mt-1.5 text-xs",
+                      vatLookup === "inactive" ? "text-destructive" : "text-luxe-gray-dark"
+                    )}
+                  >
+                    {t(
+                      vatLookup === "loading"
+                        ? "invoiceLookupLoading"
+                        : vatLookup === "found"
+                          ? "invoiceLookupFound"
+                          : vatLookup === "inactive"
+                            ? "invoiceLookupInactive"
+                            : "invoiceLookupNotFound"
+                    )}
+                  </p>
+                ) : null}
                 {invoiceErrors[field] ? (
                   <p className="mt-1.5 text-xs text-destructive">{invoiceErrors[field]}</p>
                 ) : null}

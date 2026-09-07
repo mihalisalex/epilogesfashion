@@ -145,7 +145,11 @@
     "invoiceCompanyName": "Επωνυμία",
     "invoiceVatNumber": "ΑΦΜ",
     "invoiceTaxOffice": "ΔΟΥ",
-    "invoiceActivity": "Δραστηριότητα"
+    "invoiceActivity": "Δραστηριότητα",
+    "invoiceLookupLoading": "Αναζήτηση στο μητρώο ΑΑΔΕ…",
+    "invoiceLookupFound": "Τα στοιχεία συμπληρώθηκαν από το μητρώο ΑΑΔΕ. Ελέγξτε τα και διορθώστε ό,τι χρειάζεται.",
+    "invoiceLookupInactive": "Το μητρώο ΑΑΔΕ δείχνει αυτό το ΑΦΜ ως ανενεργό. Ελέγξτε το πριν συνεχίσετε.",
+    "invoiceLookupNotFound": "Δεν βρέθηκε στο μητρώο ΑΑΔΕ. Συμπληρώστε τα στοιχεία χειροκίνητα."
   },
   "Plp": {
     "filter": "Φίλτρο",

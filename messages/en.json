@@ -145,7 +145,11 @@
     "invoiceCompanyName": "Company name",
     "invoiceVatNumber": "VAT number (ΑΦΜ)",
     "invoiceTaxOffice": "Tax office (ΔΟΥ)",
-    "invoiceActivity": "Business activity"
+    "invoiceActivity": "Business activity",
+    "invoiceLookupLoading": "Looking up the AADE registry…",
+    "invoiceLookupFound": "Filled in from the AADE registry. Check it and correct anything that is wrong.",
+    "invoiceLookupInactive": "The AADE registry shows this VAT number as inactive. Please check it before continuing.",
+    "invoiceLookupNotFound": "Not found in the AADE registry. Please fill the details in yourself."
   },
   "Plp": {
     "filter": "Filter",
