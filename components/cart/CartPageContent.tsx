@@ -74,8 +74,6 @@ export function CartPageContent() {
               ) : null}
             </div>
           ) : null}
-
-          <CartRecommendations />
         </div>
 
         <div className="lg:col-span-1">
@@ -93,6 +91,23 @@ export function CartPageContent() {
           </div>
         </div>
       </div>
+
+      {/**
+       * Recommendations sit BELOW the grid, not inside the items column.
+       *
+       * They used to be the last child of the `lg:col-span-2` column, which reads correctly on
+       * desktop — the summary is a sticky sidebar alongside, so it is on screen the whole time.
+       * Below the `lg` breakpoint the grid collapses to one column and DOM order takes over, and
+       * the order was: items, saved items, four recommended products, THEN the total and the
+       * checkout button. On a phone that puts the only thing this page exists for underneath a
+       * product grid, for every shopper who has already decided to buy.
+       *
+       * Outside the grid it is correct at every width, without a breakpoint-specific `order-*`
+       * rule that would have to be kept in step with the column layout. Desktop gains from it
+       * too: the section is full width rather than squeezed into two thirds, so its own
+       * `md:grid-cols-4` finally has the room it was written for.
+       */}
+      <CartRecommendations />
     </div>
   );
 }
