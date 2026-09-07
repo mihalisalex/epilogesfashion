@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCronJobStatuses } from "@/services/cron-runs";
 
 /**
  * Liveness + readiness for uptime monitoring (OBS-001).
@@ -45,8 +46,29 @@ export async function GET() {
     );
   }
 
+  /**
+   * Scheduled-job freshness, added for OPS-001 (`services/cron-runs.ts`).
+   *
+   * Reported as a bare count of stale jobs and nothing else, which is a deliberate limit
+   * rather than laziness. This endpoint is unauthenticated and the paragraph above commits
+   * it to saying nothing a stranger could use — no version, no host, no error text — and
+   * job names, schedules and last-run times are exactly that kind of detail. A number is
+   * enough for the thing this has to support: an uptime check that can assert on a value.
+   *
+   * It does NOT turn a stale cron into 503. That status means "not ready to serve", and it
+   * would pull a working shop out of rotation over a housekeeping job. This reports 200
+   * with a flag; alerting on it is the monitor's decision, not the shop's.
+   *
+   * A failure to read it degrades to `null` rather than failing the check, because the
+   * database question above has already been answered — and answering "unhealthy" on
+   * account of the run log would invert the whole point of the endpoint.
+   */
+  const staleCronJobs = await getCronJobStatuses()
+    .then((statuses) => statuses.filter((status) => status.stale).length)
+    .catch(() => null);
+
   return NextResponse.json(
-    { status: "healthy", database: "ok", latencyMs: Date.now() - startedAt },
+    { status: "healthy", database: "ok", latencyMs: Date.now() - startedAt, staleCronJobs },
     { headers: { "cache-control": "no-store" } }
   );
 }

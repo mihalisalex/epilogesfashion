@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runDataRetention } from "@/services/data-retention";
+import { cronTriggerFromRequest, runCron } from "@/services/cron-runs";
 import { logger } from "@/lib/logger";
 
 /**
@@ -17,7 +18,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(await runDataRetention());
+    // Wrapped so the run is recorded whether or not it succeeds (OPS-001) — and, crucially,
+    // recorded with WHO started it, which is the one thing the database could never say.
+    return NextResponse.json(await runCron("data-retention", cronTriggerFromRequest(request), runDataRetention));
   } catch (error) {
     // A retention pass that fails silently is how indefinite retention comes back.
     logger.error("Data retention pass failed", error);

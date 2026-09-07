@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { refreshInstagramToken } from "@/services/instagram";
+import { cronTriggerFromRequest, runCron } from "@/services/cron-runs";
 
 /**
  * Keeps the Instagram feed alive.
@@ -27,7 +28,13 @@ export async function GET(request: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const result = await refreshInstagramToken();
+  /**
+   * Recorded like the other two (OPS-001), and this is the one where silence is most
+   * expensive. The token expires 60 days after issue and cannot be refreshed afterwards —
+   * someone has to walk back through Meta's consent screen by hand. A schedule that quietly
+   * never fires produces no symptom at all until the day the feed dies permanently.
+   */
+  const result = await runCron("instagram-token", cronTriggerFromRequest(request), refreshInstagramToken);
 
   // 200 either way. A shop with no Instagram connected is not a failing cron job, and
   // neither is Meta being briefly unavailable — the reason is in the body and the runtime

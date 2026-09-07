@@ -15,15 +15,39 @@ commits pushed to `origin/main`. `tsc` / `eslint` / `next build` green, **455 un
 
 ## The one thing that is actually wrong
 
-**`OPS-001` — the data-retention cron does not run.** Not a preference, a compliance gap: the GDPR
-retention `PRIV-001` describes is not being honoured unless someone triggers it by hand
-(`npx vercel crons run /api/cron/data-retention`).
+**`OPS-001` — the data-retention cron still does not run**, and a third slot failed on 09-07:
+198 rows sat past retention four hours after it, the oldest already two days old before the
+slot began. The job is correctly written, deployed, authorized, **registered and enabled**
+(`vercel crons ls` lists all three). **Next step is Vercel support, not another query.**
 
-Every explanation has been eliminated — the job is correctly written, deployed, authorized,
-**registered and enabled** (`vercel crons ls` lists all three), and it still does not fire. Proven
-by measurement, not by log absence: a row that crossed the two-day threshold 87 minutes *before*
-the 03:30 slot was still there afterwards. **Next step is Vercel support or a plan change, not
-another query.**
+**Two things changed on 09-07, and both matter to whoever picks this up.**
+
+1. **The marker test this repo left behind was invalid.** `AUDIT.md` had set 33 rows as the
+   discriminator — "if they are gone tomorrow it runs late, if they are still there it does
+   not run". They are gone, and it proves nothing: `lib/rate-limit.ts` prunes rows over a day
+   old on ~1% of calls, so it deletes those rows too. The entry had already dismissed that
+   prune as a confound for a row *surviving*, then used its *deletion* as evidence. Only a row
+   that survives can settle it.
+
+2. **Retention no longer depends on the cron.** `runDataRetentionIfDue` runs the full pass from
+   ordinary request traffic when a day has gone by with no recorded run, so `PRIV-001` is
+   honoured whether or not Vercel ever fires. And all three cron jobs now record their own runs
+   (`services/cron-runs.ts`) — including **what triggered them**, from Vercel's
+   `x-vercel-cron-schedule` header — so the question stops being forensic:
+
+   ```sql
+   SELECT data->'lastRun'->>'trigger' FROM site_content WHERE key = 'cron:data-retention';
+   ```
+
+   `schedule` closes the finding. `fallback` means retention is fine and Vercel is still
+   broken — which is when the support ticket is worth opening, with a dated log to attach.
+   No row at all is a new problem.
+
+Three more explanations died on 09-07, one of them a hypothesis this repo had been carrying:
+**the plan cron limit is a myth** — Vercel documents 100 cron jobs per project on *every* plan,
+Hobby included. Also dead: a cached response masking the run (`X-Vercel-Cache: MISS`, so the
+function really does execute), and redeploy churn resetting the schedule (nothing deployed in
+the six hours spanning the slot).
 
 Everything else open is a choice about money or timing: the 6-hour restore window, image
 optimization (`PERF-001`), the CSP nonce (`SEC-003`), and `PERF-002` — now deliberately deferred.

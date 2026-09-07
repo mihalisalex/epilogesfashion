@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimitedResponse } from "@/lib/commerce/http-errors";
+import { runDataRetentionIfDue } from "@/services/data-retention";
 
 interface RateLimitWindow {
   /** Scopes the limit — e.g. "sign-in:{ip}", "sign-in:{email}", "sign-up:{ip}". */
@@ -40,14 +41,50 @@ export async function isRateLimited({ key, limit, windowMs }: RateLimitWindow): 
   return { limited: true, retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)) };
 }
 
+/**
+ * When this instance last asked whether retention is due. Module scope, so it costs nothing
+ * and resets with the instance.
+ *
+ * This replaced a `Math.random() < 0.01` gate, and the reason is measurement rather than
+ * taste. A 1-in-100 chance needs traffic to be reliable, and the tail of a quiet shop is
+ * exactly where rows sit longest: on a day this shop recorded 61 attempts, the expected
+ * number of prunes was 0.6. The cleanup was least likely to happen precisely when it was
+ * the only thing happening.
+ *
+ * An hour per warm instance, converging through the daily claim in `claimCronRun` to one
+ * real pass a day however many instances Vercel keeps warm. A cold instance starts at 0 and
+ * so checks on its first request, which costs one `INSERT … ON CONFLICT` that almost always
+ * updates nothing.
+ */
+let lastRetentionCheckAt = 0;
+const RETENTION_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
 export async function recordAttempt(key: string): Promise<void> {
   await prisma.rateLimitAttempt.create({ data: { key } });
 
-  // Opportunistic cleanup — no cron job in this app, so prune old rows on ~1% of
-  // calls instead. A day is comfortably past every window this app uses.
-  if (Math.random() < 0.01) {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    void prisma.rateLimitAttempt.deleteMany({ where: { createdAt: { lt: oneDayAgo } } });
+  /**
+   * The rate limiter is where this shop's personal data accumulates fastest — these rows
+   * are IP addresses — so it is also where retention gets driven from while the Vercel cron
+   * does not fire (OPS-001).
+   *
+   * The old opportunistic prune deleted rate-limit rows over a day old and nothing else.
+   * `runDataRetentionIfDue` runs the whole documented policy instead: rate-limit rows at two
+   * days AND webhook payload bodies at ninety, which the prune never touched and which no
+   * other code path clears. Rows now live up to two days rather than one, which is not a
+   * regression — two days is the stated policy (`RATE_LIMIT_RETENTION_DAYS`), and the old
+   * one-day figure was an unrelated number chosen for a different mechanism.
+   *
+   * Not awaited, for the same reason `enforceRateLimit` does not await this function: a
+   * retention pass has no bearing on the answer the caller is waiting for, and a customer
+   * adding to their cart should never pay for it. `.catch` because an unhandled rejection in
+   * a floating promise takes the whole function down, and housekeeping must not be able to
+   * do that.
+   */
+  if (Date.now() - lastRetentionCheckAt >= RETENTION_CHECK_INTERVAL_MS) {
+    lastRetentionCheckAt = Date.now();
+    void runDataRetentionIfDue().catch((error) => {
+      console.error("[rate-limit] data retention fallback failed", error);
+    });
   }
 }
 

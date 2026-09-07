@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { claimCronRun, runCron } from "@/services/cron-runs";
 
 /**
  * Scheduled deletion of personal data this shop no longer has a reason to hold (PRIV-001).
@@ -70,4 +71,41 @@ export async function runDataRetention(): Promise<RetentionSummary> {
     logger.info("Data retention pass completed", summary);
   }
   return summary;
+}
+
+/**
+ * 25 hours, not 24, and the extra hour is doing a job.
+ *
+ * The scheduled run must always win the race against the fallback, because which one ran is
+ * the evidence OPS-001 turns on. Hobby crons fire anywhere inside their hour (Vercel's
+ * documented precision is ±59 min), so consecutive scheduled runs can legitimately be up to
+ * ~25 hours apart. A 24-hour window would let the fallback claim the slot minutes before a
+ * late-but-working cron arrived, and the run log would then show `fallback` forever while
+ * the scheduler quietly recovered — masking exactly the fact this is meant to expose.
+ */
+export const RETENTION_FALLBACK_INTERVAL_MS = 25 * 60 * 60 * 1000;
+
+/**
+ * Run the retention pass if nothing else has for a day (OPS-001).
+ *
+ * This exists because the schedule does not fire. The job is correctly written, deployed,
+ * authorized, registered and enabled, and three consecutive 03:30 slots have passed without
+ * it running; every explanation reachable from this side has been eliminated and the next
+ * step is Vercel's. Meanwhile `PRIV-001`'s GDPR position is only honoured when a human
+ * remembers to trigger it by hand, and "we delete IP addresses after two days, provided
+ * someone runs a command" is not a retention policy.
+ *
+ * So retention stops depending on the scheduler: `lib/rate-limit.ts` calls this from
+ * ordinary request traffic, and the daily claim in `claimCronRun` makes it run at most once
+ * a day however many requests arrive. That is the same opportunistic pattern the rate
+ * limiter already used for its own pruning, with the probability swapped for a time window
+ * — at this shop's traffic, a 1-in-100 coin flip was effectively never landing.
+ *
+ * **It is a workaround and the run log keeps it visible as one.** Every pass records whether
+ * it was `schedule` or `fallback`, so the day Vercel starts firing the cron, the log says so
+ * rather than hiding it behind a working shop.
+ */
+export async function runDataRetentionIfDue(): Promise<RetentionSummary | null> {
+  if (!(await claimCronRun("data-retention", RETENTION_FALLBACK_INTERVAL_MS))) return null;
+  return runCron("data-retention", "fallback", runDataRetention);
 }
