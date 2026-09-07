@@ -14,7 +14,7 @@ The original audit found no P0 and rated the shop 74/100, blocked not by its cod
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
 are now closed.
 
-**All 3 P1 launch blockers are closed. 14 of 16 P2s are closed**, with one deferred
+**All 3 P1 launch blockers are closed. 15 of 17 P2s are closed**, with one deferred
 (`SEC-003`, the CSP nonce) and one open.
 
 **`OPS-001` — the retention cron.** Opened as a *suspicion* on 4 September, on the grounds that a
@@ -64,7 +64,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 16 | 1 | **14** | 1 |
+| P2 — Medium | 17 | 1 | **15** | 1 |
 | P3 — Low | 11 | 1 | **9** | 1 |
 | INFO | 7 | — | — | — |
 
@@ -704,6 +704,70 @@ of the failure vanishing.
 Deliberately not fixed by disabling the button until `isLoading` clears: that trades a lost
 click for a dead-looking button, and the shopper still cannot buy. Waiting is what they
 actually want.
+
+---
+
+## [x] BUG-003 · The e2e suite makes the shop send real mail to an address that cannot exist
+
+**Category:** Correctness / Deliverability
+**Location:** `lib/email/providers/resend.ts` · `e2e/cart-and-checkout.spec.ts:143`
+**Confidence:** Confirmed — four sends observed in production, 2026-09-07 08:56 UTC
+**Found:** 2026-09-07, while checking whether the `email-followups` cron fires at all (`OPS-001`)
+
+**Problem.** The browser suite runs against **production** by design, and its checkout spec
+fills `e2e-test@example.com` to prove the contact step advances. That writes a real checkout
+against a real cart. A day later `runAbandonedCartRecovery` finds the cart, resolves the
+address from the checkout, and mails it — through Resend, for real.
+
+`example.com` is reserved by RFC 2606 precisely so it can never resolve. Every one of those
+messages is a guaranteed hard bounce.
+
+**Failure scenario, and it is not about the wasted call.** Mailbox providers score a sender
+on its bounce rate and Resend suspends accounts that accumulate them. The shop has exactly one
+transactional mail channel, and the mail that stops arriving first is the mail that matters
+most: order confirmations. **A test address in a live sending path is a slow leak in the
+shop's ability to talk to its customers**, paid for by real people rather than by the test.
+
+**Evidence.** Four sends at 08:56 UTC on 2026-09-07, all to `e2e-test@example.com`, from the
+09-06 e2e run. Six checkouts in production hold a reserved address (`e2e-test@`, `qa-final@`,
+`shipping-test@`); of the six carts reachable through them, four had been mailed and **two
+were still pending** — they would have gone out at the next 08:00 slot.
+
+**This is the second time test data has reached a live business flow here.** `QA-012` was six
+`example.com` orders adding EUR 1,196.43 of revenue that was never taken. That was cleaned up
+by deleting rows; nothing stopped the next occurrence, which arrived through a different door.
+
+**Fix.** `isUndeliverableAddress` (`lib/email/deliverability.ts`) — the RFC 2606/6761 reserved
+domains and TLDs — checked in the Resend provider, which is the only place that can put a
+message on the wire. One guard at the boundary rather than one per job, because there is more
+than one route to a test address and a per-route guard is one that gets forgotten on the next
+route.
+
+It **returns rather than throws**, which is the deliberate half. Callers read a throw as a
+send failure: `runAbandonedCartRecovery` would count it failed and never set
+`abandonedCartEmailSentAt`, so the same cart would be retried and warned about every day
+forever. Skipping and letting the caller mark it handled is the behaviour that ends. No
+`EmailLog` row is written, because nothing was sent — a row would put mail in the admin Emails
+page that does not exist, which is precisely the defect `lib/email/index.ts` already documents
+from the `EMAIL_PROVIDER=Resend` capitalisation bug.
+
+Deliberately a fixed list of reserved names, not a "looks like a test address" heuristic.
+Anything cleverer eventually refuses to mail a real customer, and the two errors are not
+equally bad: a missed test address costs one bounce, a misclassified customer silently loses
+their order confirmation.
+
+**Verify.** `lib/email/deliverability.test.ts` — 21 cases, weighted toward the false-positive
+side (`example.com.gr`, `examples.com`, `myexample.com`, `protest.com`, `contest.gr`,
+`invalidation.com`, `test@gmail.com` must all still be mailable).
+
+**Not fixed here:** the residue itself — six checkouts and their carts still sit in
+production, now inert. And the suite still leaves ~500 empty guest carts, which
+`playwright.config.ts` already warns about for a different reason. Neither affects money
+(`orders` holding a reserved address: **0**, so `QA-012` has not regressed).
+
+**Risk of change:** Low — additive, and it can only ever prevent a send to a domain that has
+no MX record by standard.
+**Fixed:** _this commit_
 
 **Observed working in production, 2026-09-05** — the standard this audit now holds itself to.
 The same Playwright spec with **no settle**, run three times:
@@ -2116,3 +2180,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-07 | **`PERF-002` recorded as a deliberate deferral, not open work.** Measured first: three routes the build classifies as `ƒ Dynamic` all serve in **~0.2–0.3s** from the edge — the CDN is already doing what Partial Prerendering would, because the pre-step dropped `no-store`. Adoption would improve only the **cache-miss** path (~0.7–0.84s), which is a minority of views and shrinks as traffic grows, at the cost of a services-layer migration on a live shop. Deferred with two triggers: traffic making misses material, or products getting translated — which forces the locale decision anyway. Also notes that `OPS-001` is the one item left that is actually *wrong* rather than a choice | `8afdb47` |
 | 2026-09-07 | **`OPS-001`: the marker test was invalid, the third slot failed, and retention stopped depending on the scheduler.** The 33 rows this file left as its discriminator can be deleted by `lib/rate-limit.ts`'s own 1-day prune — the same prune the entry had already dismissed as a confound, then used as evidence anyway. What settles it is a row that *survived*: 198 rows sat past retention four hours after the 03:30 slot, the oldest of them two days old before it. Three more explanations eliminated — the plan cron limit (Vercel documents **100 per project on every plan**, killing the guess this file carried), a cached response masking the run (`X-Vercel-Cache: MISS`), and redeploy churn (nothing deployed for the six hours spanning the slot). Shipped: `services/cron-runs.ts`, so all three jobs record when they ran and **what triggered them**, surfaced on `/api/health`; and `runDataRetentionIfDue`, which runs the full pass from ordinary traffic when a day passes with no recorded run, replacing a 1%-chance prune that had an expected 0.6 firings on a 61-request day. Scores deliberately unchanged — none of it has been observed running yet | `3c8805d` |
 | 2026-09-07 | **`OPS-001` de-escalated: the evidence of continued failure was three measurement defects.** `email-followups` has sent mail at 08:56, 08:57, 08:03, 08:32 and 08:56 UTC on five dates — every one inside the hour of its `0 8 * * *` slot, which is textbook Hobby behaviour. **Vercel's scheduler works on this project**, killing the "no cron fires here" reading. The three defects: the marker test could not discriminate (the rate limiter's prune deletes the same rows); **a non-zero overdue count is the steady state of a working daily job**, not a failure — 33 rows and 198 rows were what a healthy job produces; and node-postgres reads `TIMESTAMP` columns in the *client's* zone, so every printed instant was three hours early, which alone flipped the 09-07 conclusion (the oldest row was 04:55, not 01:55 — newer than the slot's cutoff and supposed to survive). The 09-05 finding survives untouched: 1,639 rows, oldest 45 days, was real. What is left is that the schedule has never been *observed*, which the run log answers at the next slot. Also: the fallback shipped that morning was **verified in production** — 492 overdue rows to 0 with no human involved | `5409adc` |
+| 2026-09-07 | **`BUG-003` opened and fixed: the e2e suite was making the shop send real mail to `e2e-test@example.com`.** Found while establishing that the `email-followups` cron fires — the four sends that proved it were all to a reserved address. The browser suite runs against production by design and its checkout spec writes that email; a day later abandoned-cart recovery mails it through Resend, and `example.com` is reserved by RFC 2606 so every one is a guaranteed hard bounce. That is a slow leak in the shop's ability to deliver **order confirmations**, since bounce rate is what mailbox providers and Resend score a sender on. Two more were pending for the next 08:00 slot. Guarded at the provider boundary (`isUndeliverableAddress`), which skips rather than throws so the cart is marked handled instead of retried daily forever. 21 tests, weighted toward the false-positive side — a misclassified customer silently loses their confirmation, which is far worse than one bounce. Second time test data has reached a live business flow here (`QA-012` was six `example.com` orders worth EUR 1,196.43); orders holding a reserved address today: **0** | _this commit_ |
