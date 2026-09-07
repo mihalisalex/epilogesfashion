@@ -138,6 +138,26 @@ async function main(): Promise<void> {
   const total = await prisma.cart.count();
   console.log(`\n  ${testCarts.length + emptyCarts.length} of ${total} carts would go.`);
 
+  /**
+   * `BUG-004`'s regression check, reported here because this script already holds every
+   * ordered checkout id and the invariant is the same one its safety guard exists to protect.
+   *
+   * It belongs somewhere runnable rather than in a remembered SQL string — the first version
+   * of this check was handed over as a shell one-liner and did not survive the quoting around
+   * `"checkoutId"`.
+   *
+   * Counted against the ids loaded BEFORE any deletion, so the number describes the database
+   * as it was found, not as this script left it.
+   */
+  const liveCheckoutIds = new Set(
+    (await prisma.checkout.findMany({ select: { id: true } })).map((checkout) => checkout.id),
+  );
+  const orphaned = [...orderedCheckoutIds].filter((id) => !liveCheckoutIds.has(id));
+  console.log(
+    `\n  Orders whose checkout pointer resolves to nothing (BUG-004): ${orphaned.length}` +
+      (orphaned.length > 0 ? " — expected 1, more means it happened again" : ""),
+  );
+
   if (!apply) {
     console.log("\n  Re-run with --apply to delete.\n");
     return;

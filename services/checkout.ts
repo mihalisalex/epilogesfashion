@@ -60,21 +60,24 @@ async function requireCheckoutRow(checkoutId: string) {
  * reused indefinitely rather than replaced after an order — see the cart DELETE
  * route), because `Order.checkoutId` is a unique pointer to the exact
  * session that produced it: a completed checkout can never legitimately host a
- * second order.
- *
- * That pointer is unique but NOT permanent, and this comment used to claim it was
- * (`BUG-004`). There is no `orders_checkoutId_fkey` — it is a plain column — while
- * `checkouts.cartId` cascades from `carts`. So anything deleting a cart takes its
- * checkouts with it, including ones an order points at, and
- * `mergeGuestCartIntoCustomerCart` does exactly that when a shopper signs in holding
- * a guest cart. One production order already has a pointer that resolves to nothing.
- * Nothing breaks today because `Order` stores its own snapshots of the line items,
- * totals and both addresses, and no code joins back — but do not add a join here on
- * the strength of the word "permanent". So a shopper who buys once, adds more items to that same cart,
+ * second order. So a shopper who buys once, adds more items to that same cart,
  * and checks out again gets a genuinely NEW row here — reusing the old
  * (completed) one would either crash `completeCheckout` on that same unique
  * constraint, or (with the idempotency guard there) silently hand back their
  * FIRST order's confirmation while never processing the new purchase.
+ *
+ * **That pointer is unique but not enforced, and this comment used to call it
+ * "permanent" (`BUG-004`).** There is no `orders_checkoutId_fkey` — it is a plain
+ * column — while `checkouts.cartId` cascades from `carts`. So anything that deletes a
+ * cart takes its checkout sessions with it, ordered or not, and Postgres raises
+ * nothing. `mergeCarts` did exactly that at sign-in until it was taught to empty an
+ * ordered cart instead of deleting it, and one production order still points at a row
+ * that no longer exists.
+ *
+ * Nothing breaks today, because `Order` carries its own snapshots of the line items,
+ * totals and both addresses and no code joins back. But do not add a join on the
+ * strength of that word: the guarantee is a convention in `services/carts.ts`, not a
+ * constraint in the database.
  */
 export async function createCheckout(cartId: string): Promise<Checkout> {
   const existing = await prisma.checkout.findFirst({

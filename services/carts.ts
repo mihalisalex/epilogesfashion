@@ -264,7 +264,7 @@ export async function estimateShipping(cartId: string, _address?: Partial<Addres
 }
 
 
-/** Union line items from the guest cart into the customer's existing cart, deduped by variant, capped at maxQuantity; deletes the guest cart row. */
+/** Union line items from the guest cart into the customer's existing cart, deduped by variant, capped at maxQuantity; deletes the guest cart row — or empties it, if an order points at one of its checkouts (BUG-004). */
 export async function mergeCarts(guestCartId: string, customerCartId: string): Promise<Cart> {
   if (guestCartId === customerCartId) return reloadCart(customerCartId);
 
@@ -307,12 +307,46 @@ export async function mergeCarts(guestCartId: string, customerCartId: string): P
     }
   }
 
+  /**
+   * A guest cart that has already produced an order is EMPTIED rather than deleted (BUG-004).
+   *
+   * Deleting it cascades through `checkouts.cartId` and takes its checkout sessions with it —
+   * including the one an order points at. `Order.checkoutId` has no foreign key, so Postgres
+   * raises nothing and the order is left pointing at a row that no longer exists. That is not
+   * hypothetical: order `cmteq0yc3001j04la6o1cj52u` was orphaned exactly this way, by a guest
+   * cart from five weeks earlier being merged away at sign-in.
+   *
+   * It is easy to reach because cart rows are reused indefinitely after a purchase rather than
+   * replaced, so "guest cart" and "cart that has already been ordered from" are routinely the
+   * same row. Nothing breaks today — `Order` carries its own snapshots of the line items,
+   * totals and both addresses — but the audit trail from an order back to the session that
+   * produced it does, silently, and only for the customers who happened to sign in afterwards.
+   *
+   * Two round trips, and only on carts that have ever reached checkout: the `checkoutIds`
+   * lookup short-circuits the `order.count` for the ordinary guest cart, which has none.
+   */
+  const checkoutIds = (await prisma.checkout.findMany({ where: { cartId: guestCartId }, select: { id: true } })).map(
+    (checkout) => checkout.id,
+  );
+  const hasOrder = checkoutIds.length > 0 && (await prisma.order.count({ where: { checkoutId: { in: checkoutIds } } })) > 0;
+
+  /**
+   * Emptying has to clear the same three tables the cascade would have, and for the same
+   * reason `clearCart` does: the line items have just been copied to the customer's cart, so
+   * leaving them here duplicates the basket the moment anything reads this row again.
+   */
+  const emptyGuestCart = [
+    prisma.cartLineItem.deleteMany({ where: { cartId: guestCartId } }),
+    prisma.cartDiscount.deleteMany({ where: { cartId: guestCartId } }),
+    prisma.cartGiftCard.deleteMany({ where: { cartId: guestCartId } }),
+  ];
+
   // Transactional so a mid-merge failure can't drop the guest cart with only some of its
   // items transferred — the customer would silently lose the remainder.
   await prisma.$transaction([
     ...quantityUpdates.map(({ id, quantity }) => prisma.cartLineItem.update({ where: { id }, data: { quantity } })),
     ...(newItems.length ? [prisma.cartLineItem.createMany({ data: newItems })] : []),
-    prisma.cart.delete({ where: { id: guestCartId } }),
+    ...(hasOrder ? emptyGuestCart : [prisma.cart.delete({ where: { id: guestCartId } })]),
   ]);
 
   return reloadCart(customerCartId);
