@@ -49,7 +49,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
-| P3 — Low | 11 | 2 | **9** | 0 |
+| P3 — Low | 11 | 1 | **9** | 1 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
@@ -64,9 +64,11 @@ recording it as a deliberate no-op.
 works when triggered by hand, but two consecutive slots have now passed without it firing, and
 the job is demonstrably registered and enabled. Nothing left to test from this side.
 
-**Three P3s are open, and only one of them is about money.** `PERF-001` (image optimization)
-waits on the plan, as does the deferred P2 `SEC-003`. `PERF-002`'s remaining per-route adoption
-waits on a localisation decision. `SEO-002` is **fixed** — the 404 moved to the proxy, which runs before the response begins.
+**One P3 is open and one is deferred.** `PERF-001` (image optimization) waits on the plan, as
+does the deferred P2 `SEC-003`. **`PERF-002` is now deliberately deferred** — its fivefold TTFB
+gain already landed via the pre-step, and what remains would only improve the cache-miss path, at
+the cost of a services-layer migration. It carries a reason and two triggers rather than sitting
+on the list as work anyone is behind on. `SEO-002` is **fixed** — the 404 moved to the proxy, which runs before the response begins.
 
 `PERF-003` — the one that needed no permission from anyone — was **done on 6 September**, and
 came in at twenty times its estimate: 309 images and **16.77 MB**, not 15 images and 1.2 MB.
@@ -127,14 +129,19 @@ treat this as hardening rather than a gate.
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
-| 5 | **Adopt Cache Components route by route** (`PERF-002`) | **Code — me** | 🟡 The localisation decision is **made** (Greek-static shell) and the locale blocker was solved and then reverted — see the entry. It unblocks 5 storefront routes, not 82: 47 of the opt-outs are admin pages that do not want PPR, and 25 storefront pages each need their own conversion. The blocker is now **diagnosed**: `"use cache"` works — the error simply names the nearest render position, not the real access. What is left is a services-layer migration (`"use cache"` is in **1 of 48** service files) plus server-side locale reads that live in *components*, not only pages. |
+| ~~5~~ | ~~**Adopt Cache Components route by route**~~ (`PERF-002`) | — | ⛔ **Deliberately deferred 2026-09-07.** The fivefold TTFB gain already landed from the pre-step, and the CDN is doing what PPR would do — three routes the build calls *dynamic* all serve in ~0.2–0.3s. What remains improves only the cache-miss path, at the cost of a services-layer migration. Two triggers to revisit, in its entry. |
 | ~~6~~ | ~~**Unknown URLs answer 200**~~ (`SEO-002`) | — | ✅ **Fixed 2026-09-06.** The 404 moved to `proxy.ts`, which runs before the response begins and was already doing the lookup for renamed-slug redirects. Costs no extra query on two of the three routes. |
 
-**Everything on this list that is code is now done.** Items 1–4 are decisions or a platform
-problem; item 5 waits on a localisation call. `PERF-003` and `SEO-002` — the two that only
-needed someone to do them — are both closed, and the first is what surfaced the second.
-Item 5 is real code, but it cannot start until the localisation question in `PERF-002`'s entry
-is answered — and that answer is a product judgement, not a technical one.
+**Nothing on this list is code any more.** Items 1–4 are decisions or a platform problem, and
+items 5 and 6 are closed — `PERF-003` and `SEO-002` were the two that only needed someone to do
+them, and the first is what surfaced the second. `PERF-002` was the last piece of queued work,
+and it is now **deferred on evidence rather than blocked**: its headline gain is banked, and the
+remainder is a large refactor whose value arrives with traffic or translation.
+
+**The one thing here that is actually wrong is item 1.** `OPS-001` is not a performance
+preference — the retention cron does not run, so the GDPR retention `PRIV-001` describes is not
+being honoured without a manual trigger. Everything else on this list is a choice about money or
+timing.
 
 ### Closed on 6 September
 
@@ -1022,7 +1029,7 @@ filled cart, and the checkout contact step. Zero violations at WCAG 2.1 A and AA
 `mysql2` (high), `fast-uri` (high), `qs` (moderate), `prisma` (moderate). **Traced: all reachable only via the `prisma` CLI and `shadcn`.** The app uses `@prisma/client` + `@prisma/adapter-pg` at runtime and never loads these. **Not a launch blocker.** Largely resolved by DEP-001.
 **Fixed (assessed, no action needed):** Phase 4 — re-confirmed all four advisories are reachable only through the `prisma` CLI and `shadcn`, neither of which is loaded by the deployed serverless runtime (the app uses `@prisma/client` + `@prisma/adapter-pg`). `npm audit fix --force` would DOWNGRADE Prisma to 6.x, a breaking change and a worse outcome than the advisories. Left as-is, deliberately.
 
-## [ ] PERF-002 · Nothing is statically rendered, so every page is a server render
+## [-] PERF-002 · Nothing is statically rendered, so every page is a server render
 
 **Category:** Performance / Architecture
 **Location:** `app/layout.tsx` → `getLocale()` → `i18n/request.ts` → `cookies()`
@@ -1348,6 +1355,53 @@ are populated: `categories.nameEl` **11 of 11**, `collections.titleEl` and `subt
 decision still holds. But the sentence it rests on is out of date, and the day products get
 translated is the day that decision needs re-taking.
 
+### DEFERRED 2026-09-07 — the headline benefit already landed, the rest is future value
+
+**Deliberately deferred, with a reason and a trigger**, rather than left open as work anyone
+should feel behind on. Nothing here is broken: this is an optimisation whose main benefit has
+already been collected.
+
+**The measurement that decides it.** Every one of these is classified `ƒ Dynamic` by the build,
+and every one is served from the edge in roughly the same time:
+
+| Route | Build says | Warm TTFB |
+| --- | --- | ---: |
+| `/` | `ƒ` dynamic | 0.31s |
+| `/about` | `ƒ` dynamic | 0.18–0.24s |
+| `/legal/cookie-policy` | `ƒ` dynamic | 0.24–0.31s |
+
+**The CDN is already doing the job Partial Prerendering would do**, because dropping `no-store`
+made the responses cacheable. That was the fivefold win, and it arrived from the pre-step without
+a single route being adopted.
+
+**What adoption would still buy: the cache-miss case only** — the first visitor to a cold edge
+node, and the first after a revalidation. Measured here as ~0.70–0.84s against ~0.2s warm. Real,
+but a minority of views, and a shrinking one: the busier the shop gets, the less often the cache
+misses. **The value of this work grows later, not now.**
+
+**Against that, the cost is a services-layer migration** — `"use cache"` into ~47 files, the
+server-side locale reads moved out of components, and 58 client components that must keep working
+throughout — on a shop taking real orders, where both attempts so far had to be reverted.
+
+**And two open items beat it on value per unit of risk.** `OPS-001` is not a speed problem but a
+compliance one: the retention cron does not run, so the GDPR position `PRIV-001` describes is not
+actually being honoured. That is the only genuinely *wrong* thing left in this document.
+`PERF-001` is one billing decision for the largest remaining score gain, with no refactor at all.
+
+**Revisit when either of these becomes true:**
+
+1. **Traffic grows enough that cache misses are a meaningful share of page views.** The upside
+   above is entirely in the miss path, so this is the point at which it starts paying.
+2. **Products get translated.** `products.nameEl` is empty on all 182 rows today. The day that
+   changes, `i18n/config.ts`'s own argument says the shop should move to locale-prefixed routing —
+   which forces the locale question anyway, and makes this refactor necessary for its own reasons
+   rather than for speed.
+
+A third, weaker trigger: if the cart bootstrap's ~2.3s wait for hydration ever becomes the thing
+worth fixing (`PERF-004` names it), server-rendering the initial cart is this same work.
+
+**Deferred:** _the fivefold TTFB gain is banked; the remainder is a large refactor for the
+cache-miss path, worth doing when traffic or translation makes it pay._
 **Fixed:** _tier 1 done (`92cf413`, no measurable effect). Tier 2 pre-step done (`34629b3`) and,
 contrary to what this entry originally claimed, it cut warm TTFB three- to fivefold — see the
 2026-09-06 re-measurement.
@@ -1861,3 +1915,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-07 | **`PERF-002` adoption attempted and reverted, second time — but the documented blocker is gone.** The owner chose the Greek-static shell; the locale came out of the root layout, a client provider took over the swap, and the language switcher moved off a server action that had stopped being able to work. Then the build named the *next* blocker: a root-layout read that is already `"use cache"` still counts as uncached during prerender. Undiagnosed, so reverted rather than shipped half-done. Also measured the real scope: of 77 opt-outs, **47 are admin pages that do not want PPR** and 25 storefront pages each need their own conversion — the layout fix unblocks **5**, including the homepage. And corrected `i18n/config.ts`, which claims categories and collections have no translation columns: they do, fully populated | `7e9cb56` |
 | 2026-09-07 | **`PERF-004` opened and fixed** — the owner noticed adding to the cart felt slow and asked why. It was: **1245ms warm, 2931ms cold, over eight sequential round trips**, two of which bought nothing. Nine cart mutations opened with a full cart read they discarded, and each already re-read the cart at the end. Fixed with a cheap existence check, one parallelised pair, and a non-blocking rate-limit write — checked first that no credential path uses that helper. **~1245ms → ~1045ms**, measured. I predicted 400ms and got 200ms; parallelising two queries saves the shorter one, not a round trip | `570fdba` |
 | 2026-09-07 | **Diagnosed why `PERF-002` stalled, and the previous entry was wrong.** `"use cache"` was never being rejected: Next's prerender error names the **nearest render position**, not the actual uncached access, so it kept pointing at a cached layout call. Bisected on a throwaway build — caching the homepage's four reads moved the error *past* all of them to the real blocker, `SectionRenderer.tsx:27` calling `getLocale()`. That also corrects the "5 locale-free routes" figure, which was grepped from page files and missed component-level locale reads. `PERF-002` is now ordinary work: `"use cache"` is in **1 of 48** service files | `06292e7` |
+| 2026-09-07 | **`PERF-002` recorded as a deliberate deferral, not open work.** Measured first: three routes the build classifies as `ƒ Dynamic` all serve in **~0.2–0.3s** from the edge — the CDN is already doing what Partial Prerendering would, because the pre-step dropped `no-store`. Adoption would improve only the **cache-miss** path (~0.7–0.84s), which is a minority of views and shrinks as traffic grows, at the cost of a services-layer migration on a live shop. Deferred with two triggers: traffic making misses material, or products getting translated — which forces the locale decision anyway. Also notes that `OPS-001` is the one item left that is actually *wrong* rather than a choice | _pending_ |
