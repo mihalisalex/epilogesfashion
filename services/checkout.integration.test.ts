@@ -203,4 +203,54 @@ describe.skipIf(!HAS_TEST_DB)("completeCheckout, against the real service", () =
     await expect(checkout.completeCheckout(partial.id)).rejects.toThrow(/address|email/i);
     expect(await remainingStock(product.id)).toBe(2);
   }, 90_000);
+
+  /**
+   * The chosen rate is stored on the checkout with its price baked in, and every later step —
+   * the summary, `resolveCheckoutAmounts`, `completeCheckout` — reads the charge back from
+   * there rather than recomputing it. So the address changing AFTER a rate is picked is a
+   * pricing event, and nothing re-examined it: a shopper could choose delivery to Heraklion at
+   * 2,95 and then change the address to Mykonos, and the order was placed at the mainland
+   * price.
+   *
+   * Both directions matter and they resolve differently — one re-prices, one cannot be honoured
+   * at all — so both are pinned here rather than trusting the first to imply the second.
+   */
+  it("re-prices a stored shipping rate when the address moves to a remote area", async () => {
+    const product = await makeProduct(2);
+    const cartId = await makeCartWith(product.id, 1);
+    const checkoutId = await makeCheckout(cartId);
+
+    await checkout.setShippingRate(checkoutId, "standard");
+    const mainland = await prisma.checkout.findUnique({ where: { id: checkoutId }, select: { shippingRate: true } });
+    const mainlandAmount = (mainland?.shippingRate as { price: { amount: number } }).price.amount;
+
+    // Mykonos — on ACS's remote list, and the shop charges more to reach it.
+    await checkout.updateShippingAddress(checkoutId, { ...ADDRESS, city: "Mykonos", postalCode: "84600" });
+
+    const remote = await prisma.checkout.findUnique({ where: { id: checkoutId }, select: { shippingRate: true } });
+    const stored = remote?.shippingRate as { id: string; price: { amount: number } };
+    expect(stored.id).toBe("standard");
+    expect(stored.price.amount).toBeGreaterThan(mainlandAmount);
+  }, 90_000);
+
+  it("clears a stored shipping rate the new address cannot use at all", async () => {
+    const product = await makeProduct(2);
+    const cartId = await makeCartWith(product.id, 1);
+    const checkoutId = await makeCheckout(cartId);
+
+    await checkout.setShippingRate(checkoutId, "standard");
+
+    // The Greek courier is not on offer to Portugal, so there is nothing to re-price it to.
+    // Cleared rather than left standing, which sends the shopper back to choose again instead
+    // of quietly pricing their order against an option the shop never offered them.
+    await checkout.updateShippingAddress(checkoutId, {
+      ...ADDRESS,
+      city: "Lisboa",
+      postalCode: "1100-053",
+      countryCode: "PT",
+    });
+
+    const after = await prisma.checkout.findUnique({ where: { id: checkoutId }, select: { shippingRate: true } });
+    expect(after?.shippingRate ?? null).toBeNull();
+  }, 90_000);
 });

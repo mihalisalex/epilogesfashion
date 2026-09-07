@@ -111,9 +111,39 @@ export async function updateEmail(checkoutId: string, email: string): Promise<Ch
 }
 
 export async function updateShippingAddress(checkoutId: string, address: Address): Promise<Checkout> {
-  await requireCheckoutRow(checkoutId);
+  const existing = await requireCheckoutRow(checkoutId);
   const row = await prisma.checkout.update({ where: { id: checkoutId }, data: { shippingAddress: toJsonInput(address) } });
-  return toCheckout(row);
+
+  /**
+   * A stored rate is re-resolved against the NEW address, and this is a money fix rather than
+   * a tidy-up.
+   *
+   * The chosen rate is written onto the checkout with its price baked in, and every later
+   * step — the summary, `resolveCheckoutAmounts`, `completeCheckout` — reads the charge back
+   * from there rather than recomputing it. Nothing re-examined it when the address changed, so
+   * a shopper could pick a rate in Athens and then change the delivery address to Mykonos or
+   * Lisbon and keep the Athens price. The order would be placed at it.
+   *
+   * Two outcomes. A rate still on offer is re-stored at its price for the new destination, so
+   * moving from the mainland to a remote postal code moves 2,95 to 4,95. A rate the new
+   * destination cannot use at all — the Greek courier against a Portuguese address — is
+   * cleared, which sends the shopper back to pick again rather than leaving a stale choice
+   * that quietly prices the order.
+   */
+  if (!existing.shippingRate) return toCheckout(row);
+
+  const stored = shippingRateSchema.parse(existing.shippingRate);
+  const rates = buildShippingRates(await getShippingSettings(), "EUR", {
+    countryCode: address.countryCode,
+    postalCode: address.postalCode,
+  });
+  const reResolved = rates.find((rate) => rate.id === stored.id && rate.available !== false) ?? null;
+
+  const settled = await prisma.checkout.update({
+    where: { id: checkoutId },
+    data: { shippingRate: reResolved ? toJsonInput(reResolved) : Prisma.DbNull },
+  });
+  return toCheckout(settled);
 }
 
 export async function updateBillingAddress(checkoutId: string, address: Address): Promise<Checkout> {

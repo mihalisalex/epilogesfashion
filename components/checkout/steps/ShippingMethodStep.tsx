@@ -95,7 +95,21 @@ export function ShippingMethodStep() {
               role="radio"
               aria-checked={isSelected}
               disabled={!isAvailable}
-              onClick={() => isAvailable && setSelected(rate.id)}
+              onClick={() => {
+                if (!isAvailable) return;
+                setSelected(rate.id);
+                /**
+                 * Saved on selection, not held until continue. The order summary reads the
+                 * charge off the stored rate, so a pick that lived only in this component left
+                 * it showing the previous one — choose free collection and "Μεταφορικά 14,95 €"
+                 * stayed on screen.
+                 *
+                 * `advance: false` because the shopper is choosing, not finishing. Errors are
+                 * swallowed deliberately: this is a preview write, `selected` already shows the
+                 * choice, and the continue button below saves again and does surface a failure.
+                 */
+                void selectShippingRate(rate.id, { advance: false }).catch(() => {});
+              }}
               className={cn(
                 "flex w-full items-center justify-between gap-4 px-1 py-4 text-left",
                 !isAvailable && "cursor-not-allowed opacity-40"

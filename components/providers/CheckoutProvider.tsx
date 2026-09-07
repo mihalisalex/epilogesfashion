@@ -72,7 +72,7 @@ interface CheckoutContextValue {
   setBillingAddress: (address: Address) => Promise<void>;
   shippingRates: ShippingRate[];
   selectedRateId: string | null;
-  selectShippingRate: (rateId: string) => Promise<void>;
+  selectShippingRate: (rateId: string, options?: { advance?: boolean }) => Promise<void>;
   giftWrap: boolean;
   giftMessage: string;
   setGiftWrap: (giftWrap: boolean, giftMessage?: string) => Promise<void>;
@@ -175,6 +175,13 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       if (sameBillingAsShipping) setBillingAddressState(address);
       const rates = await commerce.cart.estimateShipping(cart.id, address);
       setShippingRates(rates);
+      /**
+       * Follow whatever the server decided the stored rate is now worth. Changing the address
+       * re-resolves it there — re-priced for the new destination, or cleared when the new
+       * destination cannot use it at all — so holding the old id here would leave the delivery
+       * step showing a selection the checkout no longer has.
+       */
+      setSelectedRateId(updated.shippingRate?.id ?? null);
       advanceTo("delivery");
     },
     [checkout, cart, commerce, sameBillingAsShipping, advanceTo]
@@ -190,13 +197,25 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     [checkout, commerce]
   );
 
+  /**
+   * Persists the chosen rate, and only moves on when asked to.
+   *
+   * It used to always advance, which forced the delivery step to hold the shopper's pick in
+   * local state until they pressed continue — and the order summary reads the charge off
+   * `checkout.shippingRate`, so it went on showing the previous rate while a different radio
+   * was visibly selected. Choosing free store collection left "Μεταφορικά 14,95 €" on screen.
+   *
+   * Now the step saves on selection with `advance: false` and advances on continue. Saving
+   * immediately also means the choice survives a refresh, and that the summary is showing a
+   * figure the server has actually agreed to rather than one the browser assumed.
+   */
   const selectShippingRate = useCallback(
-    async (rateId: string) => {
+    async (rateId: string, options?: { advance?: boolean }) => {
       if (!checkout) return;
       const updated = await commerce.checkout.setShippingRate(checkout.id, rateId);
       setCheckout(updated);
       setSelectedRateId(rateId);
-      advanceTo("payment");
+      if (options?.advance !== false) advanceTo("payment");
     },
     [checkout, commerce, advanceTo]
   );
