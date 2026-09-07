@@ -49,12 +49,13 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
-| P3 — Low | 10 | 2 | **8** | 0 |
+| P3 — Low | 11 | 2 | **9** | 0 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
 `SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002`, `PRIV-002`, `PERF-002`,
-`PERF-003` and `SEO-002`. Not one would have been found by reading the code again more carefully. The last two
+`PERF-003`, `SEO-002` and `PERF-004` — the last of which came from the **owner** noticing the buy
+button felt slow, which is the one source of findings no audit pass replaces. Not one would have been found by reading the code again more carefully. The last two
 are the clearest cases: both came from asking why a score was low and then measuring, and the
 same habit later showed that `PERF-002`'s fix had **already worked** while this file was still
 recording it as a deliberate no-op.
@@ -1318,6 +1319,69 @@ decision._
 
 ---
 
+## [x] PERF-004 · Adding to the cart took 1.25s, and eight round trips to do it
+
+**Category:** Performance
+**Location:** `services/carts.ts` → `addLineItem`, `lib/rate-limit.ts` → `enforceRateLimit`
+**Confidence:** Confirmed — measured on production before and after
+**Found:** 2026-09-06, **by the owner**, who noticed the button felt slow and asked why
+
+**Worth recording who found it.** Every other finding in this file came from an audit pass or a
+test. This one came from someone using the shop and noticing it felt wrong — and it was real.
+
+**Measured before touching anything:**
+
+| | |
+| --- | ---: |
+| Add to cart, cold | 2931 ms |
+| Add to cart, warm (×3) | 1232 / 1259 / 1246 ms |
+| Cart bootstrap on page load | 1785 ms |
+| …which does not start until | 2328 ms, after hydration |
+
+So a shopper who lands and clicks quickly waits for the bootstrap (~4.1s from page start) **and
+then** the add. `BUG-002`'s fix is what makes the click wait rather than vanish — correct, and
+it makes the latency visible instead of silently dropping the click.
+
+**Cause: not one slow query — eight sequential round trips**, each awaiting the last. Two of
+them bought nothing:
+
+- **A discarded full read.** Nine cart mutations opened with `await requireCartRow(cartId);` and
+  threw the row away — a full `cartInclude` read, line items and all, to establish that one row
+  exists. Each of those already re-reads the whole cart at the end to return the new state. Two
+  full reads per write, one wasted.
+- **Needless sequencing.** "Does this cart exist" and "what is this product" are independent
+  questions asked one after the other.
+- **A blocking rate-limit write**, awaited before any real work, though it has no bearing on the
+  answer already computed.
+
+**Fixed** (`a0a7570`): `requireCartExists` does the existence check with `select: { id: true }`
+— which helps every cart write, not only add-to-cart — the two independent reads run together,
+and `enforceRateLimit` stopped awaiting its own INSERT.
+
+**The rate-limit change is a security question, and was checked before being made.** Nothing
+guarding a credential goes through `enforceRateLimit`: sign-in, sign-up, password reset,
+change-password, admin login and the OAuth routes all call `isRateLimited` and `recordAttempt`
+separately, because they must choose what counts as an attempt — a *failed* sign-in, not a
+successful one. Those still await. `enforceRateLimit` covers volume limits only. That boundary
+is now written next to the code so nobody moves a login onto the convenient helper.
+
+**Result, measured the same way on production:**
+
+| Add to cart, warm | Before | After |
+| --- | ---: | ---: |
+| | ~1245 ms | **~1045 ms** |
+
+**I predicted ~400ms and got ~200ms.** Parallelising two queries only saves the shorter of the
+two, not a whole round trip — the arithmetic was optimistic and is corrected here rather than
+quietly rounded up.
+
+**What is left, and it is not in this finding's gift.** The bootstrap does not begin until client
+JS hydrates at ~2.3s, because the cart is fetched from the browser. Server-rendering the initial
+cart removes that entirely — and that is `PERF-002` work, blocked behind the same question.
+
+**Fixed:** _`a0a7570`, verified on production._
+
+---
 ## [x] PERF-003 · Most of the image payload is JPEG the pipeline could already be storing as WebP
 
 **Category:** Performance
@@ -1753,3 +1817,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | **`SEO-002` fixed**, and not where the guide pointed. The documented fix — check existence before the stream starts — is unavailable here, because the *shell* starts the stream, not the page: the status is committed before the page component runs at all. So the 404 moved to `proxy.ts`, which is where this codebase had already solved the same problem for renamed-slug 308s, and whose comment already said why. **No extra query on two of the three routes** — the lookup that decides a redirect also decides existence. Visibility rules mirrored rather than re-invented, so a hidden category and a draft product now return a hard 404 instead of a soft one. Verified on a local production build before deploying | `5732d95` |
 | 2026-09-06 | Restored `noindex` on the 404 page, which fixing `SEO-002` had silently removed. Next injects it only when `notFound()` fires mid-stream; routing the 404 through the proxy means it never fires. The status code more than replaces the tag, but it was lost as a **side effect of a fix** rather than by decision — caught by the one test written to pin the old mitigation, which is the argument for pinning mitigations even when they look redundant | `45dc8cb` |
 | 2026-09-06 | **`PERF-002` adoption attempted and reverted, second time — but the documented blocker is gone.** The owner chose the Greek-static shell; the locale came out of the root layout, a client provider took over the swap, and the language switcher moved off a server action that had stopped being able to work. Then the build named the *next* blocker: a root-layout read that is already `"use cache"` still counts as uncached during prerender. Undiagnosed, so reverted rather than shipped half-done. Also measured the real scope: of 77 opt-outs, **47 are admin pages that do not want PPR** and 25 storefront pages each need their own conversion — the layout fix unblocks **5**, including the homepage. And corrected `i18n/config.ts`, which claims categories and collections have no translation columns: they do, fully populated | `7e9cb56` |
+| 2026-09-06 | **`PERF-004` opened and fixed** — the owner noticed adding to the cart felt slow and asked why. It was: **1245ms warm, 2931ms cold, over eight sequential round trips**, two of which bought nothing. Nine cart mutations opened with a full cart read they discarded, and each already re-read the cart at the end. Fixed with a cheap existence check, one parallelised pair, and a non-blocking rate-limit write — checked first that no credential path uses that helper. **~1245ms → ~1045ms**, measured. I predicted 400ms and got 200ms; parallelising two queries saves the shorter one, not a round trip | _pending_ |
