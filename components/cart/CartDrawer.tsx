@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Money } from "@/types";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
@@ -9,7 +10,12 @@ import { CartLineItemRow } from "@/components/cart/CartLineItemRow";
 import { CartTotalsSummary } from "@/components/cart/CartTotalsSummary";
 import { useCart } from "@/components/providers/CartProvider";
 
-export function CartDrawer() {
+/**
+ * The free-shipping threshold is passed in from the root layout, which renders this on every
+ * page. It reads a cross-request cache rather than the database, so the prompt costs nothing
+ * per page view — the objection that kept it off the drawer when the cart page first got it.
+ */
+export function CartDrawer({ freeShippingThreshold = null }: { freeShippingThreshold?: Money | null }) {
   const t = useTranslations("Cart");
   const { cart, isDrawerOpen, closeDrawer, itemCount } = useCart();
   const [showSaved, setShowSaved] = useState(false);
@@ -68,7 +74,7 @@ export function CartDrawer() {
 
             {cart ? (
               <div className="shrink-0 border-t border-border px-6 py-5">
-                <CartTotalsSummary totals={cart.totals} shippingEstimated />
+                <CartTotalsSummary totals={cart.totals} shippingEstimated freeShippingThreshold={freeShippingThreshold} />
                 <Link
                   href="/cart"
                   onClick={closeDrawer}

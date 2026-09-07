@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import shippingFallback from "@/data/shipping.json";
 import { getSiteContent, setSiteContent } from "@/lib/site-content";
 import { buildShippingRates, resolveShippingRate, type ShippingDestination } from "@/lib/shipping";
@@ -27,6 +28,26 @@ export const getShippingSettings = cache(async function getShippingSettings(): P
 export const getShippingRates = cache(async function getShippingRates() {
   return buildShippingRates(await getShippingSettings());
 });
+
+export const SHIPPING_CACHE_TAG = "shipping-settings";
+
+/**
+ * The same rates, cached ACROSS requests rather than within one.
+ *
+ * For the root layout, which renders the cart drawer on every page. `cache` above is
+ * request-scoped, so reading settings there would be a database round trip per page view for a
+ * row the merchant edits a few times a year — the exact cost `PERF-002` went and removed from
+ * that layout, and the reason the free-shipping prompt was on the cart page only.
+ *
+ * Same shape as `getSeoDefaultsCached` and `getAllCategoriesCached`, including why: invalidated
+ * by tag the moment an admin saves, so a changed threshold shows on the next request, with the
+ * hour TTL as a backstop against a future write path that forgets to expire it.
+ */
+export const getShippingRatesCached = unstable_cache(
+  async () => buildShippingRates(await getSiteContent<ShippingSettings>("shipping", shippingFallback as ShippingSettings)),
+  ["shipping-rates"],
+  { tags: [SHIPPING_CACHE_TAG], revalidate: 3600 }
+);
 
 /**
  * The same rates priced for one destination — a remote postal code costs more to reach.

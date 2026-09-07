@@ -19,6 +19,7 @@ import { CookieConsentBanner } from "@/components/shared/CookieConsentBanner";
 import { Analytics } from "@/components/shared/Analytics";
 import { ReferralCapture } from "@/components/shared/ReferralCapture";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { getShippingRatesCached } from "@/services/shipping";
 import "./globals.css";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -82,6 +83,17 @@ export default async function RootLayout({
    * `getSeoDefaults` above already pays every time — the categories table is small.
    */
   const categories = await getAllCategoriesCached();
+  /**
+   * The free-shipping threshold for the cart drawer, which the layout renders on every page.
+   * Read from the cross-request cache, so this is not a database round trip per page view —
+   * see getShippingRatesCached.
+   */
+  const shippingRates = await getShippingRatesCached();
+  const freeShippingRate = shippingRates.find((rate) => rate.freeOverAmount != null);
+  const freeShippingThreshold =
+    freeShippingRate?.freeOverAmount != null
+      ? { amount: freeShippingRate.freeOverAmount, currencyCode: freeShippingRate.price.currencyCode }
+      : null;
   const categoryNames = Object.fromEntries(
     categories.map((category) => [category.slug, localizeCategory(category, locale as Locale).name])
   );
@@ -147,7 +159,7 @@ export default async function RootLayout({
                   <CategoryNamesProvider names={categoryNames}>{children}</CategoryNamesProvider>
                 </AuthProvider>
               </WishlistProvider>
-              <CartDrawer />
+              <CartDrawer freeShippingThreshold={freeShippingThreshold} />
             </CartProvider>
             <ToastViewport />
           </ToastProvider>
