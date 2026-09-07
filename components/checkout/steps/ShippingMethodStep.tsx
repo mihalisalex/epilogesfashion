@@ -23,6 +23,14 @@ import { useCheckout } from "@/components/providers/CheckoutProvider";
  */
 export function ShippingMethodStep() {
   const t = useTranslations("Checkout");
+  /**
+   * `Cart.free` rather than a new `Checkout.free`. The string already exists and
+   * `CartTotalsSummary` already renders a zero shipping total through it, so duplicating it
+   * into a second namespace would give the same word two places to be edited and one to be
+   * forgotten. Reading one key from another namespace is already the pattern here —
+   * `ShippingAddressStep` does it with `Address`.
+   */
+  const tCart = useTranslations("Cart");
   const { shippingRates, selectedRateId, selectShippingRate } = useCheckout();
   const [selected, setSelected] = useState<string | null>(selectedRateId ?? shippingRates[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,7 +89,20 @@ export function ShippingMethodStep() {
                   <span className="block text-xs text-luxe-gray-dark">{rate.description}</span>
                 </span>
               </div>
-              <span className="shrink-0 text-sm">{formatMoney(rate.price)}</span>
+              {/*
+                A zero-cost option reads as "Δωρεάν", not "0 €" — matching what
+                `CartTotalsSummary` already does with a zero shipping total, so the two do not
+                describe the same thing in two different ways one step apart.
+
+                Keyed on the rate's OWN price being zero, which is store pickup. A rate that
+                costs nothing only because this basket cleared the free-shipping threshold is
+                deliberately not covered: that depends on the order value after discounts, which
+                `CartTotals` does not expose, and deriving it here would mean reimplementing
+                pricing in the UI — the one thing this codebase is consistent about never doing.
+              */}
+              <span className="shrink-0 text-sm">
+                {rate.price.amount === 0 ? tCart("free") : formatMoney(rate.price)}
+              </span>
             </button>
           );
         })}
