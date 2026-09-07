@@ -109,10 +109,22 @@ export async function updateBillingAddress(checkoutId: string, address: Address)
 }
 
 export async function setShippingRate(checkoutId: string, rateId: string): Promise<Checkout> {
-  await requireCheckoutRow(checkoutId);
+  const checkoutRow = await requireCheckoutRow(checkoutId);
+  /**
+   * Priced against the destination, and this is the line that decides what the shopper pays.
+   *
+   * The resolved rate — including its amount — is written onto the checkout row below, and
+   * every later step reads the charge back from there rather than recomputing it:
+   * `resolveCheckoutAmounts` for display, `completeCheckout` for the order. So a rate built
+   * without the postal code here would store the ordinary price and go on to charge it, no
+   * matter how correctly the delivery step had displayed the surcharge.
+   */
+  const destination = checkoutRow.shippingAddress
+    ? storedAddressSchema.parse(checkoutRow.shippingAddress).postalCode
+    : null;
   // No rate at all means the store has none enabled — a misconfiguration rather than bad
   // input, so this reports the same "checkout can't proceed" shape the other gates use.
-  const rate = resolveShippingRate(buildShippingRates(await getShippingSettings()), rateId);
+  const rate = resolveShippingRate(buildShippingRates(await getShippingSettings(), "EUR", destination), rateId);
   if (!rate) throw new CommerceError("CHECKOUT_INCOMPLETE", "No shipping rate is available.");
   const row = await prisma.checkout.update({
     where: { id: checkoutId },
@@ -157,10 +169,17 @@ export async function resolveCheckoutAmounts(checkoutId: string, paymentFeeOverr
   if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");
   const cart = toCart(cartRow, await getDefaultShippingRate());
   // A checkout that never reached the delivery step has no stored rate; fall back to the
-  // store's default rather than to a constant this module used to hardcode.
+  // store's default rather than to a constant this module used to hardcode. Priced against the
+  // address when there is one, so the fallback quotes the same figure the chosen rate would.
   const shippingRate = checkoutRow.shippingRate
     ? shippingRateSchema.parse(checkoutRow.shippingRate)
-    : resolveShippingRate(buildShippingRates(await getShippingSettings()));
+    : resolveShippingRate(
+        buildShippingRates(
+          await getShippingSettings(),
+          "EUR",
+          checkoutRow.shippingAddress ? storedAddressSchema.parse(checkoutRow.shippingAddress).postalCode : null
+        )
+      );
 
   const resolved = resolveCartAmounts({
     lineItems: cart.lineItems.map((item) => ({ unitPriceAmount: item.unitPrice.amount, quantity: item.quantity, savedForLater: false })),
@@ -221,9 +240,11 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
   const email = checkoutRow.email;
   const shippingAddress = storedAddressSchema.parse(checkoutRow.shippingAddress);
   const billingAddress = checkoutRow.billingAddress ? storedAddressSchema.parse(checkoutRow.billingAddress) : shippingAddress;
+  // Priced against the delivery address, which is already parsed above. This is the order
+  // path: a fallback built without it would charge the ordinary price for a remote address.
   const shippingRate = checkoutRow.shippingRate
     ? shippingRateSchema.parse(checkoutRow.shippingRate)
-    : resolveShippingRate(buildShippingRates(await getShippingSettings()));
+    : resolveShippingRate(buildShippingRates(await getShippingSettings(), "EUR", shippingAddress.postalCode));
 
   const cartRow = await prisma.cart.findUnique({ where: { id: checkoutRow.cartId }, include: cartInclude });
   if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");

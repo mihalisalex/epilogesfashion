@@ -25,6 +25,27 @@ export interface ShippingRateSetting {
    * free without a code change.
    */
   freeShippingEligible: boolean;
+  /**
+   * Postal codes this rate costs more to reach, and what it costs there.
+   *
+   * Greece's courier pricing is not flat: ACS publishes a list of *δυσπρόσιτες περιοχές* —
+   * islands, mountain villages, the far ends of the mainland — that carry a surcharge. The
+   * shop's own list came from ACS's area export: 488 postal codes across 11,848 areas, with
+   * Athens, Thessaloniki, Patras and Heraklion absent and Mykonos and Santorini present.
+   *
+   * Absent means one price everywhere, which is what `pickup` and `express` still are.
+   *
+   * Matched on postal code alone, because that is the only part of the address a shopper
+   * reliably gives and the only part worth trusting. ACS's own list is finer than that — it
+   * names areas — so a postal code containing both a remote village and an ordinary town is
+   * charged the higher price throughout. That errs toward the shop absorbing less, and it is
+   * the direction to err in: the alternative is quoting a price and then paying more than it.
+   */
+  remoteAreas?: {
+    amount: number;
+    /** Digits only, no spaces — see `buildShippingRates`, which normalises before comparing. */
+    postalCodes: string[];
+  };
 }
 
 export interface ShippingSettings {

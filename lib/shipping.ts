@@ -45,7 +45,42 @@ export function vatIncludedIn(grossAmount: number): number {
  *
  * Disabled rates are dropped: a rate a shopper cannot pick should not appear at checkout.
  */
-export function buildShippingRates(settings: ShippingSettings, currencyCode = "EUR"): ShippingRate[] {
+/**
+ * Digits only. Greek postal codes are written both "71202" and "712 02", and an address form
+ * accepts whatever the shopper types — so both sides of the comparison are stripped rather
+ * than trusting either to be tidy.
+ */
+export function normalisePostalCode(postalCode: string | null | undefined): string | null {
+  const digits = (postalCode ?? "").replace(/\D/g, "");
+  return digits.length > 0 ? digits : null;
+}
+
+/**
+ * What one rate costs for one destination — its remote-area price where the postal code is on
+ * that rate's list, otherwise its ordinary price.
+ *
+ * No postal code means the ordinary price, which is the honest answer rather than a cautious
+ * one: the cart prices shipping before any address exists, and quoting the surcharge to
+ * everyone on the chance they might live on an island would overstate the total for almost
+ * every shopper. The cart labels that figure as an estimate for exactly this reason.
+ */
+function amountForDestination(rate: ShippingSettings["rates"][number], postalCode: string | null): number {
+  if (!rate.remoteAreas || !postalCode) return rate.amount;
+  return rate.remoteAreas.postalCodes.some((code) => normalisePostalCode(code) === postalCode)
+    ? rate.remoteAreas.amount
+    : rate.amount;
+}
+
+export function buildShippingRates(
+  settings: ShippingSettings,
+  currencyCode = "EUR",
+  /**
+   * The destination, when it is known. Supplied at checkout once the address exists, omitted
+   * on the cart, where it does not yet.
+   */
+  postalCode?: string | null
+): ShippingRate[] {
+  const destination = normalisePostalCode(postalCode);
   return settings.rates
     .filter((rate) => rate.enabled)
     .map((rate) => ({
@@ -53,7 +88,7 @@ export function buildShippingRates(settings: ShippingSettings, currencyCode = "E
       label: rate.label,
       description: rate.description,
       estimatedDelivery: rate.estimatedDelivery,
-      price: { amount: rate.amount, currencyCode },
+      price: { amount: amountForDestination(rate, destination), currencyCode },
       freeOverAmount: rate.freeShippingEligible ? settings.freeShippingThreshold : null,
     }));
 }

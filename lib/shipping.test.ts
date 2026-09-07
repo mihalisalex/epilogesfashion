@@ -36,6 +36,60 @@ describe("buildShippingRates", () => {
     expect(ids).toEqual(DEFAULTS.rates.filter((rate) => rate.enabled && rate.id !== "express").map((rate) => rate.id));
   });
 
+  /**
+   * Remote-area pricing. These decide what a real customer is charged, and the two ways to get
+   * it wrong cost real money in opposite directions: undercharging every island order, or
+   * surcharging the whole mainland.
+   *
+   * Postal codes are read out of the settings rather than written as literals — the list is
+   * ACS's and runs to 488 entries, so a hardcoded "84600" here would silently stop testing
+   * anything the day the list is regenerated without it.
+   */
+  describe("remote areas", () => {
+    const standardSetting = DEFAULTS.rates.find((rate) => rate.id === "standard")!;
+    const remote = standardSetting.remoteAreas!;
+    const aRemoteCode = remote.postalCodes[0];
+
+    it("charges the remote price for a postal code on the list", () => {
+      const rate = buildShippingRates(DEFAULTS, "EUR", aRemoteCode).find((r) => r.id === "standard")!;
+      expect(rate.price.amount).toBe(remote.amount);
+    });
+
+    it("charges the ordinary price for a postal code that is not", () => {
+      // Heraklion, where the shop itself is, and deliberately absent from ACS's remote list.
+      const rate = buildShippingRates(DEFAULTS, "EUR", "71202").find((r) => r.id === "standard")!;
+      expect(rate.price.amount).toBe(standardSetting.amount);
+      expect(remote.amount).not.toBe(standardSetting.amount);
+    });
+
+    it("charges the ordinary price when there is no address yet", () => {
+      // The cart, which prices before anyone has said where it is going and labels it an
+      // estimate. Quoting the surcharge to everyone on the chance they live on an island
+      // would overstate the total for almost every shopper.
+      const rate = buildShippingRates(DEFAULTS).find((r) => r.id === "standard")!;
+      expect(rate.price.amount).toBe(standardSetting.amount);
+    });
+
+    it("matches a postal code written with a space, as Greek addresses often are", () => {
+      const spaced = `${aRemoteCode.slice(0, 3)} ${aRemoteCode.slice(3)}`;
+      const rate = buildShippingRates(DEFAULTS, "EUR", spaced).find((r) => r.id === "standard")!;
+      expect(rate.price.amount).toBe(remote.amount);
+    });
+
+    it("leaves rates with no remote list on one price everywhere", () => {
+      const pickup = buildShippingRates(DEFAULTS, "EUR", aRemoteCode).find((r) => r.id === "pickup")!;
+      expect(pickup.price.amount).toBe(DEFAULTS.rates.find((r) => r.id === "pickup")!.amount);
+    });
+
+    it("still delivers free over the threshold to a remote address", () => {
+      // The owner's decision on 2026-09-07: the threshold clears the whole charge, remote or
+      // not, so "Δωρεάν αποστολή άνω των 100 €" needs no asterisk.
+      const rate = buildShippingRates(DEFAULTS, "EUR", aRemoteCode).find((r) => r.id === "standard")!;
+      expect(computeShippingChargeForRate(rate, THRESHOLD, true)).toBe(0);
+      expect(computeShippingChargeForRate(rate, THRESHOLD - 1, true)).toBe(remote.amount);
+    });
+  });
+
   it("carries no threshold at all when free shipping is switched off", () => {
     const settings: ShippingSettings = { ...DEFAULTS, freeShippingThreshold: null };
     const standard = buildShippingRates(settings).find((rate) => rate.id === "standard")!;

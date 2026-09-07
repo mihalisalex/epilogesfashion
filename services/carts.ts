@@ -7,7 +7,7 @@ import { findSizeVariant, isSizePurchasable } from "@/lib/product";
 import { getProductById, getRelatedProducts } from "@/services/products";
 import { getDiscountByCode } from "@/services/discounts";
 import { getGiftCardByCode } from "@/services/gift-cards";
-import { getDefaultShippingRate, getShippingRates } from "@/services/shipping";
+import { getDefaultShippingRate, getShippingRatesFor } from "@/services/shipping";
 import { CommerceError, type AddLineItemInput, type Address, type Cart, type ShippingRate } from "@/lib/commerce/types";
 import type { Product } from "@/types";
 
@@ -258,9 +258,16 @@ export async function removeGiftCard(cartId: string, code: string): Promise<Cart
   return reloadCart(cartId);
 }
 
-export async function estimateShipping(cartId: string, _address?: Partial<Address>): Promise<ShippingRate[]> {
+/**
+ * The address is used now, where it used to be ignored: a rate can cost more to reach a remote
+ * postal code, so "what does delivery cost" has no answer until the destination is known.
+ *
+ * Without one this still returns the ordinary prices — that is the cart's estimate, and the
+ * cart says so.
+ */
+export async function estimateShipping(cartId: string, address?: Partial<Address>): Promise<ShippingRate[]> {
   await requireCartExists(cartId);
-  return getShippingRates();
+  return getShippingRatesFor(address?.postalCode);
 }
 
 

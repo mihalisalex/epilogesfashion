@@ -33,11 +33,15 @@ const item = (unitPriceAmount: number, quantity = 1, savedForLater = false): Com
 describe("resolveCartAmounts", () => {
   it("computes base subtotal/tax/shipping with no discounts, gift cards, or wrap", () => {
     const result = totals({ lineItems: [item(50, 2)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    // Read off the rate, not written as a literal — which is what the note at the top of this
+    // file asks for and what these two assertions were quietly not doing. They said 6.95, so
+    // dropping the standard rate to 2.95 failed them for a reason unconnected to what they check.
+    const shipping = STANDARD_SHIPPING_RATE.price.amount;
     expect(result.totals.subtotal.amount).toBe(100);
-    expect(result.totals.shippingTotal.amount).toBe(6.95); // under the free-shipping threshold
+    expect(result.totals.shippingTotal.amount).toBe(shipping); // under the free-shipping threshold
     // VAT is contained in the prices, so it does not move the total.
-    expect(result.totals.total.amount).toBe(106.95);
-    expect(result.totals.taxTotal.amount).toBeCloseTo(vatIncludedIn(106.95), 2);
+    expect(result.totals.total.amount).toBe(round2(100 + shipping));
+    expect(result.totals.taxTotal.amount).toBeCloseTo(vatIncludedIn(100 + shipping), 2);
   });
 
   it("never adds tax on top of the displayed price", () => {
@@ -45,7 +49,7 @@ describe("resolveCartAmounts", () => {
     // because 21% was ADDED to a price that already included VAT, contradicting both
     // Greek consumer law and this shop's own Terms of Service.
     const result = totals({ lineItems: [item(59)], discounts: [], giftCards: [], currencyCode: CURRENCY });
-    expect(result.totals.total.amount).toBe(59 + 6.95);
+    expect(result.totals.total.amount).toBe(round2(59 + STANDARD_SHIPPING_RATE.price.amount));
     expect(result.totals.taxTotal.amount).toBeLessThan(result.totals.total.amount);
   });
 

@@ -29,6 +29,17 @@ export const getShippingRates = cache(async function getShippingRates() {
 });
 
 /**
+ * The same rates priced for one destination — a remote postal code costs more to reach.
+ *
+ * Deliberately NOT wrapped in `cache`: `getShippingRates` is request-scoped because it takes no
+ * arguments and is read repeatedly while pricing a cart, whereas this varies by postal code and
+ * caching it per request would return the first destination's prices for the second.
+ */
+export async function getShippingRatesFor(postalCode?: string | null) {
+  return buildShippingRates(await getShippingSettings(), "EUR", postalCode);
+}
+
+/**
  * The rate a cart is priced against before the shopper has chosen one — the first enabled.
  * Returns undefined when the store has no enabled rate, which prices shipping at zero rather
  * than inventing a number.
