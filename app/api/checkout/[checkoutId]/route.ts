@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { setGiftWrap, setPaymentMethod, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
+import { setPaymentMethod, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { addressSchema, contactSchema } from "@/lib/validation/checkout";
@@ -68,12 +68,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.shippingAddress) checkout = await updateShippingAddress(checkoutId, body.shippingAddress);
     if (body.billingAddress) checkout = await updateBillingAddress(checkoutId, body.billingAddress);
     if (typeof body.shippingRateId === "string") checkout = await setShippingRate(checkoutId, body.shippingRateId);
-    if (typeof body.giftWrap === "boolean") checkout = await setGiftWrap(checkoutId, body.giftWrap, body.giftMessage);
+    /**
+     * `giftWrap` is deliberately no longer accepted here.
+     *
+     * The checkbox came out of ShippingMethodStep when the merchant retired the service, but
+     * this route kept taking the field, so "nothing sets giftWrap any more" was only ever true
+     * of the UI. A checkout could still be handed a fee that no screen could take back off, and
+     * checkouts created before the removal are still carrying one.
+     *
+     * `setGiftWrap` and the columns behind it stay, for the reasons ShippingMethodStep gives:
+     * historical orders must keep rendering, and December is a UI change rather than a rebuild.
+     * What is gone is the last live path that could switch it on.
+     */
     // Stored as a preference only — services/checkout.ts re-validates it against the
     // live configuration at order time, so writing it here grants nothing.
     if (typeof body.paymentMethodId === "string") checkout = await setPaymentMethod(checkoutId, body.paymentMethodId);
 
-    if (!checkout) return invalidInputResponse("Body must include at least one of email, shippingAddress, billingAddress, shippingRateId, giftWrap, paymentMethodId.");
+    if (!checkout) return invalidInputResponse("Body must include at least one of email, shippingAddress, billingAddress, shippingRateId, paymentMethodId.");
     return NextResponse.json({ checkout });
   } catch (error) {
     return commerceErrorResponse(error);
