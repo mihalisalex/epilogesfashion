@@ -1,7 +1,7 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
-**Remediated:** 2026-09-04 → 2026-09-06 · Phases 1–4 plus post-audit findings
+**Remediated:** 2026-09-04 → 2026-09-07 · Phases 1–4 plus post-audit findings
 **Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`) and 2026-09-06 (`OPS-001` escalated)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
 **Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **455/455** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
@@ -1254,7 +1254,7 @@ table.
 but it is no longer the difference between 1s and 0.2s — that has already been collected. It
 is now an incremental gain on top, which lowers its priority against `PERF-001`.
 
-### Adoption attempted 2026-09-06 — the documented blocker fell, a new one did not
+### Adoption attempted 2026-09-07 — the documented blocker fell, a new one did not
 
 The owner chose the **Greek-static shell**: render `<html lang="el">` and Greek chrome
 unconditionally, swap the ~90 English strings client-side after hydration. That decision stands
@@ -1324,7 +1324,7 @@ decision._
 **Category:** Performance
 **Location:** `services/carts.ts` → `addLineItem`, `lib/rate-limit.ts` → `enforceRateLimit`
 **Confidence:** Confirmed — measured on production before and after
-**Found:** 2026-09-06, **by the owner**, who noticed the button felt slow and asked why
+**Found:** 2026-09-07, **by the owner**, who noticed the button felt slow and asked why
 
 **Worth recording who found it.** Every other finding in this file came from an audit pass or a
 test. This one came from someone using the shop and noticing it felt wrong — and it was real.
@@ -1765,6 +1765,11 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 **The Commit column is the commit this entry landed in**, which for a row that *records*
 earlier work is the documenting commit, not the code one. Those rows name the code commit
 inline instead — row `67a6295` recording tier 1's result names `92cf413` in its text. Every
+**Dates come from the commit, not from memory.** Six entries were stamped 2026-09-06 when
+the commits carrying them are timestamped 2026-09-07 — a long session ran past midnight and the
+date was assumed rather than checked. Corrected against `git log`, which is the only reliable
+source once a session crosses a day boundary.
+
 hash here was recovered from history and checked to resolve; they replace a `_this commit_`
 placeholder that named nothing once the file was pushed.
 
@@ -1815,6 +1820,6 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-06 | Corrected the test counts, which said **40 browser specs** in both this file and the published artifact when there are **42**, and recorded the reason the suite no longer passes in one run: a ~9 minute pass runs desktop before mobile and outlives the shop's own 60-per-10-minute `cart-create` window, so mobile cart specs fail against a limiter doing its job. Written up as a standing rule beside the "shipped is not working" one, because it has now cost two investigations | `dff04e9` |
 | 2026-09-06 | Widened the recorded TTFB from **0.17–0.24s** to **0.20–0.42s**. The first figure was taken in one burst right after the measurement that produced it; a wider sample later the same day, after the WebP migration and a fresh deploy, spread higher, with one 0.81s outlier while Neon was waking. The conclusion and the score are unchanged — it is still three- to fivefold better than the 0.89–1.13s baseline — but the range as written was the flattering end of the evidence, which is the error this document keeps catching in itself | `8322b3c` |
 | 2026-09-06 | **`SEO-002` fixed**, and not where the guide pointed. The documented fix — check existence before the stream starts — is unavailable here, because the *shell* starts the stream, not the page: the status is committed before the page component runs at all. So the 404 moved to `proxy.ts`, which is where this codebase had already solved the same problem for renamed-slug 308s, and whose comment already said why. **No extra query on two of the three routes** — the lookup that decides a redirect also decides existence. Visibility rules mirrored rather than re-invented, so a hidden category and a draft product now return a hard 404 instead of a soft one. Verified on a local production build before deploying | `5732d95` |
-| 2026-09-06 | Restored `noindex` on the 404 page, which fixing `SEO-002` had silently removed. Next injects it only when `notFound()` fires mid-stream; routing the 404 through the proxy means it never fires. The status code more than replaces the tag, but it was lost as a **side effect of a fix** rather than by decision — caught by the one test written to pin the old mitigation, which is the argument for pinning mitigations even when they look redundant | `45dc8cb` |
-| 2026-09-06 | **`PERF-002` adoption attempted and reverted, second time — but the documented blocker is gone.** The owner chose the Greek-static shell; the locale came out of the root layout, a client provider took over the swap, and the language switcher moved off a server action that had stopped being able to work. Then the build named the *next* blocker: a root-layout read that is already `"use cache"` still counts as uncached during prerender. Undiagnosed, so reverted rather than shipped half-done. Also measured the real scope: of 77 opt-outs, **47 are admin pages that do not want PPR** and 25 storefront pages each need their own conversion — the layout fix unblocks **5**, including the homepage. And corrected `i18n/config.ts`, which claims categories and collections have no translation columns: they do, fully populated | `7e9cb56` |
-| 2026-09-06 | **`PERF-004` opened and fixed** — the owner noticed adding to the cart felt slow and asked why. It was: **1245ms warm, 2931ms cold, over eight sequential round trips**, two of which bought nothing. Nine cart mutations opened with a full cart read they discarded, and each already re-read the cart at the end. Fixed with a cheap existence check, one parallelised pair, and a non-blocking rate-limit write — checked first that no credential path uses that helper. **~1245ms → ~1045ms**, measured. I predicted 400ms and got 200ms; parallelising two queries saves the shorter one, not a round trip | `570fdba` |
+| 2026-09-07 | Restored `noindex` on the 404 page, which fixing `SEO-002` had silently removed. Next injects it only when `notFound()` fires mid-stream; routing the 404 through the proxy means it never fires. The status code more than replaces the tag, but it was lost as a **side effect of a fix** rather than by decision — caught by the one test written to pin the old mitigation, which is the argument for pinning mitigations even when they look redundant | `45dc8cb` |
+| 2026-09-07 | **`PERF-002` adoption attempted and reverted, second time — but the documented blocker is gone.** The owner chose the Greek-static shell; the locale came out of the root layout, a client provider took over the swap, and the language switcher moved off a server action that had stopped being able to work. Then the build named the *next* blocker: a root-layout read that is already `"use cache"` still counts as uncached during prerender. Undiagnosed, so reverted rather than shipped half-done. Also measured the real scope: of 77 opt-outs, **47 are admin pages that do not want PPR** and 25 storefront pages each need their own conversion — the layout fix unblocks **5**, including the homepage. And corrected `i18n/config.ts`, which claims categories and collections have no translation columns: they do, fully populated | `7e9cb56` |
+| 2026-09-07 | **`PERF-004` opened and fixed** — the owner noticed adding to the cart felt slow and asked why. It was: **1245ms warm, 2931ms cold, over eight sequential round trips**, two of which bought nothing. Nine cart mutations opened with a full cart read they discarded, and each already re-read the cart at the end. Fixed with a cheap existence check, one parallelised pair, and a non-blocking rate-limit write — checked first that no credential path uses that helper. **~1245ms → ~1045ms**, measured. I predicted 400ms and got 200ms; parallelising two queries saves the shorter one, not a round trip | `570fdba` |
