@@ -65,7 +65,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 17 | 1 | **15** | 1 |
-| P3 — Low | 11 | 1 | **9** | 1 |
+| P3 — Low | 12 | 2 | **9** | 1 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
@@ -788,6 +788,68 @@ byte what the suite leaves behind. Only age separates them.
 **Risk of change:** Low — additive, and it can only ever prevent a send to a domain that has
 no MX record by standard.
 **Fixed:** `f9b4560`
+
+---
+
+## [ ] BUG-004 · `Order.checkoutId` is called permanent, has no foreign key, and one is already dangling
+
+**Category:** Correctness / Data integrity
+**Location:** `prisma/schema.prisma` (`Order.checkoutId`) · `services/carts.ts:315` · `services/checkout.ts`
+**Confidence:** Confirmed — one production order affected, mechanism identified
+**Found:** 2026-09-07, by verifying the `purge-e2e-data` run rather than trusting its summary
+
+**Problem.** `services/checkout.ts` describes `Order.checkoutId` as "a permanent unique
+pointer to the exact session that produced it". Unique it is — there is a unique constraint.
+Permanent it is not: **there is no `orders_checkoutId_fkey` in any migration**, so it is a
+plain column, while `checkouts.cartId` is `ON DELETE CASCADE` from `carts`. Anything that
+deletes a cart takes its checkouts with it, ordered or not, and the database raises nothing.
+
+**And something does delete carts in the normal course of business.**
+`mergeGuestCartIntoCustomerCart` (`services/carts.ts:315`) deletes the guest cart row when a
+shopper signs in holding one. If that guest cart had already produced an order — easy, because
+cart rows are reused indefinitely rather than replaced after a purchase — the order's pointer
+is orphaned at sign-in.
+
+**Evidence.** Order `cmteq0yc3001j04la6o1cj52u` (2026-08-29) points at checkout
+`cmrx8d1yn000304jmfqygm5ap`, which does not exist. The id encodes a creation time around
+2026-07-22, five weeks before the order: a long-lived guest cart, ordered from, then merged
+away on a later sign-in. **Not caused by the purge that found it** — that run deleted six
+checkouts, all holding reserved addresses, and `completeCheckout` copies the checkout's email
+onto the order, so an order reading `mihalisalex@gmail.com` cannot have come from any of them.
+
+**Impact today: none, and that is worth being precise about rather than alarmed.** `Order`
+stores its own Zod-validated snapshots of `lineItems`, `totals`, `shippingAddress`,
+`billingAddress` and `shippingRate`, taken at purchase time. Nothing a customer or an
+accountant needs lives only in the checkout row, and no application code joins an order back
+to it — `checkoutId` appears in `services/checkout.ts` and tests, nowhere else. The
+idempotency guard still works, because it queries `orders` by `checkoutId` rather than
+following it.
+
+**Failure scenario.** Someone adds an admin view that joins an order to its checkout session —
+a reasonable thing to want, and the comment above it says the pointer is permanent. It works
+for every order they test and throws on one from 2026-08-29.
+
+**Fix — a decision rather than a patch, which is why this is open.** Three options, in
+increasing cost:
+
+1. **Correct the comment only** (done in this commit). The claim was the actual hazard: code is
+   written against documented guarantees.
+2. **Refuse to delete an ordered cart** in `mergeGuestCartIntoCustomerCart` — move the line
+   items and leave the row. Cheap, no migration, but guest carts then accumulate.
+3. **Add the foreign key** with `ON DELETE RESTRICT`. Makes it impossible, and turns option 2
+   from a convention into a rule — at the cost of a hand-applied migration on a live shop and
+   a sign-in path that now fails loudly where it used to succeed quietly.
+
+**Verify.**
+```sql
+SELECT count(*) FROM orders o
+LEFT JOIN checkouts c ON c.id = o."checkoutId" WHERE c.id IS NULL;
+```
+Returns `1` today. Any increase means it happened again.
+
+**Risk of change:** Option 3 is the only one with real risk, and it is a schema change on a
+live shop.
+**Fixed:** _open — comment corrected, mechanism not._
 
 **Observed working in production, 2026-09-05** — the standard this audit now holds itself to.
 The same Playwright spec with **no settle**, run three times:
@@ -2201,3 +2263,4 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-07 | **`OPS-001`: the marker test was invalid, the third slot failed, and retention stopped depending on the scheduler.** The 33 rows this file left as its discriminator can be deleted by `lib/rate-limit.ts`'s own 1-day prune — the same prune the entry had already dismissed as a confound, then used as evidence anyway. What settles it is a row that *survived*: 198 rows sat past retention four hours after the 03:30 slot, the oldest of them two days old before it. Three more explanations eliminated — the plan cron limit (Vercel documents **100 per project on every plan**, killing the guess this file carried), a cached response masking the run (`X-Vercel-Cache: MISS`), and redeploy churn (nothing deployed for the six hours spanning the slot). Shipped: `services/cron-runs.ts`, so all three jobs record when they ran and **what triggered them**, surfaced on `/api/health`; and `runDataRetentionIfDue`, which runs the full pass from ordinary traffic when a day passes with no recorded run, replacing a 1%-chance prune that had an expected 0.6 firings on a 61-request day. Scores deliberately unchanged — none of it has been observed running yet | `3c8805d` |
 | 2026-09-07 | **`OPS-001` de-escalated: the evidence of continued failure was three measurement defects.** `email-followups` has sent mail at 08:56, 08:57, 08:03, 08:32 and 08:56 UTC on five dates — every one inside the hour of its `0 8 * * *` slot, which is textbook Hobby behaviour. **Vercel's scheduler works on this project**, killing the "no cron fires here" reading. The three defects: the marker test could not discriminate (the rate limiter's prune deletes the same rows); **a non-zero overdue count is the steady state of a working daily job**, not a failure — 33 rows and 198 rows were what a healthy job produces; and node-postgres reads `TIMESTAMP` columns in the *client's* zone, so every printed instant was three hours early, which alone flipped the 09-07 conclusion (the oldest row was 04:55, not 01:55 — newer than the slot's cutoff and supposed to survive). The 09-05 finding survives untouched: 1,639 rows, oldest 45 days, was real. What is left is that the schedule has never been *observed*, which the run log answers at the next slot. Also: the fallback shipped that morning was **verified in production** — 492 overdue rows to 0 with no human involved | `5409adc` |
 | 2026-09-07 | **`BUG-003` opened and fixed: the e2e suite was making the shop send real mail to `e2e-test@example.com`.** Found while establishing that the `email-followups` cron fires — the four sends that proved it were all to a reserved address. The browser suite runs against production by design and its checkout spec writes that email; a day later abandoned-cart recovery mails it through Resend, and `example.com` is reserved by RFC 2606 so every one is a guaranteed hard bounce. That is a slow leak in the shop's ability to deliver **order confirmations**, since bounce rate is what mailbox providers and Resend score a sender on. Two more were pending for the next 08:00 slot. Guarded at the provider boundary (`isUndeliverableAddress`), which skips rather than throws so the cart is marked handled instead of retried daily forever. 21 tests, weighted toward the false-positive side — a misclassified customer silently loses their confirmation, which is far worse than one bounce. Second time test data has reached a live business flow here (`QA-012` was six `example.com` orders worth EUR 1,196.43); orders holding a reserved address today: **0** | `f9b4560` |
+| 2026-09-07 | **`purge-e2e-data` run: 146 of 516 carts removed** — 6 carrying a test/QA checkout and 140 empty guest carts over a week old. Verified afterwards rather than trusting the summary, which is what turned up **`BUG-004`**: one order's `checkoutId` resolves to nothing. Not caused by the purge (`completeCheckout` copies the checkout's email onto the order, and that order's address is real, so it cannot have come from any of the six reserved-address checkouts deleted). The mechanism is `mergeGuestCartIntoCustomerCart`, which deletes the guest cart on sign-in and cascades its checkouts away — including ones an order points at, because `Order.checkoutId` has no foreign key while `checkouts.cartId` cascades. No impact today: `Order` carries its own snapshots of line items, totals and both addresses, and nothing joins back. The hazard was the **comment** calling that pointer permanent, since code gets written against documented guarantees; corrected, mechanism left open as a decision | _this commit_ |

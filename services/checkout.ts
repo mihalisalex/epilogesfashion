@@ -58,9 +58,19 @@ async function requireCheckoutRow(checkoutId: string) {
  * that already has an in-progress (non-completed) row reuses it instead of
  * orphaning a new one. But `Checkout` is one-to-MANY off `Cart` (the cart row is
  * reused indefinitely rather than replaced after an order — see the cart DELETE
- * route), because `Order.checkoutId` is a permanent unique pointer to the exact
+ * route), because `Order.checkoutId` is a unique pointer to the exact
  * session that produced it: a completed checkout can never legitimately host a
- * second order. So a shopper who buys once, adds more items to that same cart,
+ * second order.
+ *
+ * That pointer is unique but NOT permanent, and this comment used to claim it was
+ * (`BUG-004`). There is no `orders_checkoutId_fkey` — it is a plain column — while
+ * `checkouts.cartId` cascades from `carts`. So anything deleting a cart takes its
+ * checkouts with it, including ones an order points at, and
+ * `mergeGuestCartIntoCustomerCart` does exactly that when a shopper signs in holding
+ * a guest cart. One production order already has a pointer that resolves to nothing.
+ * Nothing breaks today because `Order` stores its own snapshots of the line items,
+ * totals and both addresses, and no code joins back — but do not add a join here on
+ * the strength of the word "permanent". So a shopper who buys once, adds more items to that same cart,
  * and checks out again gets a genuinely NEW row here — reusing the old
  * (completed) one would either crash `completeCheckout` on that same unique
  * constraint, or (with the idempotency guard there) silently hand back their
