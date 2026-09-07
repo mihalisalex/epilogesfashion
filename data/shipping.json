@@ -4,7 +4,7 @@
     {
       "id": "standard",
       "label": "Παράδοση κατ' οίκον",
-      "description": "3–5 εργάσιμες ημέρες",
+      "description": "ACS Courier · 3–5 εργάσιμες ημέρες",
       "estimatedDelivery": "3–5 εργάσιμες ημέρες",
       "amount": 6.95,
       "enabled": true,
