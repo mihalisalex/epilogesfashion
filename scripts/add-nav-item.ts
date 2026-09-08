@@ -25,13 +25,19 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: proc
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
 const first = args.includes("--first");
-const [id, href, ...labelParts] = args.filter((a) => !a.startsWith("--"));
+const mobileOnly = args.includes("--mobile-only");
+/** `--after <id>` places the entry directly after that item, keeping shopping links together. */
+const afterIdx = args.indexOf("--after");
+const after = afterIdx > -1 ? args[afterIdx + 1] : undefined;
+const [id, href, ...labelParts] = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--after");
 const label = labelParts.join(" ");
 
 interface NavItem {
   id?: string;
   label?: string;
   href?: string;
+  /** Hidden from the desktop header, kept in the mobile menu — see types/navigation.ts. */
+  mobileOnly?: boolean;
   children?: NavItem[];
 }
 
@@ -52,18 +58,49 @@ async function main() {
   const data = row.data as unknown as { primary: NavItem[] };
 
   const clash = data.primary.find((item) => item.id === id || item.href === href);
+
+  /**
+   * An existing entry is updated in place rather than refused, so the flags below can be
+   * changed on something already in the menu without deleting and re-adding it — which would
+   * silently move it to the end and lose its position.
+   */
   if (clash) {
-    console.error(`\n  "${clash.label}" already occupies ${clash.href} (id ${clash.id}). Nothing added.\n`);
-    process.exitCode = 1;
+    console.log(`\n  Navigation — ${apply ? "APPLYING" : "dry run (pass --apply to write)"}\n`);
+    console.log(`  "${clash.label}" already occupies ${clash.href} — updating it in place.`);
+    console.log(`    mobileOnly: ${clash.mobileOnly ?? false} -> ${mobileOnly}`);
+    if (!apply) {
+      console.log("\n  Dry run — nothing written.\n");
+      return;
+    }
+    clash.mobileOnly = mobileOnly || undefined;
+    await prisma.siteContent.update({ where: { key: "navigation" }, data: { data: data as never } });
+    console.log("\n  Written.\n");
     return;
   }
 
-  const entry: NavItem = { id, href, label };
-  const next = first ? [entry, ...data.primary] : [...data.primary, entry];
+  const entry: NavItem = { id, href, label, ...(mobileOnly ? { mobileOnly: true } : {}) };
+  /**
+   * Appending puts a shopping category below the editorial links, which reads as an
+   * afterthought in the phone menu where the list IS the navigation. `--after` keeps it with
+   * the other places to shop.
+   */
+  let next: NavItem[];
+  if (first) next = [entry, ...data.primary];
+  else if (after) {
+    const at = data.primary.findIndex((item) => item.id === after);
+    if (at < 0) {
+      console.error(`
+  No item with id "${after}" to place it after. Present: ${data.primary.map((i) => i.id).join(", ")}
+`);
+      process.exitCode = 1;
+      return;
+    }
+    next = [...data.primary.slice(0, at + 1), entry, ...data.primary.slice(at + 1)];
+  } else next = [...data.primary, entry];
 
   console.log(`\n  Navigation — ${apply ? "APPLYING" : "dry run (pass --apply to write)"}\n`);
   console.log("  menu after:");
-  for (const item of next) console.log(`    ${item.id === id ? "+ " : "  "}${String(item.label).padEnd(18)} -> ${item.href}`);
+  for (const item of next) console.log(`    ${item.id === id ? "+ " : "  "}${String(item.label).padEnd(18)} -> ${String(item.href).padEnd(12)}${item.mobileOnly ? "  (mobile only)" : ""}`);
 
   if (!apply) {
     console.log("\n  Dry run — nothing written.\n");
