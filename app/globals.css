@@ -245,3 +245,22 @@
     display: none;
   }
 }
+/*
+  Keeps a toast clear of the cart drawer.
+
+  Deliberately a plain rule here rather than a Tailwind `sm:pr-[...]` utility on the element.
+  The utility version was tried and did not apply: an identical probe element computed the
+  padding correctly while the real viewport kept 16px, and rather than ship a class that only
+  looks right in the source, this is written where its specificity is unambiguous. It sits
+  outside `@layer`, so it beats the `p-4` utility on the same element regardless of how
+  Tailwind orders its own output.
+
+  29rem is the drawer's `sm:max-w-md` (28rem) plus the viewport's own 1rem gutter. Below the
+  `sm` breakpoint the drawer is full width and a toast is meant to sit over it, so the shift
+  only applies from `sm` up — matching the drawer's breakpoint.
+*/
+@media (min-width: 40rem) {
+  [data-toast-viewport][data-cart-drawer-open="true"] {
+    padding-right: 29rem;
+  }
+}

@@ -160,8 +160,9 @@ export default async function RootLayout({
                 </AuthProvider>
               </WishlistProvider>
               <CartDrawer freeShippingThreshold={freeShippingThreshold} />
+              {/* Inside CartProvider so it can step aside while the drawer is open. */}
+              <ToastViewport />
             </CartProvider>
-            <ToastViewport />
           </ToastProvider>
           <ReferralCapture />
         </NextIntlClientProvider>

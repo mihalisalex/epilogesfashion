@@ -4,19 +4,25 @@ import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useCart } from "@/components/providers/CartProvider";
 import { cn } from "@/lib/utils";
 import { EASE } from "@/constants/animation";
 
 export function ToastViewport() {
   const tA11y = useTranslations("A11y");
   const { toasts, dismiss } = useToast();
+  // Drives the offset rule in globals.css so a toast never lands on the drawer.
+  const { isDrawerOpen } = useCart();
 
   return (
     <div
+      data-toast-viewport
+      data-cart-drawer-open={isDrawerOpen}
       role="status"
       aria-live="polite"
       aria-atomic="true"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-200 flex flex-col items-center gap-2 p-4 sm:items-end"
+      style={{ transition: "padding 300ms cubic-bezier(0.32, 0.72, 0, 1)" }}
     >
       <AnimatePresence>
         {toasts.map((t) => (
