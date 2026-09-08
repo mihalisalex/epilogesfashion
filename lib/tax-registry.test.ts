@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { parseAadeResponse, TaxRegistryError } from "@/lib/tax-registry";
+import { buildEnvelopeForTest, parseAadeResponse, TaxRegistryError } from "@/lib/tax-registry";
 
 /**
  * Envelopes shaped exactly as AADE's published XSD declares
  * (https://www1.gsis.gr/wsaade/RgWsPublic2/RgWsPublic2?xsd=1), including the namespace
  * prefixes JAX-WS emits, because stripping the prefix is half of what the parser does.
  *
- * These are constructed from the schema, not captured from a live call — nobody has run this
- * against real credentials yet. So what they pin is the parsing, which is the only half that
- * can be wrong in a way a test can see.
+ * These are constructed from the schema rather than captured from a live call, so what they pin
+ * is the parsing. The request half is pinned separately at the bottom of this file — and had to
+ * be, because that is the half that broke.
  */
 function envelope(inner: string): string {
   return `<?xml version='1.0' encoding='UTF-8'?>
@@ -143,5 +143,46 @@ describe("parseAadeResponse", () => {
       "<ns3:commer_title>ΑΛΦΑ &amp; ΒΗΤΑ</ns3:commer_title>"
     );
     expect(parseAadeResponse(envelope(ampersand))?.companyName).toBe("ΑΛΦΑ & ΒΗΤΑ");
+  });
+});
+
+/**
+ * The envelope, pinned.
+ *
+ * These exist because the parsing was tested and the REQUEST was not, and it was the request
+ * that failed in production: an empty `<as_on_date/>` made AADE's parser throw a
+ * NullPointerException on every call. A schema says what is allowed; only the live service
+ * says what its parser survives.
+ */
+describe("buildEnvelope", () => {
+  const envelope = () => buildEnvelopeForTest("094014201", "user", "pass", "");
+
+  it("never sends an empty optional element", () => {
+    const xml = envelope();
+    // The exact shape that produced "SOAPMessage request format error".
+    expect(xml).not.toContain("as_on_date");
+    expect(xml).not.toContain("<pub:afm_called_by></pub:afm_called_by>");
+    expect(xml).not.toMatch(/<pub:\w+\/>/);
+  });
+
+  it("sends afm_called_by only when the shop configured one", () => {
+    expect(envelope()).not.toContain("afm_called_by");
+    expect(buildEnvelopeForTest("094014201", "user", "pass", "123456789")).toContain(
+      "<pub:afm_called_by>123456789</pub:afm_called_by>"
+    );
+  });
+
+  it("puts INPUT_REC and its children in the two namespaces the WSDL declares", () => {
+    const xml = envelope();
+    expect(xml).toContain('xmlns:srv="http://rgwspublic2/RgWsPublic2Service"');
+    expect(xml).toContain('xmlns:pub="http://rgwspublic2/RgWsPublic2"');
+    expect(xml).toContain("<srv:INPUT_REC>");
+    expect(xml).toContain("<pub:afm_called_for>094014201</pub:afm_called_for>");
+  });
+
+  it("escapes credentials rather than letting them break the envelope", () => {
+    const xml = buildEnvelopeForTest("094014201", "a&b", "p<w>", "");
+    expect(xml).toContain("<wsse:Username>a&amp;b</wsse:Username>");
+    expect(xml).toContain("<wsse:Password>p&lt;w&gt;</wsse:Password>");
   });
 });

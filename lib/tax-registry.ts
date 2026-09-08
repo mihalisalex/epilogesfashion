@@ -23,9 +23,12 @@ import "server-only";
  * (`basic_rec`, `onomasia`, `doy_descr`, `firm_act_tab`, `error_rec`) is declared in AADE's
  * own XSD. The service is SOAP 1.2, document/literal, operation `rgWsPublic2AfmMethod`.
  *
- * **Still never exercised against real credentials.** What is unverified is not the shape but
- * the VALUES of two flag fields — see `interpretActive` below, which is why nothing here
- * blocks a checkout on them.
+ * **The request shape HAS now been exercised against the live service** (2026-09-08), and the
+ * first version was wrong in a way no schema reading would have caught — see `buildEnvelope`.
+ * Reading a published schema tells you what is ALLOWED, not what the server's parser survives.
+ *
+ * What remains unverified is the VALUES of two flag fields — see `interpretActive` below,
+ * which is why nothing here blocks a checkout on them.
  *
  * ## Credentials
  *
@@ -140,7 +143,29 @@ function interpretActive(flag: string): boolean | null {
   return null;
 }
 
+/**
+ * Builds the request envelope.
+ *
+ * ## An optional element you do not need is OMITTED, never sent empty
+ *
+ * This cost a production outage of the feature, so it is worth being explicit. The first
+ * version sent `<pub:as_on_date/>` — a self-closing empty element for an `xsd:date` that the
+ * shop has no value for. AADE's JAX-WS stack does not treat that as absent; it tries to parse
+ * "" as a date and dies, and every single call came back:
+ *
+ *     HTTP 500 — SOAPMessage request format error - java.lang.NullPointerException
+ *
+ * Isolated by probing the live service with deliberately wrong credentials, which is a cheap
+ * test anyone can repeat: a malformed envelope returns that format error, while a well-formed
+ * one returns `RG_WS_PUBLIC_TOKEN_USERNAME_NOT_AUTHENTICATED`. Getting the authentication
+ * error is therefore PROOF the shape is right, and needs no real credentials to obtain.
+ *
+ * Both `afm_called_by` and `as_on_date` are `minOccurs="0"` in the XSD, so leaving them out
+ * entirely is what "we have no value" is spelled as. `as_on_date` is never sent — the shop
+ * always wants the register as it stands today. `afm_called_by` is sent only when configured.
+ */
 function buildEnvelope(vatNumber: string, username: string, password: string, calledBy: string): string {
+  const calledByElement = calledBy ? `\n        <pub:afm_called_by>${escapeXml(calledBy)}</pub:afm_called_by>` : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope">
   <env:Header>
@@ -153,15 +178,16 @@ function buildEnvelope(vatNumber: string, username: string, password: string, ca
   </env:Header>
   <env:Body>
     <srv:rgWsPublic2AfmMethod xmlns:srv="${SERVICE_NS}" xmlns:pub="${TYPES_NS}">
-      <srv:INPUT_REC>
-        <pub:afm_called_by>${escapeXml(calledBy)}</pub:afm_called_by>
+      <srv:INPUT_REC>${calledByElement}
         <pub:afm_called_for>${escapeXml(vatNumber)}</pub:afm_called_for>
-        <pub:as_on_date/>
       </srv:INPUT_REC>
     </srv:rgWsPublic2AfmMethod>
   </env:Body>
 </env:Envelope>`;
 }
+
+/** Exported for its regression test — the shape is the half that broke in production. */
+export const buildEnvelopeForTest = buildEnvelope;
 
 /**
  * Parses a `rgWsPublic2AfmMethodResponse` body.
