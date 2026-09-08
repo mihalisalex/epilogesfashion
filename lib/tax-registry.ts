@@ -71,8 +71,33 @@ export class TaxRegistryError extends Error {
   }
 }
 
+/**
+ * Credentials, trimmed.
+ *
+ * A dashboard text field is an easy place to leave a trailing newline or a copied space, and
+ * AADE answers a credential with one exactly as it answers a wrong one — "ο συνδυασμός
+ * χρήστη/κωδικού πρόσβασης δεν είναι έγκυρος" — so the mistake is invisible from the outside
+ * and costs an afternoon. Nothing legitimate here has leading or trailing whitespace.
+ *
+ * Quotes are NOT stripped. `AADE_WS_PASSWORD="abc"` in a dashboard field means a password with
+ * quotes in it, and silently removing them would break a password that genuinely contains one.
+ * That case is caught by the startup warning below instead, which says what it sees.
+ */
+function credentials(): { username: string; password: string } {
+  const username = (process.env.AADE_WS_USERNAME ?? "").trim();
+  const password = (process.env.AADE_WS_PASSWORD ?? "").trim();
+  if ((username.startsWith('"') && username.endsWith('"')) || (password.startsWith('"') && password.endsWith('"'))) {
+    console.warn(
+      "[tax-registry] AADE credentials are wrapped in quotation marks. A dashboard field stores the " +
+        "value literally, so the quotes are part of the credential and AADE will reject it. Remove them."
+    );
+  }
+  return { username, password };
+}
+
 export function isTaxRegistryConfigured(): boolean {
-  return Boolean(process.env.AADE_WS_USERNAME && process.env.AADE_WS_PASSWORD);
+  const { username, password } = credentials();
+  return Boolean(username && password);
 }
 
 function escapeXml(value: string): string {
@@ -231,8 +256,7 @@ export function parseAadeResponse(xml: string): TaxRegistryRecord | null {
  * checkout because a government web service had a bad afternoon.
  */
 export async function lookupGreekVatNumber(vatNumber: string): Promise<TaxRegistryRecord | null> {
-  const username = process.env.AADE_WS_USERNAME;
-  const password = process.env.AADE_WS_PASSWORD;
+  const { username, password } = credentials();
   if (!username || !password) {
     throw new TaxRegistryError("AADE_WS_USERNAME / AADE_WS_PASSWORD are not set.");
   }
