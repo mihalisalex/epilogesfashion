@@ -106,9 +106,33 @@ async function renamedProductRedirect(request: NextRequest): Promise<NextRespons
  * Unlike the two above, this lookup is *added* cost rather than reused: one indexed hit per
  * collection pageview, which is the price of the route being able to answer 404 at all.
  */
+/**
+ * Collections that have been retired in favour of a category, sent on with a 308.
+ *
+ * A hand-written map rather than a table, because this is a short list that shrinks: each entry
+ * is a collection that turned out to be a category wearing a different name, and the redirect
+ * exists so the old URL keeps whatever ranking and inbound links it had. When the list is
+ * empty, delete this.
+ *
+ * `woman-sneakers-collection` was not merely a duplicate — it was **wrong**. Named for women
+ * and titled "Η Συλλογή Σνίκερ", it held 19 men's sneakers against 7 women's, and missed 3 of
+ * the 10 women's the shop actually sells. Anyone arriving from the homepage tile expecting
+ * women's trainers got mostly men's.
+ */
+const RETIRED_COLLECTIONS: Record<string, string> = {
+  "woman-sneakers-collection": "gynaikeia-sneakers",
+};
+
 async function missingCollection(request: NextRequest): Promise<NextResponse | null> {
   const slug = request.nextUrl.pathname.split("/")[2];
   if (!slug) return null;
+
+  const retiredTo = RETIRED_COLLECTIONS[slug];
+  if (retiredTo) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/category/${retiredTo}`;
+    return NextResponse.redirect(url, 308);
+  }
 
   const live = await prisma.collection.findUnique({ where: { slug }, select: { id: true } });
   return live ? null : notFoundResponse(request);
