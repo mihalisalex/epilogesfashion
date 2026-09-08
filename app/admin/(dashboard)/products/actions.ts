@@ -8,6 +8,7 @@ import { capabilityDenied, requireCapability } from "@/lib/admin-session";
 import { recordAdminAction } from "@/services/audit-log";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import { writeProductRow } from "@/lib/products-import/write";
+import { uniqueConflictMessage } from "@/lib/prisma-conflicts";
 import { productIdsMatching, type AdminProductFilter } from "@/services/products";
 
 export interface ProductActionState {
@@ -26,12 +27,18 @@ export async function createProduct(values: ProductFormValues): Promise<ProductA
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
 
-  const existing = await prisma.product.findUnique({ where: { slug: data.slug } });
-  if (existing) return { error: "A product with this slug already exists." };
-
-  const { id } = await writeProductRow(data);
+  let id: string;
+  try {
+    ({ id } = await writeProductRow(data));
+  } catch (error) {
+    const conflict = uniqueConflictMessage(error, "product");
+    if (conflict) return { error: conflict };
+    throw error;
+  }
 
   revalidateStorefront();
+  // Outside the try: redirect() signals by throwing, and catching that would swallow the
+  // navigation and report it as a save failure.
   redirect(`/admin/products/${id}`);
 }
 
@@ -42,8 +49,9 @@ export async function updateProduct(id: string, values: ProductFormValues): Prom
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
 
-  const existing = await prisma.product.findUnique({ where: { slug: data.slug } });
-  if (existing && existing.id !== id) return { error: "A product with this slug already exists." };
+  // No prior slug lookup here either — see uniqueConflictMessage. Updating a product to the
+  // slug it already has is not a violation, so the constraint handles the self-match that the
+  // old `existing.id !== id` test was written for.
 
   /**
    * OBS-003. Read the price BEFORE the write. "A product's price is wrong and nobody knows
@@ -58,7 +66,13 @@ export async function updateProduct(id: string, values: ProductFormValues): Prom
     select: { priceAmount: true, salePriceAmount: true, sku: true, name: true, status: true },
   });
 
-  await writeProductRow(data, id);
+  try {
+    await writeProductRow(data, id);
+  } catch (error) {
+    const conflict = uniqueConflictMessage(error, "product");
+    if (conflict) return { error: conflict };
+    throw error;
+  }
 
   // Decimal, so compare numerically — the Prisma value and the form value are different
   // representations of the same number and never string-equal.
