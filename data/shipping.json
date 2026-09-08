@@ -526,7 +526,7 @@
     },
     {
       "id": "eu-standard",
-      "label": "Standard Shipping",
+      "label": "Αποστολή στο εξωτερικό",
       "description": "Χώρες της Ευρωπαϊκής Ένωσης",
       "estimatedDelivery": "5–8 εργάσιμες ημέρες",
       "amount": 14.95,

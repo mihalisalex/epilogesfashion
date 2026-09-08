@@ -32,6 +32,17 @@ const CHANGES: Record<string, { label: string; description: string; estimatedDel
     description: "ACS Courier · 1–3 εργάσιμες ημέρες",
     estimatedDelivery: "1–3 εργάσιμες ημέρες",
   },
+  /**
+   * Not a literal "Τυπική αποστολή". Beside "Παράδοση στον χώρο σας" that would read as a
+   * second domestic option, which is the one thing this rate is not — it is the only one a
+   * shopper outside Greece can pick. Naming the destination is what the label is for; the
+   * description underneath already narrows it to the EU.
+   */
+  "eu-standard": {
+    label: "Αποστολή στο εξωτερικό",
+    description: "Χώρες της Ευρωπαϊκής Ένωσης",
+    estimatedDelivery: "5–8 εργάσιμες ημέρες",
+  },
 };
 
 interface Rate {
