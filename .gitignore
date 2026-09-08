@@ -54,3 +54,6 @@ next-env.d.ts
 # Playwright output — never committed
 test-results/
 playwright-report/
+
+# Rollback map for scripts/reframe-bag-images.ts
+.bag-images/
