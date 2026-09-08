@@ -42,9 +42,36 @@ export interface FeaturedCollectionsSection extends SectionBase {
   data: {
     title: string;
     subtitle?: string;
-    collectionIds: string[];
+    /**
+     * @deprecated Superseded by `tiles`, and still read when `tiles` is absent so a homepage
+     * saved before tiles existed keeps rendering. Remove once no stored section relies on it.
+     */
+    collectionIds?: string[];
+    /**
+     * What the grid shows. A tile takes its name, image and link from whatever it points at,
+     * so a renamed category or a swapped image reaches the homepage without anyone editing it
+     * here — which is the reason a tile references an entity rather than carrying its own copy
+     * of the words.
+     */
+    tiles?: FeaturedTileRef[];
   };
 }
+
+/**
+ * A tile points at a collection or a category.
+ *
+ * Categories were added because most of these tiles were categories wearing a different name:
+ * one was titled "Everyday Basics" and held three whole categories, another was titled for
+ * women and held mostly men's shoes. Pointing a tile at the category makes the label and the
+ * destination the same fact, so they cannot drift apart again.
+ *
+ * Collections keep their place for groupings a category cannot express — "New Arrivals" is the
+ * clear case, since recency is not a category.
+ */
+export type FeaturedTileRef =
+  | { type: "collection"; id: string }
+  /** Category slug rather than id: it is what the URL uses and what a person recognises. */
+  | { type: "category"; slug: string };
 
 export interface BestSellersSection extends SectionBase {
   type: "bestSellers";

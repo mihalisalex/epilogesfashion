@@ -41,7 +41,36 @@ export function SectionEditForm({ section, onChange }: SectionEditFormProps) {
             <Field label="Title" value={section.data.title} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
             <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
           </div>
-          <IdChipList label="Collections" ids={section.data.collectionIds} onChange={(ids) => onChange({ ...section, data: { ...section.data, collectionIds: ids } })} />
+          {/*
+            One ordered list rather than a list per kind, because ORDER is content here: the
+            first tile renders at double size, so "which comes first" is a merchandising
+            decision the editor has to be able to make across both kinds.
+
+            Each chip is "category:<slug>" or "collection:<id>". A bare value with no prefix is
+            read as a collection id, which is what every homepage saved before tiles existed
+            contains.
+          */}
+          <IdChipList
+            label="Tiles — category:<slug> or collection:<id>"
+            ids={(section.data.tiles ?? (section.data.collectionIds ?? []).map((id) => ({ type: "collection" as const, id }))).map((tile) =>
+              tile.type === "category" ? `category:${tile.slug}` : `collection:${tile.id}`
+            )}
+            onChange={(entries) =>
+              onChange({
+                ...section,
+                data: {
+                  ...section.data,
+                  tiles: entries.map((entry) =>
+                    entry.startsWith("category:")
+                      ? { type: "category" as const, slug: entry.slice("category:".length) }
+                      : { type: "collection" as const, id: entry.replace(/^collection:/, "") }
+                  ),
+                  // Dropped once tiles exist, so the two cannot disagree about what is shown.
+                  collectionIds: undefined,
+                },
+              })
+            }
+          />
         </div>
       );
 

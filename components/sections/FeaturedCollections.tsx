@@ -5,15 +5,30 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { fadeUp, staggerContainer, viewportOnce } from "@/constants/animation";
-import type { Collection } from "@/types";
+import type { Image as ImageData } from "@/types";
+
+/**
+ * One tile, flattened from whatever it points at.
+ *
+ * The grid does not care whether a tile came from a collection or a category, and should not:
+ * both reduce to a name, a picture and somewhere to go. Flattening in the renderer keeps that
+ * distinction out of a client component.
+ */
+export interface FeaturedTile {
+  id: string;
+  title: string;
+  subtitle?: string;
+  image: ImageData;
+  href: string;
+}
 
 interface FeaturedCollectionsProps {
   title: string;
   subtitle?: string;
-  collections: Collection[];
+  tiles: FeaturedTile[];
 }
 
-export function FeaturedCollections({ title, subtitle, collections }: FeaturedCollectionsProps) {
+export function FeaturedCollections({ title, subtitle, tiles }: FeaturedCollectionsProps) {
   return (
     <section className="container-luxe py-20 md:py-28">
       <div className="mb-10 md:mb-14">
@@ -28,29 +43,29 @@ export function FeaturedCollections({ title, subtitle, collections }: FeaturedCo
         viewport={viewportOnce}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:auto-rows-[300px]"
       >
-        {collections.map((collection, index) => (
+        {tiles.map((tile, index) => (
           <motion.div
-            key={collection.id}
+            key={tile.id}
             variants={fadeUp}
             className={index === 0 ? "md:col-span-2 md:row-span-2" : ""}
           >
             <Link
-              href={collection.cta?.href ?? "#"}
+              href={tile.href}
               className="group relative block h-full min-h-[320px] overflow-hidden bg-luxe-gray-light md:min-h-0"
             >
               <Image
-                src={collection.image.src}
-                alt={collection.image.alt}
+                src={tile.image.src}
+                alt={tile.image.alt}
                 fill
                 sizes="(min-width: 768px) 50vw, 100vw"
                 className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
               />
               <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-black/50 p-5">
                 <div>
-                  <p className="font-heading text-xl text-luxe-white">{collection.title}</p>
-                  {collection.subtitle ? (
+                  <p className="font-heading text-xl text-luxe-white">{tile.title}</p>
+                  {tile.subtitle ? (
                     <p className="mt-1 text-xs tracking-[0.05em] text-luxe-white/80 uppercase">
-                      {collection.subtitle}
+                      {tile.subtitle}
                     </p>
                   ) : null}
                 </div>

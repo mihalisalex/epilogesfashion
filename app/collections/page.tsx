@@ -36,7 +36,23 @@ export default async function CollectionsPage() {
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
       <main id="main" className="flex-1 pt-header">
-        <FeaturedCollections title={t("collectionsTitle")} subtitle={t("collectionsSubtitle")} collections={collections} />
+        {/*
+          Every collection, flattened to the tile shape the grid now takes. This page lists
+          collections and only collections, so unlike the homepage there is nothing to resolve
+          — the mapping is here rather than in the component because the component stopped
+          knowing what a collection is.
+        */}
+        <FeaturedCollections
+          title={t("collectionsTitle")}
+          subtitle={t("collectionsSubtitle")}
+          tiles={collections.map((collection) => ({
+            id: collection.id,
+            title: collection.title,
+            subtitle: collection.subtitle,
+            image: collection.image,
+            href: collection.cta?.href ?? `/collections/${collection.slug}`,
+          }))}
+        />
       </main>
       <Footer navigation={navigation} settings={settings} />
     </>

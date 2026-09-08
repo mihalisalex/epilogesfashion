@@ -9,9 +9,10 @@ import { SocialGrid } from "@/components/sections/SocialGrid";
 import { BrandStrip } from "@/components/sections/BrandStrip";
 import { Newsletter } from "@/components/sections/Newsletter";
 import { getCollectionsByIds, getInstagramPosts, getNewArrivals, getPublishedProductsByIds, getSiteSettings } from "@/services";
-import { localizeCollections, localizeProducts } from "@/lib/localize";
+import { getCategoryBySlug } from "@/services/categories";
+import { localizeCategory, localizeCollections, localizeProducts } from "@/lib/localize";
 import type { Locale } from "@/i18n/config";
-import type { HomepageSection } from "@/types";
+import type { FeaturedTileRef, HomepageSection } from "@/types";
 
 interface SectionRendererProps {
   section: HomepageSection;
@@ -31,14 +32,59 @@ export async function SectionRenderer({ section }: SectionRendererProps) {
       return <Hero data={section.data} />;
 
     case "featuredCollections": {
-      const collections = localizeCollections(await getCollectionsByIds(section.data.collectionIds), locale);
-      return (
-        <FeaturedCollections
-          title={section.data.title}
-          subtitle={section.data.subtitle}
-          collections={collections}
-        />
+      /**
+       * A tile may point at a collection or a category, and both flatten to the same shape —
+       * see FeaturedTile. `collectionIds` is the pre-tiles format and is read only when
+       * `tiles` is absent, so a homepage saved before this existed keeps working.
+       */
+      const refs: FeaturedTileRef[] =
+        section.data.tiles ?? (section.data.collectionIds ?? []).map((id) => ({ type: "collection" as const, id }));
+
+      const collectionIds = refs.flatMap((ref) => (ref.type === "collection" ? [ref.id] : []));
+      const categorySlugs = refs.flatMap((ref) => (ref.type === "category" ? [ref.slug] : []));
+
+      const [collections, categories] = await Promise.all([
+        collectionIds.length ? getCollectionsByIds(collectionIds) : Promise.resolve([]),
+        Promise.all(categorySlugs.map((slug) => getCategoryBySlug(slug))),
+      ]);
+
+      const byCollectionId = new Map(localizeCollections(collections, locale).map((c) => [c.id, c]));
+      const byCategorySlug = new Map(
+        categories.filter((c): c is NonNullable<typeof c> => Boolean(c)).map((c) => [c.slug, localizeCategory(c, locale)])
       );
+
+      /**
+       * Order follows `refs`, not the order the two fetches came back in — the merchant
+       * arranged these tiles, and the first one is rendered twice the size of the rest.
+       *
+       * A ref that resolves to nothing is dropped rather than rendered empty: a deleted
+       * category should leave a shorter grid, not a tile linking nowhere. A category with no
+       * card image is dropped for the same reason, since the tile is mostly its picture.
+       */
+      const tiles = refs.flatMap((ref) => {
+        if (ref.type === "collection") {
+          const collection = byCollectionId.get(ref.id);
+          if (!collection) return [];
+          return [{
+            id: collection.id,
+            title: collection.title,
+            subtitle: collection.subtitle,
+            image: collection.image,
+            href: collection.cta?.href ?? `/collections/${collection.slug}`,
+          }];
+        }
+        const category = byCategorySlug.get(ref.slug);
+        if (!category?.image) return [];
+        return [{
+          id: category.id,
+          title: category.name,
+          subtitle: category.description,
+          image: category.image,
+          href: `/category/${category.slug}`,
+        }];
+      });
+
+      return <FeaturedCollections title={section.data.title} subtitle={section.data.subtitle} tiles={tiles} />;
     }
 
     case "bestSellers": {
