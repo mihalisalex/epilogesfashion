@@ -57,7 +57,6 @@
     "giftCardPlaceholder": "e.g. GIFT25",
     "apply": "Apply",
     "youMightAlsoLike": "You might also like",
-    "added": "Added to bag",
     "removed": "Removed from bag",
     "savedForLater": "Saved for later",
     "movedToBag": "Moved to bag",
@@ -151,8 +150,13 @@
     "invoiceLookupInactive": "The AADE registry shows this VAT number as inactive. Please check it before continuing.",
     "invoiceLookupNotFound": "Not found in the AADE registry. Please fill the details in yourself.",
     "customerNoteLabel": "Add a note",
-    "customerNotePlaceholder": "e.g. deliver after 5 in the afternoon",
-    "customerNoteHelp": "Optional. We will read it before your order is sent out."
+    "customerNotePlaceholder": "e.g. ring bell B, 2nd floor",
+    "customerNoteHelp": "Optional. We will read it before your order is sent out.",
+    "paymentSubtitle": "Choose how you would like to pay. You will confirm everything on the next step.",
+    "noPaymentMethodsHelp": "This can happen if your order total or delivery country falls outside what the available methods accept. Please contact us and we will help you complete your order.",
+    "cardsHandledByProvider": "Card details are entered on your payment provider secure page — they never reach this site.",
+    "redirectNote": "You will be taken to a secure page to complete your payment.",
+    "manualConfirmNote": "We will confirm your payment before dispatching your order."
   },
   "Plp": {
     "filter": "Filter",

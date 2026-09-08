@@ -127,7 +127,7 @@ export function PaymentStep() {
       <div>
         <h2 className="font-heading text-xl">{t("paymentTitle")}</h2>
         <p className="mt-1 text-sm text-luxe-gray-dark">
-          Choose how you&apos;d like to pay. You&apos;ll confirm everything on the next step.
+          {t("paymentSubtitle")}
         </p>
       </div>
 
@@ -157,8 +157,7 @@ export function PaymentStep() {
         <div className="border border-border bg-luxe-gray-light p-4 text-sm">
           <p className="font-medium">{t("noPaymentMethods")}</p>
           <p className="mt-1 text-luxe-gray-dark">
-            This can happen if your order total or delivery country falls outside what the available methods accept.
-            Please contact us and we&apos;ll help you complete your order.
+            {t("noPaymentMethodsHelp")}
           </p>
         </div>
       ) : null}
@@ -224,7 +223,7 @@ export function PaymentStep() {
 
       <p className="flex items-center gap-1.5 text-xs text-luxe-gray-dark">
         <ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.5} />
-        Card details are entered on your payment provider&apos;s secure page — they never reach this site.
+        {t("cardsHandledByProvider")}
       </p>
 
       <button
@@ -248,6 +247,7 @@ function PaymentMethodOption({
   isSelected: boolean;
   onSelect: () => void;
 }) {
+  const t = useTranslations("Checkout");
   return (
     <button
       type="button"
@@ -279,12 +279,12 @@ function PaymentMethodOption({
         <span className="mt-0.5 block text-xs text-luxe-gray-dark">{method.description}</span>
         {method.requiresRedirect ? (
           <span className="mt-1 block text-[11px] text-luxe-gray-dark">
-            You&apos;ll be taken to a secure page to complete your payment.
+            {t("redirectNote")}
           </span>
         ) : null}
         {method.requiresManualConfirmation && !method.requiresRedirect ? (
           <span className="mt-1 block text-[11px] text-luxe-gray-dark">
-            We&apos;ll confirm your payment before dispatching your order.
+            {t("manualConfirmNote")}
           </span>
         ) : null}
       </span>

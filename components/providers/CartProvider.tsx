@@ -184,13 +184,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         await withMutation((cartId) => commerce.cart.addLineItem(cartId, input));
         commerce.analytics.track({ name: "add_to_cart", properties: { productId: input.productId, quantity: input.quantity } });
-        toast({ title: t("added"), tone: "success" });
+        /**
+         * No "added to cart" toast, because the drawer opening on the next line IS the
+         * confirmation — and a better one. It shows the shoe, the colour, the size, the price
+         * and the running total; the toast said only that something had happened.
+         *
+         * It also landed on top of the drawer's own checkout button. Both are anchored bottom
+         * right, and the toast sits at z-200, so the one thing a shopper is meant to press was
+         * covered by a message telling them they could press it.
+         */
         setIsDrawerOpen(true);
       } catch (error) {
         reportError(error, t("couldNotAdd"));
       }
     },
-    [commerce, withMutation, reportError, toast, t]
+    [commerce, withMutation, reportError, t]
   );
 
   const updateQuantity = useCallback(

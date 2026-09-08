@@ -3,9 +3,9 @@
   "rates": [
     {
       "id": "standard",
-      "label": "Παράδοση κατ' οίκον",
-      "description": "ACS Courier · 3–5 εργάσιμες ημέρες",
-      "estimatedDelivery": "3–5 εργάσιμες ημέρες",
+      "label": "Παράδοση στον χώρο σας",
+      "description": "ACS Courier · 1–3 εργάσιμες ημέρες",
+      "estimatedDelivery": "1–3 εργάσιμες ημέρες",
       "amount": 2.95,
       "enabled": true,
       "freeShippingEligible": true,
