@@ -161,6 +161,10 @@ function mainActivity(xml: string): string {
  * invoice on, so an unrecognised value returns `null` and the caller treats it as "no opinion"
  * rather than as inactive. The failure this avoids: AADE adds a third flag value, and a Greek
  * shop starts silently rejecting valid businesses at checkout.
+ *
+ * `1` is now confirmed against live responses (2026-09-08) — trading companies came back with
+ * it. `2` is still inferred: verifying it needs a genuinely deactivated ΑΦΜ, which is not
+ * something to go looking for, so the three-valued guard stays exactly as it is.
  */
 function interpretActive(flag: string): boolean | null {
   if (flag === "1") return true;
