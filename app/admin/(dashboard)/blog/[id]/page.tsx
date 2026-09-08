@@ -37,7 +37,12 @@ export default async function AdminBlogDetailPage({ params }: AdminBlogDetailPag
           </form>
         }
       />
-      <BlogPostForm defaultValues={blogPostToFormValues(post)} onSubmit={boundUpdate} submitLabel="Save Changes" />
+      {/*
+        Keyed by id for the reason the new-product page gives: without it, navigating from one
+        record's edit form to another shows the FIRST record's values, and saving writes them
+        onto the second.
+      */}
+      <BlogPostForm key={id} defaultValues={blogPostToFormValues(post)} onSubmit={boundUpdate} submitLabel="Save Changes" />
     </div>
   );
 }

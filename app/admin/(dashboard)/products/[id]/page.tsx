@@ -40,7 +40,12 @@ export default async function AdminProductDetailPage({ params }: AdminProductDet
         }
         actions={<ProductLifecycleActions id={id} name={product.name} status={product.status} />}
       />
-      <ProductForm
+      {/*
+        Keyed by id for the reason the new-product page gives: without it, navigating from one
+        record's edit form to another shows the FIRST record's values, and saving writes them
+        onto the second.
+      */}
+      <ProductForm key={id}
         defaultValues={productToFormValues(product)}
         collections={collections.map((c) => ({ id: c.id, title: c.title }))}
         categories={categories}

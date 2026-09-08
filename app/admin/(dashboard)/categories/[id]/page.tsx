@@ -53,7 +53,12 @@ export default async function AdminCategoryDetailPage({ params }: AdminCategoryD
         </div>
       ) : null}
 
-      <CategoryForm
+      {/*
+        Keyed by id for the reason the new-product page gives: without it, navigating from one
+        record's edit form to another shows the FIRST record's values, and saving writes them
+        onto the second.
+      */}
+      <CategoryForm key={id}
         defaultValues={categoryToFormValues(category)}
         parentOptions={parentOptions}
         seoDefaults={{ siteUrl: seo.siteUrl, titleTemplate: seo.titleTemplate }}

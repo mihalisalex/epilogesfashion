@@ -20,7 +20,13 @@ export default async function NewProductPage() {
   return (
     <div>
       <AdminPageHeader title="New Product" description="Add a new product to the catalog." />
-      <ProductForm
+      {/*
+        `key` forces a fresh mount. react-hook-form reads defaultValues ONCE, on mount, and this
+        page and the [id] page render <ProductForm> at the same position in the tree — so a client-side
+        navigation between them reuses the instance and keeps the previous record's values. That
+        is why the form arrived pre-filled and a hard refresh cleared it.
+      */}
+      <ProductForm key="new"
         defaultValues={emptyProductFormValues}
         collections={collections.map((c) => ({ id: c.id, title: c.title }))}
         categories={categories}

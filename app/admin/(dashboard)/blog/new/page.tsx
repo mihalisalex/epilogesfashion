@@ -22,7 +22,13 @@ export default async function NewBlogPostPage() {
   return (
     <div>
       <AdminPageHeader title="New Post" description="Write a new journal post." />
-      <BlogPostForm
+      {/*
+        `key` forces a fresh mount. react-hook-form reads defaultValues ONCE, on mount, and this
+        page and the [id] page render <BlogPostForm> at the same position in the tree — so a client-side
+        navigation between them reuses the instance and keeps the previous record's values. That
+        is why the form arrived pre-filled and a hard refresh cleared it.
+      */}
+      <BlogPostForm key="new"
         defaultValues={{ ...emptyBlogFormValues, publishedAt: new Date().toISOString().slice(0, 10) }}
         onSubmit={createBlogPost}
         submitLabel="Publish Post"

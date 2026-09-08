@@ -44,7 +44,12 @@ export default async function AdminCollectionDetailPage({ params }: AdminCollect
           </form>
         }
       />
-      <CollectionForm
+      {/*
+        Keyed by id for the reason the new-product page gives: without it, navigating from one
+        record's edit form to another shows the FIRST record's values, and saving writes them
+        onto the second.
+      */}
+      <CollectionForm key={id}
         defaultValues={collectionToFormValues(collection)}
         products={products.map((p) => ({ id: p.id, name: p.name }))}
         seoDefaults={{ siteUrl: seo.siteUrl, titleTemplate: seo.titleTemplate }}
