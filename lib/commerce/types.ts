@@ -193,6 +193,8 @@ export interface Checkout {
   shippingRate?: ShippingRate;
   giftWrap?: boolean;
   giftMessage?: string;
+  /** A free-text delivery instruction from the shopper. Never a gift message — see the schema. */
+  customerNote?: string;
   /** The method the shopper picked. A stored preference only — availability is re-validated server-side at order time. */
   paymentMethodId?: string;
   status: CheckoutStatus;
@@ -210,6 +212,8 @@ export interface Order {
   shippingRate: ShippingRate;
   giftWrap?: boolean;
   giftMessage?: string;
+  /** A free-text delivery instruction from the shopper. Never a gift message — see the schema. */
+  customerNote?: string;
   status: "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
   /** Set once a shipment exists — see lib/courier/. */
   trackingNumber?: string;
@@ -459,6 +463,7 @@ export interface CheckoutService {
   updateBillingAddress(checkoutId: string, address: Address): Promise<Checkout>;
   setShippingRate(checkoutId: string, rateId: string): Promise<Checkout>;
   setGiftWrap(checkoutId: string, input: { giftWrap: boolean; giftMessage?: string }): Promise<Checkout>;
+  setCustomerNote(checkoutId: string, note: string): Promise<Checkout>;
   setPaymentMethod(checkoutId: string, paymentMethodId: string): Promise<Checkout>;
   completeCheckout(checkoutId: string, cart: Cart): Promise<CompleteCheckoutResult>;
 }

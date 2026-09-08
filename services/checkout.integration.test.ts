@@ -124,6 +124,35 @@ describe.skipIf(!HAS_TEST_DB)("completeCheckout, against the real service", () =
     expect(await remainingStock(product.id)).toBe(1);
   }, 90_000);
 
+
+  /**
+   * The note is written on the checkout and read off the ORDER, because that hand-off is the
+   * only part that can silently fail: a note saved perfectly and then not copied across at
+   * completion looks completely fine to the shopper and reaches nobody who packs the box.
+   */
+  it("carries the delivery note from the checkout onto the order", async () => {
+    const product = await makeProduct(1);
+    const checkoutId = await makeCheckout(await makeCartWith(product.id, 1));
+    await checkout.setCustomerNote(checkoutId, "  παράδοση μετά τις 5 το απόγευμα  ");
+
+    const result = await checkout.completeCheckout(checkoutId);
+
+    // Trimmed on the way in, and present on the order rather than only on the checkout.
+    expect(result.order.customerNote).toBe("παράδοση μετά τις 5 το απόγευμα");
+  }, 90_000);
+
+  it("leaves an order with no note undefined rather than empty", async () => {
+    const product = await makeProduct(1);
+    const checkoutId = await makeCheckout(await makeCartWith(product.id, 1));
+    // Whitespace only, which is what typing and then deleting leaves behind.
+    await checkout.setCustomerNote(checkoutId, "   ");
+
+    const result = await checkout.completeCheckout(checkoutId);
+
+    expect(result.order.customerNote).toBeUndefined();
+  }, 90_000);
+
+
   it("lets exactly one of ten simultaneous buyers take the last unit", async () => {
     /**
      * The finding TEST-001 was actually about. Ten checkouts, one unit, all completed at once

@@ -9,6 +9,7 @@ import { shippingRateSchema } from "@/lib/validation/commerce";
 import { buildShippingRates, resolveShippingRate, type ShippingDestination } from "@/lib/shipping";
 import { getShippingSettings } from "@/services/shipping";
 import { GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
+import { CUSTOMER_NOTE_MAX_LENGTH } from "@/lib/customer-note";
 import { CommerceError, type Address, type Checkout, type CompleteCheckoutResult, type Order } from "@/lib/commerce/types";
 import { getEmailProvider, orderConfirmationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
@@ -180,6 +181,24 @@ export async function setGiftWrap(checkoutId: string, giftWrap: boolean, giftMes
   const row = await prisma.checkout.update({
     where: { id: checkoutId },
     data: { giftWrap, giftMessage: giftWrap ? (giftMessage?.slice(0, GIFT_MESSAGE_MAX_LENGTH) ?? null) : null },
+  });
+  return toCheckout(row);
+}
+
+/**
+ * The shopper's delivery note — "παράδοση μετά τις 5", "χτυπήστε το κουδούνι Β".
+ *
+ * Trimmed and capped, and an empty note clears the column rather than storing "". The cap is
+ * the point: this text is read by a person packing a box and, once ACS is live, may be handed
+ * to a courier whose own field is finite. A note nobody reads to the end is worse than a short
+ * one, so the limit is enforced here rather than trusted from the browser.
+ */
+export async function setCustomerNote(checkoutId: string, note: string): Promise<Checkout> {
+  await requireCheckoutRow(checkoutId);
+  const trimmed = note.trim().slice(0, CUSTOMER_NOTE_MAX_LENGTH);
+  const row = await prisma.checkout.update({
+    where: { id: checkoutId },
+    data: { customerNote: trimmed || null },
   });
   return toCheckout(row);
 }
@@ -465,6 +484,7 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
           shippingRate: toJsonInput(shippingRate),
           giftWrap: checkoutRow.giftWrap,
           giftMessage: checkoutRow.giftMessage,
+          customerNote: checkoutRow.customerNote,
         },
       });
 

@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/format";
 import { computeShippingChargeForRate } from "@/lib/shipping";
 import { useCart } from "@/components/providers/CartProvider";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
+import { CUSTOMER_NOTE_MAX_LENGTH } from "@/lib/customer-note";
 
 function formatAddress(address: { firstName: string; lastName: string; company?: string; address1: string; address2?: string; city: string; region?: string; postalCode: string; countryCode: string; phone?: string } | null) {
   if (!address) return null;
@@ -39,6 +40,8 @@ export function ReviewStep() {
     selectedRateId,
     giftWrap,
     giftMessage,
+    customerNote,
+    setCustomerNote,
     paymentMethods,
     selectedPaymentMethodId,
     placeOrder,
@@ -118,6 +121,30 @@ export function ReviewStep() {
             <p className="text-sm text-luxe-gray-dark">{giftMessage ? `"${giftMessage}"` : t("noMessageAdded")}</p>
           </div>
         ) : null}
+      </div>
+
+      {/*
+        The delivery note, on the review step rather than beside the address.
+
+        By this point the shopper has settled where and when — a note like "παράδοση μετά τις
+        5" is a remark about the order as a whole, and asking for it at the address field would
+        have invited a second address instead. Optional and quiet, because most orders have
+        nothing to say — the help line promises only what the shop can keep.
+      */}
+      <div className="border-t border-border pt-6">
+        <label htmlFor="customer-note" className="text-eyebrow mb-1.5 block">
+          {t("customerNoteLabel")}
+        </label>
+        <textarea
+          id="customer-note"
+          rows={3}
+          maxLength={CUSTOMER_NOTE_MAX_LENGTH}
+          defaultValue={customerNote}
+          placeholder={t("customerNotePlaceholder")}
+          onBlur={(event) => void setCustomerNote(event.target.value)}
+          className="w-full resize-y border border-border bg-transparent px-3 py-2.5 text-sm outline-none focus:border-luxe-black"
+        />
+        <p className="mt-1.5 text-xs text-luxe-gray-dark">{t("customerNoteHelp")}</p>
       </div>
 
       <button

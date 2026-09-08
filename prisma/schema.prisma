@@ -519,6 +519,11 @@ model Checkout {
   giftWrap    Boolean @default(false)
   giftMessage String?
 
+  /// A free-text delivery instruction from the shopper, e.g. "παράδοση μετά τις 5".
+  /// Deliberately NOT giftMessage: that column stays reserved for gift wrapping, which is
+  /// retired from the UI but kept intact so December is a UI change rather than a rebuild.
+  customerNote String?
+
   /// The payment method the shopper selected, e.g. "cod" | "stripe_card".
   /// Nullable: it isn't chosen until the payment step, and an abandoned checkout
   /// never gets one. Availability is re-validated server-side at order time —
@@ -552,6 +557,11 @@ model Order {
 
   giftWrap    Boolean @default(false)
   giftMessage String?
+
+  /// A free-text delivery instruction from the shopper, e.g. "παράδοση μετά τις 5".
+  /// Deliberately NOT giftMessage: that column stays reserved for gift wrapping, which is
+  /// retired from the UI but kept intact so December is a UI change rather than a rebuild.
+  customerNote String?
 
   /// "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded"
   /// Starts at "confirmed" — EXACT parity with the mock's completeCheckout, which sets

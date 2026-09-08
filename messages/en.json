@@ -149,7 +149,10 @@
     "invoiceLookupLoading": "Looking up the AADE registry…",
     "invoiceLookupFound": "Filled in from the AADE registry. Check it and correct anything that is wrong.",
     "invoiceLookupInactive": "The AADE registry shows this VAT number as inactive. Please check it before continuing.",
-    "invoiceLookupNotFound": "Not found in the AADE registry. Please fill the details in yourself."
+    "invoiceLookupNotFound": "Not found in the AADE registry. Please fill the details in yourself.",
+    "customerNoteLabel": "Add a note",
+    "customerNotePlaceholder": "e.g. deliver after 5 in the afternoon",
+    "customerNoteHelp": "Optional. We will read it before your order is sent out."
   },
   "Plp": {
     "filter": "Filter",

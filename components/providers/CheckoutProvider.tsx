@@ -75,6 +75,8 @@ interface CheckoutContextValue {
   selectShippingRate: (rateId: string, options?: { advance?: boolean }) => Promise<void>;
   giftWrap: boolean;
   giftMessage: string;
+  customerNote: string;
+  setCustomerNote: (note: string) => Promise<void>;
   setGiftWrap: (giftWrap: boolean, giftMessage?: string) => Promise<void>;
   paymentMethods: CheckoutPaymentMethod[];
   isLoadingPaymentMethods: boolean;
@@ -109,6 +111,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [giftWrap, setGiftWrapState] = useState(false);
   const [giftMessage, setGiftMessageState] = useState("");
+  const [customerNote, setCustomerNoteState] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
   const [paymentMethodsError, setPaymentMethodsError] = useState<string | null>(null);
@@ -218,6 +221,23 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       if (options?.advance !== false) advanceTo("payment");
     },
     [checkout, commerce, advanceTo]
+  );
+
+  /**
+   * Saved on blur from the review step, not on every keystroke — one write when the shopper
+   * looks away, rather than a request per character typed into a free-text box.
+   *
+   * Local state updates first so the textarea never fights the person typing in it, and a
+   * failed save leaves what they wrote on screen rather than silently reverting it.
+   */
+  const setCustomerNote = useCallback(
+    async (note: string) => {
+      setCustomerNoteState(note);
+      if (!checkout) return;
+      const updated = await commerce.checkout.setCustomerNote(checkout.id, note);
+      setCheckout(updated);
+    },
+    [checkout, commerce]
   );
 
   const setGiftWrap = useCallback(
@@ -353,6 +373,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     giftWrap,
     giftMessage,
     setGiftWrap,
+    customerNote,
+    setCustomerNote,
     paymentMethods,
     isLoadingPaymentMethods,
     paymentMethodsError,

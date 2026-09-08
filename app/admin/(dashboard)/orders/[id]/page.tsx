@@ -162,6 +162,19 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
             </div>
           ) : null}
           {/*
+            The shopper's delivery note, above the addresses for the same reason as the
+            invoice: it changes what the person packing the box has to do. "Παράδοση μετά τις
+            5" is useless discovered after the courier has already been given the parcel.
+          */}
+          {order.customerNote ? (
+            <div className="border-2 border-luxe-black bg-luxe-white p-4">
+              <h3 className="mb-3 text-xs font-medium tracking-[0.05em] uppercase">Σημείωση πελάτη</h3>
+              {/* whitespace-pre-line: the shopper may have typed line breaks, and collapsing
+                  them can run two separate instructions into one sentence. */}
+              <p className="text-sm whitespace-pre-line">{order.customerNote}</p>
+            </div>
+          ) : null}
+          {/*
             Τιμολόγιο, shown FIRST and outlined, because it is the one thing on this page that
             changes what the merchant has to do: an order carrying invoice details cannot be
             closed with an ordinary receipt. Buried among the addresses it would be read after

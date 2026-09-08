@@ -49,6 +49,15 @@ export function createRemoteCheckoutService(): CheckoutService {
       ).checkout;
     },
 
+    async setCustomerNote(checkoutId, note) {
+      return (
+        await fetchJson<{ checkout: Checkout }>(`/api/checkout/${checkoutId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ customerNote: note }),
+        })
+      ).checkout;
+    },
+
     async setPaymentMethod(checkoutId, paymentMethodId) {
       return (
         await fetchJson<{ checkout: Checkout }>(`/api/checkout/${checkoutId}`, {

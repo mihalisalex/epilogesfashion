@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { setPaymentMethod, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
+import { setCustomerNote, setPaymentMethod, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { addressSchema, contactSchema } from "@/lib/validation/checkout";
@@ -82,9 +82,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
      */
     // Stored as a preference only — services/checkout.ts re-validates it against the
     // live configuration at order time, so writing it here grants nothing.
+    // Free text, so length and trimming are enforced in the service, never trusted from here.
+    if (typeof body.customerNote === "string") checkout = await setCustomerNote(checkoutId, body.customerNote);
     if (typeof body.paymentMethodId === "string") checkout = await setPaymentMethod(checkoutId, body.paymentMethodId);
 
-    if (!checkout) return invalidInputResponse("Body must include at least one of email, shippingAddress, billingAddress, shippingRateId, paymentMethodId.");
+    if (!checkout) return invalidInputResponse("Body must include at least one of email, shippingAddress, billingAddress, shippingRateId, customerNote, paymentMethodId.");
     return NextResponse.json({ checkout });
   } catch (error) {
     return commerceErrorResponse(error);
