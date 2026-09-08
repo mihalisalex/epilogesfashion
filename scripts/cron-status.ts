@@ -144,10 +144,45 @@ async function main(): Promise<void> {
     console.log("  the fallback in lib/rate-limit.ts. Check that the deploy went out before");
     console.log("  reading anything into it — the run log starts empty.");
   } else if (scheduled.length > 0) {
-    console.log(`  Vercel's scheduler FIRED — last at ${scheduled[0].at.replace("T", " ").slice(0, 19)}Z.`);
-    console.log("  This is what closes OPS-001. Confirm it happens a second night before marking");
-    console.log("  the finding done: one run after three failed slots is as easily a coincidence");
-    console.log("  as a recovery.");
+    /**
+     * OPS-001 named THREE subsystems, so the verdict counts all three rather than reporting
+     * retention's timestamp and leaving the reader to infer the rest. The first version did
+     * exactly that and read as though only one job had been checked — which is how the
+     * finding came to be carried as "half resolved" in the first place.
+     */
+    const onSchedule = statuses.filter((status) => status.lastTrigger === "schedule");
+    const notYet = statuses.filter((status) => status.lastTrigger !== "schedule");
+
+    console.log(`  Vercel's scheduler FIRED — ${onSchedule.length} of ${statuses.length} jobs have a scheduled run:`);
+    for (const status of onSchedule) {
+      console.log(`    ${status.job.padEnd(18)} ${status.lastRunAt?.replace("T", " ").slice(0, 19)}Z`);
+    }
+    if (notYet.length > 0) {
+      console.log("");
+      console.log(`  Still unproven: ${notYet.map((status) => status.job).join(", ")}.`);
+      console.log("  A job whose slot has not elapsed under observation is UNMEASURED, not failed —");
+      console.log("  read it again once that slot's ±59 min window has closed.");
+    }
+
+    /**
+     * The second-night rule, and why it drops away rather than nagging forever: one run after
+     * three failed slots is as easily a coincidence as a recovery, but two consecutive nights
+     * is a pattern. Once retention has two, the finding is done and this stops asking.
+     */
+    const retentionNights = new Set(scheduled.map((run) => run.at.slice(0, 10)));
+    if (notYet.length > 0) {
+      // Nothing to add — the line above already says what is missing.
+    } else if (retentionNights.size >= 2) {
+      console.log("");
+      console.log(`  data-retention has fired on ${retentionNights.size} separate days under observation.`);
+      console.log("  That is a pattern, not a coincidence. OPS-001 is closed — record it in AUDIT.md");
+      console.log("  and stop running this daily; it is a spot check now, not a watch.");
+    } else {
+      console.log("");
+      console.log("  Every job is green, but data-retention has only ONE scheduled day so far.");
+      console.log("  Confirm a second night before marking OPS-001 done: one run after three failed");
+      console.log("  slots is as easily a coincidence as a recovery.");
+    }
   } else if (slots.length === 0) {
     /**
      * The case this script got wrong on its first real run, and the reason for the slot

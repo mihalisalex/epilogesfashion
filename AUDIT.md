@@ -1,10 +1,10 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
-**Remediated:** 2026-09-04 → 2026-09-07 · Phases 1–4 plus post-audit findings
-**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`), 2026-09-06 (`OPS-001` escalated) and 2026-09-07 (`OPS-001` **de-escalated** — its evidence of failure turned out to be three measurement defects, and Vercel's scheduler is demonstrably firing)
+**Remediated:** 2026-09-04 → 2026-09-08 · Phases 1–4, post-audit findings, and a day of owner-driven changes
+**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`), 2026-09-06 (`OPS-001` escalated) and 2026-09-07 (`OPS-001` **de-escalated** — its evidence of failure turned out to be three measurement defects, and Vercel's scheduler is demonstrably firing) and 2026-09-08 (**all three `OPS-001` jobs observed running on the scheduler**, one confirmation night left)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **455/455** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **526/526** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
 
 ## Verdict
 
@@ -38,8 +38,20 @@ retention genuinely had never run. What is no longer established is that it has 
 Two things shipped regardless, and both earn their place either way: every scheduled job now
 records when it ran and **what triggered it**, and retention runs from ordinary request
 traffic when a day passes with no recorded run — verified in production, 492 overdue rows to
-zero without a human. The next slot answers the remaining question with a dated record instead
-of another inference.
+zero without a human.
+
+**On 8 September the next slot answered it.** All three jobs recorded a run with
+`trigger: schedule` — retention 03:49:37Z, `email-followups` 08:56:47Z, `instagram-token`
+04:12:10Z — and **0 rows predate the last pass's own cutoff**, the only count that can show a
+pass failed. The finding's own sentence, *never been observed running*, is no longer true of
+any of the three. It stays open on one point only: retention has a single scheduled day on
+record, and one run after three failed slots is as easily a coincidence as a recovery. A
+second consecutive night closes it.
+
+That day also produced a corollary to the rule this finding taught. At 08:25 UTC
+`email-followups` still read `never` and looked broken; its slot had not closed, and Hobby's
+precision is ±59 minutes. It fired at 08:56. **Ask what a passing result would look like —
+and whether a failing one was even possible yet.**
 
 **`PRIV-002` — GDPR access and erasure — is now built.** Export and erasure as admin actions,
 with erasure implemented as anonymisation where tax law requires the record kept: the order
@@ -146,7 +158,7 @@ treat this as hardening rather than a gate.
 
 | # | Item | Owner | Where it stands |
 |---|---|---|---|
-| 1 | **The retention schedule has never been observed running** (`OPS-001`) | You — one command after the next slot | 🟡 **Downgraded 2026-09-07.** The evidence that it was still failing was three measurement defects, not a broken cron, and `email-followups` fires inside its slot on five dated occasions — so **Vercel's scheduler works here**. `data-retention` is no longer shown to be broken; it has simply never been watched. Retention is enforced regardless, from ordinary traffic, verified in production. Run `npm run cron:status` after 04:30 UTC to settle it. |
+| 1 | **All three scheduled jobs observed firing — one confirmation left** (`OPS-001`) | You — one command tomorrow morning | 🟡 **Downgraded 2026-09-07.** The evidence that it was still failing was three measurement defects, not a broken cron, and `email-followups` fires inside its slot on five dated occasions — so **Vercel's scheduler works here**. `data-retention` is no longer shown to be broken; it has simply never been watched. Retention is enforced regardless, from ordinary traffic, verified in production. ✅ **2026-09-08:** all three jobs recorded a run with `trigger: schedule` — retention 03:49:37Z, email-followups 08:56:47Z, instagram-token 04:12:10Z — and **0 rows predate the last pass's own cutoff**. Open only until `data-retention` fires a second consecutive night; run `npm run cron:status` tomorrow morning. |
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
 | 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 4 | **The CSP nonce** (`SEC-003`) | You — decision | ⛔ Still deferred, but **not for the reason first given**. The "it would force dynamic rendering" argument was disproved by `PERF-002`: that had already happened. It stands on the other three grounds — no injection sink exists, highest blast radius, and the proxy matcher does not cover checkout. |
@@ -1207,12 +1219,149 @@ FROM site_content WHERE key = 'cron:data-retention';
   evidence to take to Vercel support is now a dated record rather than an inference.
 - No row at all → the fallback is not being reached either, which would be a new finding.
 
+### RESOLVED IN SUBSTANCE — 2026-09-08 09:05 UTC. All three jobs observed on the scheduler
+
+The finding's own words were "three subsystems are deployed but have never been observed
+running." All three have now been observed running, on Vercel's scheduler rather than the
+fallback, under a run log that records what triggered each one:
+
+```
+ok  data-retention    2026-09-08 03:49:37Z   trigger: schedule
+ok  email-followups   2026-09-08 08:56:47Z   trigger: schedule
+ok  instagram-token   2026-09-08 04:12:10Z   trigger: schedule
+```
+
+Retention is doing its job as well as running: **0 rows older than the last pass's own
+cutoff**, which is the only count that can prove a pass failed. The 210 rows older than two
+days are the normal steady state between daily passes — the exact number this finding spent
+three days misreading as evidence of failure.
+
+**`email-followups` fired at 08:56:47Z, 56 minutes into its 08:00 slot.** That is worth
+recording because at 08:25 it still read `never`, and the temptation was to call it broken.
+Hobby's scheduling precision is ±59 minutes, so its slot had not closed; declaring failure
+then would have been the same error as the three that opened this finding, in the opposite
+direction. The rule earned above — *ask what a passing result would look like* — has a
+corollary: **ask whether a failing result was even possible yet.** A slot that has not elapsed
+under observation is unmeasured, not failed. `scripts/cron-status.ts` now says so in its own
+verdict, and names every job rather than only retention.
+
+**Still open by one confirmation.** `data-retention` has exactly one scheduled day on record.
+One run after three failed slots is as easily a coincidence as a recovery, so this stays open
+until it fires a second consecutive night — the 03:30 UTC slot on 9 September. The script asks
+for that itself and stops asking once it sees two dated days.
+
+The audit-log leg is unchanged and still open for its original benign-or-broken reason:
+`admin_audit_logs` holds 0 rows because no audited admin action has been performed since
+`OBS-003` widened the coverage. One audited action settles it.
+
 **The audit-log leg of this finding is also still open**, and for the original reason rather
 than a new one: `recordAdminAction` is now wired at 21 call sites across 10 admin surfaces
 (`OBS-003`), and `admin_audit_logs` still holds **0 rows** — because no audited admin action
 has been performed since it was widened, not because anything is known to be broken. That is
 the same benign-or-broken ambiguity this finding was opened about, and it is resolved the same
 way: perform one audited action and confirm the row appears in `/admin/activity`.
+
+---
+
+## What shipped — 2026-09-08
+
+Eighteen commits, and unusually for this audit **most of them are not remediation**. The shop
+was already ready to launch; this is the day it started being shaped by someone using it. Ten
+of the eighteen came from the owner looking at a screen and saying what was wrong with it,
+which is the same source that produced `PERF-004` and remains the one no audit pass replaces.
+
+Recorded here because three of them were defects a reader of this file would want to know
+about, and two of them changed money or data.
+
+### Two money-or-data defects found by using the shop
+
+**Gift wrap could be charged with no way to remove it.** The checkbox was taken out of the
+delivery step when the merchant retired the service, and the note left behind said nothing set
+the flag any more. That was true of the checkout steps and false of the system:
+`PATCH /api/checkout/[checkoutId]` went on accepting `giftWrap`. So a checkout could carry a
+fee that no screen on the site could take back off — shown in the summary, charged at order
+creation, uncancellable by the shopper. It surfaced on **the merchant's own cart**, a real
+checkout from 2026-08-29 that had been quietly holding the charge. The route no longer accepts
+the field; `scripts/clear-gift-wrap.ts` cleared the one live row and deliberately left the two
+completed orders alone, because those were charged and delivered with wrapping and rewriting
+them would be falsifying a receipt. (`1779ad8`)
+
+**A stored shipping rate was never re-priced when the address changed.** The chosen rate is
+written onto the checkout with its price baked in, and every later step reads the charge back
+from there. Nothing re-examined it when the address moved, so a shopper could pick a rate in
+Athens, change the delivery address to a remote postal code or to Portugal, and keep the
+Athens price — and the order would be placed at it. `updateShippingAddress` now re-resolves the
+stored rate, re-pricing it or clearing it when the new destination cannot use it at all.
+Verified by PATCHing the Greek rate onto a Portuguese checkout and getting the EU rate back.
+(`0a55c23`)
+
+### The Greek shop was still speaking English in three places
+
+Each was invisible to `tsc`, `eslint` and 526 tests, and each was found by looking at the page.
+
+- **Checkout validation errors.** A fully Greek form answered ΟΝΟΜΑ with "First name is
+  required". The strings were inline in the Zod schemas, which are shared by the client forms
+  and the API routes, so there was nowhere for a translation to enter. Each schema is now a
+  factory taking a message resolver; `useTranslations("Validation")` already has that exact
+  signature. The bare exports keep English defaults on purpose — a JSON error body is read by
+  developers, and `storedAddressSchema` takes no resolver at all, because failing to parse an
+  address the shop already wrote is a bug report rather than a prompt. This also fixed the
+  mirror-image bug: the τιμολόγιο messages were hardcoded *Greek*. (`e088301`)
+- **Payment methods.** "Cash on Delivery" and "Bank Transfer" came from `defaultDisplayName` on
+  the provider definitions, which the database overrides only when an admin sets them, and
+  nobody had. Now Αντικαταβολή and Άμεση τραπεζική μεταφορά, the latter saying what a Greek
+  customer actually needs — IBAN, the order number as αιτιολογία, and when it ships. Five more
+  hardcoded English strings on the same step went with them. (`53bdcf2`)
+- **Delivery labels.** These live in the `site_content` row, not in `data/shipping.json` — the
+  JSON is only the fallback for a fresh install, so editing it alone changes nothing a customer
+  sees. Both updated through `scripts/update-shipping-copy.ts`, which edits one rate in place
+  so the 488 remote postal codes beside it survive. (`56a1ee5`)
+
+### Two features, and the one bug worth reading about
+
+**ΑΦΜ autofill** (`lib/tax-registry.ts`). Typing a VAT number at checkout fills Επωνυμία, ΔΟΥ
+and δραστηριότητα from AADE's RgWsPublic2 registry. The checksum runs before the network call,
+which rejects most mistyped input for free and keeps a wrong number from reaching a government
+API that logs every call against this shop's account.
+
+**It shipped broken, and how it broke is the point.** Every call in production returned
+`SOAPMessage request format error - java.lang.NullPointerException`. The cause was
+`<as_on_date/>` — a self-closing empty element for an optional `xsd:date` the shop has no value
+for. AADE's parser does not read that as absent; it tries to parse `""` as a date and throws.
+
+The request had been derived from AADE's own published schema, and *that felt like
+verification*. It is not. **A schema says what is allowed; only the live service says what its
+parser survives.** The response parsing had tests and the request had none, because the request
+looked like the half that could not be wrong. It now has its own regression tests.
+
+The diagnosis technique is worth keeping: a malformed envelope returns that format error, while
+a well-formed one returns `RG_WS_PUBLIC_TOKEN_USERNAME_NOT_AUTHENTICATED`. So **deliberately
+wrong credentials are enough to verify request shape** — getting the auth error is the proof,
+and no real credentials are needed. (`8d34908`, `39e4dbb`)
+
+**Customer delivery notes** (`f9feb48`). A textarea on the review step; the note travels onto
+the order and shows outlined at the top of the admin order page. The only new migration in this
+audit's history, and additive and nullable so it was safe to apply *before* the code deployed —
+the running build simply never selected the columns. Not folded into the unused `giftMessage`
+column, which stays reserved so gift wrapping is a UI change in December rather than a rebuild.
+Tested where it can silently fail: the checkout-to-order hand-off, since a note saved perfectly
+and then not copied across looks fine to the shopper and reaches nobody.
+
+### A fix that was reverted before it was fixed
+
+A toast raised while the cart drawer is open lands on the drawer's checkout button — and for
+the remove-from-cart toast, the undo it offers is the thing being covered. The first attempt
+used a Tailwind `sm:pr-[29rem]` utility and **did not work**: a probe element with a
+byte-identical class list computed 464px while the real viewport stayed at 16px, and the
+difference was never explained. It was reverted rather than shipped with a comment claiming a
+fix it did not deliver, and the case was reported honestly as still broken.
+
+The second attempt is a plain rule in `globals.css` keyed off a data attribute, outside
+`@layer`, where its specificity is not in question. Verified by measurement rather than by
+reading: the toast's right edge sits at 448px against a drawer starting at 528px. (`2f02600`)
+
+**The rule this leaves behind:** an unexplained fix is not a fix. Reverting and saying so cost
+one exchange; shipping it would have left a comment in the codebase asserting something untrue.
 
 ---
 
