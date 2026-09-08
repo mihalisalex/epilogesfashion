@@ -282,6 +282,8 @@ export interface SearchOptions {
   collectionId?: string;
   colors?: string[];
   sizes?: string[];
+  /** REFINEMENT, like `colors` — see the note on `genders`. Matched against Product.brand. */
+  brands?: string[];
   tags?: string[];
   availability?: "in-stock" | "all";
   isNew?: boolean;

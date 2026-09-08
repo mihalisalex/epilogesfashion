@@ -8,6 +8,7 @@ import type { SearchFacet } from "@/lib/commerce/types";
 export interface PlpFilters {
   colors: string[];
   sizes: string[];
+  brands: string[];
   availability: "in-stock" | "all";
   priceRange: [number, number];
   /** null means "all" — the scope's own genders, unfiltered. */
@@ -48,12 +49,14 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
   const t = useTranslations("Plp");
   const colorFacets = getFacetValues(facets, "color");
   const sizeFacets = getFacetValues(facets, "size");
+  const brandFacets = getFacetValues(facets, "brand");
   // Only worth a control when the scope actually holds more than one gender. A collection of
   // women's shoes would otherwise render a "For" group with one option in it.
   const genderFacets = showGender ? getFacetValues(facets, "gender") : [];
   const hasActiveFilters =
     filters.colors.length > 0 ||
     filters.sizes.length > 0 ||
+    filters.brands.length > 0 ||
     filters.availability === "in-stock" ||
     filters.gender !== null ||
     filters.priceRange[0] !== priceBounds[0] ||
@@ -109,6 +112,37 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
                   type="button"
                   aria-pressed={active}
                   onClick={() => onChange({ colors: toggle(filters.colors, value) })}
+                  className={cn(
+                    "border px-3 py-1.5 text-xs transition-colors",
+                    active ? "border-luxe-black bg-luxe-black text-luxe-white" : "border-border hover:border-luxe-black"
+                  )}
+                >
+                  {value} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/*
+        Above size, because brand is how someone shopping bags narrows down — a bag has one
+        size and the size group collapses to a single button there, while the brands are the
+        real choice. On footwear the order costs nothing: size stays directly above price
+        where a shoe shopper expects it.
+      */}
+      {brandFacets.length > 1 ? (
+        <div>
+          <p className="mb-3 text-sm font-medium">{t("brand")}</p>
+          <div className="flex flex-wrap gap-2">
+            {brandFacets.map(({ value, count }) => {
+              const active = filters.brands.includes(value);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => onChange({ brands: toggle(filters.brands, value) })}
                   className={cn(
                     "border px-3 py-1.5 text-xs transition-colors",
                     active ? "border-luxe-black bg-luxe-black text-luxe-white" : "border-border hover:border-luxe-black"

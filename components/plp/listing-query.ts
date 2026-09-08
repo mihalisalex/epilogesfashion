@@ -21,6 +21,7 @@ export interface ListingQuery {
   tags: string[];
   colors: string[];
   sizes: string[];
+  brands: string[];
   availability: "all" | "in-stock";
   /** The shopper's gender REFINEMENT — only meaningful where the page isn't already one gender. */
   gender: string | null;
@@ -68,6 +69,7 @@ export function parseListingQuery(get: ParamReader, defaultSort: PlpSort): Listi
     tags: parseCsv(get("tag")),
     colors: parseCsv(get("color")),
     sizes: parseCsv(get("size")),
+    brands: parseCsv(get("brand")),
     availability: get("availability") === "in-stock" ? "in-stock" : "all",
     gender: get("gender"),
     sort: (get("sort") as PlpSort | null) ?? defaultSort,
@@ -101,6 +103,7 @@ export function listingSearchOptions(
     genders: showGenderFilter && query.gender ? [query.gender] : undefined,
     colors: query.colors.length ? query.colors : undefined,
     sizes: query.sizes.length ? query.sizes : undefined,
+    brands: query.brands.length ? query.brands : undefined,
     tags: query.tags.length ? query.tags : undefined,
     availability: query.availability,
     minPrice: query.minPrice,

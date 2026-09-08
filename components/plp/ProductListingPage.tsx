@@ -66,7 +66,7 @@ export function ProductListingPage({
   const query = parseListingQuery((key) => searchParams.get(key), defaultSort);
   // `tags` is deliberately not destructured: it is a scope filter carried straight through
   // to the search by listingSearchOptions, and this component renders no control for it.
-  const { colors, sizes, availability, sort, page: urlPage } = query;
+  const { colors, sizes, brands, availability, sort, page: urlPage } = query;
   const genderParam = query.gender;
   const signature = listingSignature(baseFilters, query);
 
@@ -227,6 +227,7 @@ export function ProductListingPage({
       const next: Record<string, string | null> = { page: null };
       if (patch.colors) next.color = patch.colors.length ? patch.colors.join(",") : null;
       if (patch.sizes) next.size = patch.sizes.length ? patch.sizes.join(",") : null;
+      if (patch.brands) next.brand = patch.brands.length ? patch.brands.join(",") : null;
       if (patch.availability) next.availability = patch.availability === "in-stock" ? "in-stock" : null;
       // Present-but-null is a real instruction here ("all"), which is why this checks the key
       // rather than the value — `if (patch.gender)` would silently ignore clearing it.
@@ -248,7 +249,10 @@ export function ProductListingPage({
   );
 
   const handleClearAll = useCallback(
-    () => updateParams({ color: null, size: null, availability: null, minPrice: null, maxPrice: null, gender: null, page: null }),
+    // Every filter key the sidebar can set has to be listed here. One missing key does not
+    // fail loudly — it leaves that filter applied after "clear all", with the control showing
+    // it as cleared, which reads as a listing that has lost products.
+    () => updateParams({ color: null, size: null, brand: null, availability: null, minPrice: null, maxPrice: null, gender: null, page: null }),
     [updateParams]
   );
 
@@ -272,6 +276,7 @@ export function ProductListingPage({
   const filters: PlpFilters = {
     colors,
     sizes,
+    brands,
     availability,
     priceRange: displayPriceRange,
     gender: showGenderFilter ? genderParam : null,

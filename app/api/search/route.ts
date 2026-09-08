@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
       genders: csv(params.get("genders")),
       colors: csv(params.get("colors")),
       sizes: csv(params.get("sizes")),
+      brands: csv(params.get("brands")),
       tags: csv(params.get("tags")),
       availability: params.get("availability") === "in-stock" ? "in-stock" : "all",
       isNew: params.get("isNew") === "true",

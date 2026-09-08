@@ -131,6 +131,9 @@ function refinementWhere(options: SearchOptions): Prisma.Sql[] {
       Prisma.sql`EXISTS (SELECT 1 FROM product_sizes s WHERE s."productId" = p.id AND s.name IN (${Prisma.join(options.sizes)}))`
     );
   }
+  if (options.brands?.length) {
+    clauses.push(Prisma.sql`p.brand IN (${Prisma.join(options.brands)})`);
+  }
   if (options.tags?.length) {
     clauses.push(Prisma.sql`p.tags && ARRAY[${Prisma.join(options.tags)}]::text[]`);
   }
@@ -173,7 +176,7 @@ function orderBy(sort: SearchOptions["sort"]): Prisma.Sql {
 async function buildFacetsAndBounds(scope: Prisma.Sql): Promise<{ facets: SearchFacet[]; bounds: [number, number] }> {
   type Row = { value: string; count: bigint };
 
-  const [categories, genders, colors, sizes, tags, bounds] = await Promise.all([
+  const [categories, genders, colors, sizes, brands, tags, bounds] = await Promise.all([
     prisma.$queryRaw<Row[]>`
       SELECT c.slug AS value, COUNT(*)::bigint AS count
       FROM products p JOIN categories c ON c.id = p."categoryId"
@@ -189,6 +192,17 @@ async function buildFacetsAndBounds(scope: Prisma.Sql): Promise<{ facets: Search
       SELECT v.name AS value, COUNT(DISTINCT p.id)::bigint AS count
       FROM products p JOIN product_sizes v ON v."productId" = p.id
       WHERE ${scope} GROUP BY v.name`,
+    /**
+     * Brand is a plain column, so unlike colour and size this needs no join. Rows with no
+     * brand are excluded rather than grouped into an empty-string bucket, which would render
+     * as a nameless filter button nobody can interpret — 7 products in this catalogue have
+     * none.
+     */
+    prisma.$queryRaw<Row[]>`
+      SELECT p.brand AS value, COUNT(*)::bigint AS count
+      FROM products p
+      WHERE ${scope} AND p.brand IS NOT NULL AND p.brand <> ''
+      GROUP BY p.brand ORDER BY count DESC`,
     prisma.$queryRaw<Row[]>`
       SELECT t AS value, COUNT(*)::bigint AS count
       FROM products p, unnest(p.tags) t WHERE ${scope} GROUP BY t ORDER BY count DESC`,
@@ -214,6 +228,7 @@ async function buildFacetsAndBounds(scope: Prisma.Sql): Promise<{ facets: Search
       { key: "gender", label: "Gender", values: toValues(genders) },
       { key: "color", label: "Color", values: toValues(colors) },
       { key: "size", label: "Size", values: sizeValues },
+      { key: "brand", label: "Brand", values: toValues(brands) },
       { key: "tag", label: "Tags", values: toValues(tags) },
     ],
     bounds: [bounds[0]?.min ?? 0, bounds[0]?.max ?? 0],

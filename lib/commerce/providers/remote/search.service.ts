@@ -28,6 +28,7 @@ function toQuery(query: string, options: SearchOptions): string {
   if (options.genders?.length) params.set("genders", options.genders.join(","));
   if (options.colors?.length) params.set("colors", options.colors.join(","));
   if (options.sizes?.length) params.set("sizes", options.sizes.join(","));
+  if (options.brands?.length) params.set("brands", options.brands.join(","));
   if (options.tags?.length) params.set("tags", options.tags.join(","));
   if (options.availability === "in-stock") params.set("availability", "in-stock");
   if (options.isNew) params.set("isNew", "true");
