@@ -25,7 +25,7 @@ export function AdminMobileNav() {
       <SheetContent side="left" showCloseButton={false} className="w-72 border-none bg-luxe-white p-0">
         <SheetTitle className="sr-only">Admin navigation</SheetTitle>
         <div className="flex h-16 items-center border-b border-border px-6">
-          <span className="font-heading text-lg tracking-[0.1em] uppercase">ALEXANDRIS</span>
+          <span className="font-heading text-lg tracking-[0.1em] uppercase">Epiloges Fashion Boutique</span>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {ADMIN_NAV.map((group) => (

@@ -11,26 +11,26 @@
           "href": "/women?isNew=true"
         },
         {
-          "id": "women-heels",
-          "label": "Τακούνια",
-          "href": "/women?category=heels"
+          "id": "women-dresses",
+          "label": "Φορέματα",
+          "href": "/women?category=dresses"
         },
         {
-          "id": "women-boots",
-          "label": "Μπότες",
-          "href": "/women?category=boots"
+          "id": "women-outerwear",
+          "label": "Πανωφόρια",
+          "href": "/women?category=outerwear"
         },
         {
-          "id": "women-sandals",
-          "label": "Πέδιλα",
-          "href": "/women?category=sandals"
+          "id": "women-shirts",
+          "label": "Πουκάμισα",
+          "href": "/women?category=shirts"
         }
       ],
       "featured": [
         {
-          "title": "Βραδινά Τακούνια",
-          "image": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80",
-          "href": "/collections/evening-heels"
+          "title": "Βραδινά Φορέματα",
+          "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80",
+          "href": "/collections/evening-dresses"
         }
       ]
     },
@@ -45,26 +45,26 @@
           "href": "/men?isNew=true"
         },
         {
-          "id": "men-oxfords",
-          "label": "Oxfords & Derbies",
-          "href": "/men?category=oxfords"
+          "id": "men-blazers",
+          "label": "Σακάκια",
+          "href": "/men?category=blazers"
         },
         {
-          "id": "men-sneakers",
-          "label": "Sneakers",
-          "href": "/men?category=sneakers"
+          "id": "men-denim",
+          "label": "Τζιν",
+          "href": "/men?category=denim"
         },
         {
-          "id": "men-boots",
-          "label": "Μπότες",
-          "href": "/men?category=boots"
+          "id": "men-outerwear",
+          "label": "Πανωφόρια",
+          "href": "/men?category=outerwear"
         }
       ],
       "featured": [
         {
-          "title": "Η Συλλογή Σνίκερ",
-          "image": "https://images.unsplash.com/photo-1633464130613-0a9154299ac2?auto=format&fit=crop&w=800&q=80",
-          "href": "/collections/sneaker-edit"
+          "title": "Η Συλλογή Τζιν",
+          "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
+          "href": "/collections/denim-edit"
         }
       ]
     },

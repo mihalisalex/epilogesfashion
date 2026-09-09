@@ -1,21 +1,42 @@
 {
-  "intro": "All sizing below is EU. If you're between sizes, we recommend sizing up — fit notes on each product page will flag any exception (a looser last, a narrower toe box).",
+  "intro": "All sizing below is EU/international. If you're between sizes, we recommend sizing up — fit notes on each product page will flag any exception (a relaxed cut, a smaller-than-usual run).",
   "categories": [
     {
-      "title": "Footwear",
-      "note": "EU sizing. Foot length measured standing, heel to longest toe, in the evening when feet are at their largest.",
-      "headers": ["EU", "UK", "US (Men)", "US (Women)", "Foot Length"],
+      "title": "Tops, Knitwear & Dresses (Women)",
+      "note": "Measured flat, garment laid out — not body measurements. See each product page for the exact garment measurements of that style.",
+      "headers": ["Size", "UK", "US", "Bust", "Waist", "Hip"],
       "rows": [
-        ["36", "3.5", "4", "6", "22.5 cm"],
-        ["37", "4.5", "5", "7", "23.5 cm"],
-        ["38", "5.5", "6", "8", "24 cm"],
-        ["39", "6", "7", "8.5", "24.5 cm"],
-        ["40", "6.5", "7.5", "9", "25 cm"],
-        ["41", "7.5", "8.5", "10", "26 cm"],
-        ["42", "8", "9", "10.5", "26.5 cm"],
-        ["43", "9", "10", "11.5", "27.5 cm"],
-        ["44", "9.5", "10.5", "12", "28 cm"],
-        ["45", "10.5", "11.5", "13", "29 cm"]
+        ["XS", "6", "2", "80 cm", "62 cm", "88 cm"],
+        ["S", "8", "4", "84 cm", "66 cm", "92 cm"],
+        ["M", "10", "6", "88 cm", "70 cm", "96 cm"],
+        ["L", "12", "8", "94 cm", "76 cm", "102 cm"],
+        ["XL", "14", "10", "100 cm", "82 cm", "108 cm"],
+        ["XXL", "16", "12", "106 cm", "88 cm", "114 cm"]
+      ]
+    },
+    {
+      "title": "Shirts, Knitwear & Tailoring (Men)",
+      "note": "Measured flat, garment laid out. Chest is measured pit to pit, doubled.",
+      "headers": ["Size", "UK/US", "EU", "Chest", "Waist"],
+      "rows": [
+        ["S", "36", "46", "94 cm", "80 cm"],
+        ["M", "38", "48", "100 cm", "86 cm"],
+        ["L", "40", "50", "106 cm", "92 cm"],
+        ["XL", "42", "52", "112 cm", "98 cm"],
+        ["XXL", "44", "54", "118 cm", "104 cm"],
+        ["XXXL", "46", "56", "124 cm", "110 cm"]
+      ]
+    },
+    {
+      "title": "Denim",
+      "note": "Waist is measured flat, laid out, and doubled. Inseam is the standard length before any hemming.",
+      "headers": ["Size", "Waist", "Inseam"],
+      "rows": [
+        ["S", "76 cm", "80 cm"],
+        ["M", "82 cm", "81 cm"],
+        ["L", "88 cm", "82 cm"],
+        ["XL", "94 cm", "83 cm"],
+        ["XXL", "100 cm", "84 cm"]
       ]
     }
   ]

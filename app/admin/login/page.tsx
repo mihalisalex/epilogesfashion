@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-luxe-gray-light px-4">
       <div className="w-full max-w-sm bg-luxe-white p-10 shadow-sm">
         <Link href="/" className="font-heading block text-center text-xl tracking-[0.15em] uppercase">
-          ALEXANDRIS
+          Epiloges Fashion Boutique
         </Link>
         <p className="mt-1 text-center text-xs tracking-[0.1em] text-luxe-gray-dark uppercase">Admin</p>
 

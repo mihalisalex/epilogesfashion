@@ -1,10 +1,10 @@
 {
-  "titleTemplate": "%s | Alexandris Stores",
-  "defaultTitle": "ALEXANDRIS — Γυναικεία & ανδρικά παπούτσια",
-  "defaultDescription": "Το ALEXANDRIS είναι κατάστημα υποδημάτων στο Ηράκλειο Κρήτης. Γυναικεία και ανδρικά παπούτσια, με προσοχή στη λεπτομέρεια και διαχρονικό σχεδιασμό.",
+  "titleTemplate": "%s | Epiloges Fashion Boutique",
+  "defaultTitle": "Epiloges Fashion Boutique — Γυναικεία & ανδρικά ρούχα",
+  "defaultDescription": "Το Epiloges Fashion Boutique είναι κατάστημα ρούχων στο Ηράκλειο Κρήτης. Γυναικεία και ανδρικά ενδύματα, με προσοχή στη λεπτομέρεια και διαχρονικό σχεδιασμό.",
   "siteUrl": "https://shopalexandris.vercel.app",
   "organization": {
-    "name": "ALEXANDRIS",
+    "name": "Epiloges Fashion Boutique",
     "logo": "https://shopalexandris.vercel.app/logo.svg",
     "sameAs": []
   }

@@ -44,7 +44,7 @@ const CONFIG_FIELDS: readonly PaymentConfigField[] = [
     type: "text",
     secret: false,
     required: true,
-    placeholder: "ALEXANDRIS S.A.",
+    placeholder: "Epiloges Fashion Boutique",
     help: "The name exactly as it appears on the account — some banks reject transfers where it doesn't match.",
   },
   { key: "iban", label: "IBAN", type: "text", secret: false, required: true, placeholder: "GR96 0000 0000 0000 0000 0000 000" },

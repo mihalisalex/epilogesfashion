@@ -22,7 +22,7 @@ export function AnnouncementBar({ messages, intervalMs = 5000 }: AnnouncementBar
   if (messages.length === 0) return null;
 
   return (
-    <div className="relative z-50 flex h-9 items-center justify-center overflow-hidden bg-luxe-black px-4 text-luxe-white">
+    <div className="relative z-50 flex h-9 items-center justify-center overflow-hidden bg-luxe-purple px-4 text-luxe-white">
       <AnimatePresence mode="wait">
         <motion.p
           key={index}

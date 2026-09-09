@@ -12,11 +12,18 @@
   --font-heading: var(--font-heading);
 
   /* Luxury storefront palette — shared by both the marketing site and the admin
-     dashboard so the whole product is one coherent black/white/gray system. */
+     dashboard so the whole product is one coherent black/white/purple system.
+     `luxe-black` carries a deep purple undertone (Epiloges' "ink") rather than
+     true neutral black, so every existing bg-luxe-black/text-luxe-black usage
+     across the site picks up the brand color for free. `luxe-purple` is the
+     louder, fully-saturated accent for spots that should read as purple at a
+     glance (announcement bar, primary buttons, focus rings) rather than ink. */
   --color-luxe-white: #ffffff;
-  --color-luxe-black: #111111;
-  --color-luxe-gray-light: #f5f5f5;
-  --color-luxe-gray-dark: #555555;
+  --color-luxe-black: #1c0f2b;
+  --color-luxe-gray-light: #f6f4f9;
+  --color-luxe-gray-dark: #5b4e6b;
+  --color-luxe-purple: #3d1155;
+  --color-luxe-purple-dark: #260a37;
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -58,71 +65,71 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #111111;
+  --foreground: #1c0f2b;
   --card: #ffffff;
-  --card-foreground: #111111;
+  --card-foreground: #1c0f2b;
   --popover: #ffffff;
-  --popover-foreground: #111111;
-  --primary: #111111;
+  --popover-foreground: #1c0f2b;
+  --primary: #3d1155;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #111111;
-  --muted: #f5f5f5;
-  --muted-foreground: #555555;
-  --accent: #f5f5f5;
-  --accent-foreground: #111111;
+  --secondary: #f6f4f9;
+  --secondary-foreground: #1c0f2b;
+  --muted: #f6f4f9;
+  --muted-foreground: #5b4e6b;
+  --accent: #f6f4f9;
+  --accent-foreground: #1c0f2b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #111111;
-  --chart-1: #d4d4d4;
-  --chart-2: #a3a3a3;
-  --chart-3: #737373;
-  --chart-4: #525252;
-  --chart-5: #262626;
+  --border: #e7e1ee;
+  --input: #e7e1ee;
+  --ring: #3d1155;
+  --chart-1: #d9cfe4;
+  --chart-2: #a98cc4;
+  --chart-3: #7a4e9e;
+  --chart-4: #3d1155;
+  --chart-5: #260a37;
   --radius: 0.25rem;
   --sidebar: #fafafa;
-  --sidebar-foreground: #111111;
-  --sidebar-primary: #111111;
+  --sidebar-foreground: #1c0f2b;
+  --sidebar-primary: #3d1155;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f5f5;
-  --sidebar-accent-foreground: #111111;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #111111;
+  --sidebar-accent: #f6f4f9;
+  --sidebar-accent-foreground: #1c0f2b;
+  --sidebar-border: #e7e1ee;
+  --sidebar-ring: #3d1155;
 }
 
 .dark {
-  --background: #111111;
-  --foreground: #f5f5f5;
-  --card: #1a1a1a;
-  --card-foreground: #f5f5f5;
-  --popover: #1a1a1a;
-  --popover-foreground: #f5f5f5;
-  --primary: #f5f5f5;
-  --primary-foreground: #111111;
-  --secondary: #262626;
-  --secondary-foreground: #f5f5f5;
-  --muted: #262626;
-  --muted-foreground: #a3a3a3;
-  --accent: #262626;
-  --accent-foreground: #f5f5f5;
+  --background: #1c0f2b;
+  --foreground: #f6f4f9;
+  --card: #260a37;
+  --card-foreground: #f6f4f9;
+  --popover: #260a37;
+  --popover-foreground: #f6f4f9;
+  --primary: #c9a8e8;
+  --primary-foreground: #1c0f2b;
+  --secondary: #35204a;
+  --secondary-foreground: #f6f4f9;
+  --muted: #35204a;
+  --muted-foreground: #b3a2c2;
+  --accent: #35204a;
+  --accent-foreground: #f6f4f9;
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: #a3a3a3;
-  --chart-1: #d4d4d4;
-  --chart-2: #a3a3a3;
-  --chart-3: #737373;
-  --chart-4: #525252;
-  --chart-5: #262626;
-  --sidebar: #1a1a1a;
-  --sidebar-foreground: #f5f5f5;
-  --sidebar-primary: #f5f5f5;
-  --sidebar-primary-foreground: #111111;
-  --sidebar-accent: #262626;
-  --sidebar-accent-foreground: #f5f5f5;
+  --ring: #c9a8e8;
+  --chart-1: #d9cfe4;
+  --chart-2: #c9a8e8;
+  --chart-3: #a98cc4;
+  --chart-4: #7a4e9e;
+  --chart-5: #3d1155;
+  --sidebar: #260a37;
+  --sidebar-foreground: #f6f4f9;
+  --sidebar-primary: #c9a8e8;
+  --sidebar-primary-foreground: #1c0f2b;
+  --sidebar-accent: #35204a;
+  --sidebar-accent-foreground: #f6f4f9;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #a3a3a3;
+  --sidebar-ring: #c9a8e8;
 }
 
 @layer base {

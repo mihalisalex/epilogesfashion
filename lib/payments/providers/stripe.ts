@@ -126,7 +126,7 @@ const CONFIG_FIELDS: readonly PaymentConfigField[] = [
     type: "text",
     secret: false,
     required: false,
-    placeholder: "ALEXANDRIS",
+    placeholder: "EPILOGES FASHION",
     help: "What the customer sees on their bank statement. Max 22 characters.",
   },
 ] as const;

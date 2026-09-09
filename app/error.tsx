@@ -15,7 +15,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-luxe-white px-6 text-center">
       <Link href="/" className="font-heading text-lg tracking-[0.1em] uppercase">
-        ALEXANDRIS
+        Epiloges Fashion Boutique
       </Link>
       <AlertTriangle className="size-10 text-luxe-gray-dark" strokeWidth={1} />
       <h1 className="font-heading text-2xl">{t("somethingWentWrong")}</h1>

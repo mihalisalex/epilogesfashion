@@ -16,7 +16,7 @@
 export const COMPANY = {
   /** As registered in ΓΕΜΗ. Greek convention is surname first. */
   legalName: "Alexandris Michail",
-  brandName: "ALEXANDRIS",
+  brandName: "Epiloges Fashion Boutique",
 
   address: {
     street: "Arthur Evans 9",

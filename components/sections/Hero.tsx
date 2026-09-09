@@ -59,9 +59,15 @@ export function Hero({ data }: HeroProps) {
           fill
           priority
           sizes="100vw"
-          className="object-cover"
+          className="object-cover grayscale"
         />
-        <div className="absolute inset-0 bg-black/25" />
+        {/* Pinterest-moodboard duotone: the photo is fully desaturated above, then tinted
+            with the brand purple on a multiply blend rather than left flat black-and-white —
+            "black and white with a little purple" as a repeatable hero treatment, not a
+            one-off edit to this image. A second, plain black gradient sits on top purely for
+            legibility under the headline/CTAs; it carries no color of its own. */}
+        <div className="absolute inset-0 bg-luxe-purple/35 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-t from-luxe-black/70 via-luxe-black/10 to-transparent" />
       </motion.div>
 
       <div className="container-luxe relative flex h-full flex-col items-start justify-end pb-24 md:pb-32">

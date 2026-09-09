@@ -8,8 +8,8 @@
       "data": {
         "eyebrow": "Autumn / Winter 2026",
         "headline": "Considered Craft.\nQuiet Luxury.",
-        "subheadline": "New season shoes built on full-grain leather and honest construction.",
-        "image": { "src": "https://images.unsplash.com/photo-1575553088237-0ddd7b66109f?auto=format&fit=crop&w=2400&q=80", "alt": "Close-up of a pewter stiletto heel against a dark charcoal backdrop, editorial styling" },
+        "subheadline": "New season pieces cut from natural fibres and honest construction.",
+        "image": { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=2400&q=80", "alt": "Black wool trench coat draped in dramatic studio light, monochrome editorial styling with a violet cast" },
         "primaryCta": { "label": "Shop Women", "href": "/women", "variant": "primary" },
         "secondaryCta": { "label": "Shop Men", "href": "/men", "variant": "secondary" }
       }
@@ -32,7 +32,7 @@
       "order": 2,
       "data": {
         "title": "Best Sellers",
-        "subtitle": "The pairs everyone is wearing",
+        "subtitle": "The pieces everyone is wearing",
         "productIds": ["p1", "p5", "p9", "p7", "p10", "p3"],
         "viewAllCta": { "label": "View All", "href": "/new-in" }
       }
@@ -44,10 +44,10 @@
       "order": 3,
       "data": {
         "eyebrow": "The Journal",
-        "headline": "Built to Be Resoled, Not Replaced",
-        "body": "Every pair starts with full-grain leather and a hand-finished edge — constructed to be resoled for years rather than replaced each season.",
-        "image": { "src": "https://images.unsplash.com/photo-1563433337461-5b65f0834f3a?auto=format&fit=crop&w=2000&q=80", "alt": "Close-up of a leather oxford shoe" },
-        "cta": { "label": "Read the Story", "href": "/journal/the-art-of-the-oxford" },
+        "headline": "Made to Be Altered, Not Replaced",
+        "body": "Every piece starts with natural fibres and a hand-finished seam — constructed to be tailored and repaired for years rather than replaced each season.",
+        "image": { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=2000&q=80", "alt": "Close-up of a wool blazer's hand-finished seam" },
+        "cta": { "label": "Read the Story", "href": "/journal/the-art-of-tailoring" },
         "imagePosition": "right"
       }
     },
@@ -69,8 +69,8 @@
       "order": 5,
       "data": {
         "eyebrow": "Our Philosophy",
-        "headline": "Fewer, better pairs.",
-        "body": "ALEXANDRIS was founded on a simple idea: shoes should be made well, resoled instead of replaced, and say nothing they don't mean. Every pair is developed in small batches with tanneries we've worked with for years — because quiet luxury isn't a trend, it's a discipline.",
+        "headline": "Fewer, better pieces.",
+        "body": "Epiloges Fashion Boutique was founded on a simple idea: clothes should be made well, mended instead of replaced, and say nothing they don't mean. Every piece is developed in small batches with mills we've worked with for years — because quiet luxury isn't a trend, it's a discipline.",
         "cta": { "label": "About Us", "href": "/about" }
       }
     },
@@ -82,12 +82,12 @@
       "data": {
         "title": "Follow Along",
         "images": [
-          { "src": "https://images.unsplash.com/photo-1553835584-c3eab150319e?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 1" },
-          { "src": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 2" },
-          { "src": "https://images.unsplash.com/photo-1576792741377-eb0f4f6d1a47?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 3" },
-          { "src": "https://images.unsplash.com/photo-1556121017-bc6f100e2b4a?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 4" },
-          { "src": "https://images.unsplash.com/photo-1618718315344-7cbffaa60b6b?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 5" },
-          { "src": "https://images.unsplash.com/photo-1603487742131-4160ec999306?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 6" }
+          { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 1" },
+          { "src": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 2" },
+          { "src": "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 3" },
+          { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 4" },
+          { "src": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 5" },
+          { "src": "https://images.unsplash.com/photo-1620012253295-c15cc3e65df4?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 6" }
         ]
       }
     },

@@ -21,7 +21,7 @@ export function AdminSidebar({ role }: { role: AdminRole }) {
     <aside className="hidden w-64 shrink-0 border-r border-border bg-luxe-white md:flex md:flex-col">
       <div className="flex h-16 items-center border-b border-border px-6">
         <Link href="/admin" className="font-heading text-lg tracking-[0.1em] uppercase">
-          ALEXANDRIS
+          Epiloges Fashion Boutique
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4">

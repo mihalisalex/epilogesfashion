@@ -19,26 +19,26 @@ export function SizeGuideDialog({ open, onOpenChange }: SizeGuideDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg rounded-none border-none p-8">
         <DialogTitle className="font-heading text-xl">{t("sizeGuide")}</DialogTitle>
-        <p className="mt-1 text-sm text-luxe-gray-dark">EU sizing, with UK and US conversions.</p>
+        <p className="mt-1 text-sm text-luxe-gray-dark">Letter sizing, with UK and US conversions.</p>
 
         <table className="mt-6 w-full text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs tracking-[0.05em] text-luxe-gray-dark uppercase">
-              <th className="py-2">EU</th>
+              <th className="py-2">Size</th>
               <th className="py-2">UK</th>
-              <th className="py-2">US (Men)</th>
-              <th className="py-2">US (Women)</th>
-              <th className="py-2">{t("footLength")}</th>
+              <th className="py-2">US</th>
+              <th className="py-2">{t("bust")}</th>
+              <th className="py-2">{t("waist")}</th>
             </tr>
           </thead>
           <tbody>
             {SIZE_GUIDE_ROWS.map((row) => (
-              <tr key={row.eu} className="border-b border-border">
-                <td className="py-2 font-medium">{row.eu}</td>
+              <tr key={row.size} className="border-b border-border">
+                <td className="py-2 font-medium">{row.size}</td>
                 <td className="py-2">{row.uk}</td>
-                <td className="py-2">{row.usMen}</td>
-                <td className="py-2">{row.usWomen}</td>
-                <td className="py-2">{row.footLengthCm} cm</td>
+                <td className="py-2">{row.us}</td>
+                <td className="py-2">{row.bustCm} cm</td>
+                <td className="py-2">{row.waistCm} cm</td>
               </tr>
             ))}
           </tbody>

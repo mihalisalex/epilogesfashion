@@ -1,62 +1,62 @@
 [
   {
     "id": "c1",
-    "slug": "sneaker-edit",
-    "title": "The Sneaker Edit",
+    "slug": "denim-edit",
+    "title": "The Denim Edit",
     "subtitle": "Everyday icons, elevated",
-    "description": "Clean-lined leather and canvas sneakers built for daily wear.",
-    "titleEl": "Η Συλλογή Σνίκερ",
+    "description": "Considered denim built for daily wear.",
+    "titleEl": "Η Συλλογή Τζιν",
     "subtitleEl": "Καθημερινά κλασικά, αναβαθμισμένα",
-    "image": { "src": "https://images.unsplash.com/photo-1633464130613-0a9154299ac2?auto=format&fit=crop&w=1600&q=80", "alt": "Wall of sneakers on display" },
+    "image": { "src": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1600&q=80", "alt": "Folded denim on display" },
     "productIds": ["p5", "p6"],
-    "cta": { "label": "Shop Sneakers", "href": "/collections/sneaker-edit", "variant": "primary" }
+    "cta": { "label": "Shop Denim", "href": "/collections/denim-edit", "variant": "primary" }
   },
   {
     "id": "c2",
     "slug": "everyday-essentials",
     "title": "Everyday Essentials",
-    "subtitle": "Loafers and slides for daily wear",
-    "description": "The pairs you reach for without thinking twice.",
+    "subtitle": "Knitwear and shirting for daily wear",
+    "description": "The pieces you reach for without thinking twice.",
     "titleEl": "Καθημερινά Βασικά",
-    "subtitleEl": "Μοκασίνια και σανδάλια για την καθημερινότητα",
-    "image": { "src": "https://images.unsplash.com/photo-1576792741377-eb0f4f6d1a47?auto=format&fit=crop&w=1600&q=80", "alt": "Brown suede penny loafer" },
+    "subtitleEl": "Πλεκτά και πουκάμισα για την καθημερινότητα",
+    "image": { "src": "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=1600&q=80", "alt": "Folded merino wool sweater" },
     "productIds": ["p3", "p4", "p11"],
     "cta": { "label": "Shop Essentials", "href": "/collections/everyday-essentials", "variant": "primary" }
   },
   {
     "id": "c3",
-    "slug": "evening-heels",
-    "title": "Evening Heels",
+    "slug": "evening-dresses",
+    "title": "Evening Dresses",
     "subtitle": "Elevated silhouettes for after dark",
-    "description": "Pumps and heeled sandals built to go the distance.",
-    "titleEl": "Βραδινά Τακούνια",
+    "description": "Silk and satin dresses built to go the distance.",
+    "titleEl": "Βραδινά Φορέματα",
     "subtitleEl": "Κομψές σιλουέτες για τις βραδινές εξόδους",
-    "image": { "src": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=1600&q=80", "alt": "Black velvet heel with gold trim" },
+    "image": { "src": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1600&q=80", "alt": "Black silk slip dress, editorial" },
     "productIds": ["p7", "p8"],
-    "cta": { "label": "Shop Heels", "href": "/collections/evening-heels", "variant": "primary" }
+    "cta": { "label": "Shop Dresses", "href": "/collections/evening-dresses", "variant": "primary" }
   },
   {
     "id": "c4",
     "slug": "new-arrivals",
     "title": "New Arrivals",
     "subtitle": "Just landed",
-    "description": "The latest additions to the ALEXANDRIS shoe wardrobe.",
+    "description": "The latest additions to the Epiloges Fashion Boutique wardrobe.",
     "titleEl": "Νέες Αφίξεις",
     "subtitleEl": "Μόλις έφτασαν",
-    "image": { "src": "https://images.unsplash.com/photo-1563433337461-5b65f0834f3a?auto=format&fit=crop&w=1600&q=80", "alt": "Close-up of a brown leather oxford shoe" },
+    "image": { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1600&q=80", "alt": "Charcoal wool blazer, tailoring detail" },
     "productIds": ["p1", "p2", "p12"],
     "cta": { "label": "Shop New In", "href": "/collections/new-arrivals", "variant": "primary" }
   },
   {
     "id": "c5",
-    "slug": "boots-booties",
-    "title": "Boots & Booties",
+    "slug": "coats-outerwear",
+    "title": "Coats & Outerwear",
     "subtitle": "Built for cooler days",
-    "description": "Leather ankle boots and combat boots with real weather resistance.",
-    "titleEl": "Μπότες & Μποτάκια",
+    "description": "Wool coats and shearling-lined jackets with real weather resistance.",
+    "titleEl": "Παλτά & Πανωφόρια",
     "subtitleEl": "Φτιαγμένα για τις πιο κρύες μέρες",
-    "image": { "src": "https://images.unsplash.com/photo-1556121017-bc6f100e2b4a?auto=format&fit=crop&w=1600&q=80", "alt": "Black leather ankle boot" },
+    "image": { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=1600&q=80", "alt": "Black wool trench coat" },
     "productIds": ["p9", "p10"],
-    "cta": { "label": "Shop Boots", "href": "/collections/boots-booties", "variant": "primary" }
+    "cta": { "label": "Shop Outerwear", "href": "/collections/coats-outerwear", "variant": "primary" }
   }
 ]
