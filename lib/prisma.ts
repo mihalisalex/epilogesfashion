@@ -19,7 +19,21 @@ function createPrismaClient() {
    * matching fallback in prisma.config.ts for the direct-connection half of this.
    */
   const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL;
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg({
+    connectionString,
+    /**
+     * Supabase's pooler presents a certificate chain Node's default trust store won't
+     * validate — `pg` then refuses the connection with "self-signed certificate in
+     * certificate chain" even though the connection is still encrypted. Prisma's own CLI
+     * engine (what `prisma migrate deploy` uses) tolerates this chain natively; `pg`
+     * (what this adapter wraps) enforces strict verification by default. Relaxed only when
+     * actually routing through Supabase's URL — a directly configured `DATABASE_URL` (Neon
+     * or otherwise) keeps full certificate verification.
+     */
+    ...(!process.env.DATABASE_URL && process.env.POSTGRES_PRISMA_URL
+      ? { ssl: { rejectUnauthorized: false } }
+      : {}),
+  });
   return new PrismaClient({ adapter });
 }
 

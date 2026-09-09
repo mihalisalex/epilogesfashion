@@ -37,10 +37,15 @@ interface SeedGiftCard {
   active: boolean;
 }
 
-// POSTGRES_PRISMA_URL fallback: see the matching comment in lib/prisma.ts — this is the
-// name Vercel's native Supabase integration gives the pooled connection string.
+// POSTGRES_PRISMA_URL fallback and the SSL relaxation below: see the matching comment in
+// lib/prisma.ts — this is the name Vercel's native Supabase integration gives the pooled
+// connection string, and its pooler needs `rejectUnauthorized: false` against `pg`
+// (unlike Prisma's own CLI engine, which tolerates the cert chain natively).
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL,
+  ...(!process.env.DATABASE_URL && process.env.POSTGRES_PRISMA_URL
+    ? { ssl: { rejectUnauthorized: false } }
+    : {}),
 });
 const prisma = new PrismaClient({ adapter });
 
