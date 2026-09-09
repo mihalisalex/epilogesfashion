@@ -1,0 +1,106 @@
+{
+  "sections": [
+    {
+      "id": "sec-hero",
+      "type": "hero",
+      "enabled": true,
+      "order": 0,
+      "data": {
+        "eyebrow": "Autumn / Winter 2026",
+        "headline": "Considered Craft.\nQuiet Luxury.",
+        "subheadline": "New season pieces cut from natural fibres and honest construction.",
+        "image": { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=2400&q=80", "alt": "Black wool trench coat draped in dramatic studio light, monochrome editorial styling with a violet cast" },
+        "primaryCta": { "label": "Shop Women", "href": "/women", "variant": "primary" },
+        "secondaryCta": { "label": "Shop Men", "href": "/men", "variant": "secondary" }
+      }
+    },
+    {
+      "id": "sec-featured-collections",
+      "type": "featuredCollections",
+      "enabled": true,
+      "order": 1,
+      "data": {
+        "title": "Shop by Category",
+        "subtitle": "Curated edits for the season ahead",
+        "collectionIds": ["c1", "c2", "c3", "c4", "c5"]
+      }
+    },
+    {
+      "id": "sec-best-sellers",
+      "type": "bestSellers",
+      "enabled": true,
+      "order": 2,
+      "data": {
+        "title": "Best Sellers",
+        "subtitle": "The pieces everyone is wearing",
+        "productIds": ["p1", "p5", "p9", "p7", "p10", "p3"],
+        "viewAllCta": { "label": "View All", "href": "/new-in" }
+      }
+    },
+    {
+      "id": "sec-editorial-banner",
+      "type": "editorialBanner",
+      "enabled": true,
+      "order": 3,
+      "data": {
+        "eyebrow": "The Journal",
+        "headline": "Made to Be Altered, Not Replaced",
+        "body": "Every piece starts with natural fibres and a hand-finished seam — constructed to be tailored and repaired for years rather than replaced each season.",
+        "image": { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=2000&q=80", "alt": "Close-up of a wool blazer's hand-finished seam" },
+        "cta": { "label": "Read the Story", "href": "/journal/the-art-of-tailoring" },
+        "imagePosition": "right"
+      }
+    },
+    {
+      "id": "sec-new-arrivals",
+      "type": "newArrivals",
+      "enabled": true,
+      "order": 4,
+      "data": {
+        "title": "New Arrivals",
+        "subtitle": "Just landed this week",
+        "productIds": ["p1", "p2", "p5", "p7", "p9", "p12"]
+      }
+    },
+    {
+      "id": "sec-brand-story",
+      "type": "brandStory",
+      "enabled": true,
+      "order": 5,
+      "data": {
+        "eyebrow": "Our Philosophy",
+        "headline": "Fewer, better pieces.",
+        "body": "Epiloges Fashion Boutique was founded on a simple idea: clothes should be made well, mended instead of replaced, and say nothing they don't mean. Every piece is developed in small batches with mills we've worked with for years — because quiet luxury isn't a trend, it's a discipline.",
+        "cta": { "label": "About Us", "href": "/about" }
+      }
+    },
+    {
+      "id": "sec-social-grid",
+      "type": "socialGrid",
+      "enabled": true,
+      "order": 6,
+      "data": {
+        "title": "Follow Along",
+        "images": [
+          { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 1" },
+          { "src": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 2" },
+          { "src": "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 3" },
+          { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 4" },
+          { "src": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 5" },
+          { "src": "https://images.unsplash.com/photo-1620012253295-c15cc3e65df4?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 6" }
+        ]
+      }
+    },
+    {
+      "id": "sec-newsletter",
+      "type": "newsletter",
+      "enabled": true,
+      "order": 7,
+      "data": {
+        "headline": "Be the First to Know",
+        "subheadline": "Sign up for early access to new arrivals, private sales and journal stories.",
+        "ctaLabel": "Subscribe"
+      }
+    }
+  ]
+}

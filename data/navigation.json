@@ -1,0 +1,211 @@
+{
+  "primary": [
+    {
+      "id": "women",
+      "label": "Γυναικεία",
+      "href": "/women",
+      "children": [
+        {
+          "id": "women-new-in",
+          "label": "Νέες αφίξεις",
+          "href": "/women?isNew=true"
+        },
+        {
+          "id": "women-dresses",
+          "label": "Φορέματα",
+          "href": "/women?category=dresses"
+        },
+        {
+          "id": "women-outerwear",
+          "label": "Πανωφόρια",
+          "href": "/women?category=outerwear"
+        },
+        {
+          "id": "women-shirts",
+          "label": "Πουκάμισα",
+          "href": "/women?category=shirts"
+        }
+      ],
+      "featured": [
+        {
+          "title": "Βραδινά Φορέματα",
+          "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80",
+          "href": "/collections/evening-dresses"
+        }
+      ]
+    },
+    {
+      "id": "men",
+      "label": "Ανδρικά",
+      "href": "/men",
+      "children": [
+        {
+          "id": "men-new-in",
+          "label": "Νέες αφίξεις",
+          "href": "/men?isNew=true"
+        },
+        {
+          "id": "men-blazers",
+          "label": "Σακάκια",
+          "href": "/men?category=blazers"
+        },
+        {
+          "id": "men-denim",
+          "label": "Τζιν",
+          "href": "/men?category=denim"
+        },
+        {
+          "id": "men-outerwear",
+          "label": "Πανωφόρια",
+          "href": "/men?category=outerwear"
+        }
+      ],
+      "featured": [
+        {
+          "title": "Η Συλλογή Τζιν",
+          "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
+          "href": "/collections/denim-edit"
+        }
+      ]
+    },
+    {
+      "id": "new-in",
+      "label": "Νέες αφίξεις",
+      "href": "/new-in"
+    },
+    {
+      "id": "collections",
+      "label": "Συλλογές",
+      "href": "/collections"
+    },
+    {
+      "id": "sale",
+      "label": "Προσφορές",
+      "href": "/sale"
+    },
+    {
+      "id": "journal",
+      "label": "Άρθρα",
+      "href": "/journal",
+      "mobileOnly": true
+    },
+    {
+      "id": "about",
+      "label": "Σχετικά",
+      "href": "/about",
+      "mobileOnly": true
+    }
+  ],
+  "utility": [
+    {
+      "id": "search",
+      "label": "Αναζήτηση",
+      "href": "/search"
+    },
+    {
+      "id": "wishlist",
+      "label": "Αγαπημένα",
+      "href": "/wishlist"
+    },
+    {
+      "id": "account",
+      "label": "Λογαριασμός",
+      "href": "/account"
+    },
+    {
+      "id": "cart",
+      "label": "Καλάθι",
+      "href": "/cart"
+    }
+  ],
+  "footer": [
+    {
+      "title": "Αγορές",
+      "links": [
+        {
+          "label": "Γυναικεία",
+          "href": "/women"
+        },
+        {
+          "label": "Ανδρικά",
+          "href": "/men"
+        },
+        {
+          "label": "Νέες αφίξεις",
+          "href": "/new-in"
+        },
+        {
+          "label": "Προσφορές",
+          "href": "/sale"
+        },
+        {
+          "label": "Συλλογές",
+          "href": "/collections"
+        }
+      ]
+    },
+    {
+      "title": "Η εταιρεία",
+      "links": [
+        {
+          "label": "Η ιστορία μας",
+          "href": "/about"
+        },
+        {
+          "label": "Βιωσιμότητα",
+          "href": "/sustainability"
+        },
+        {
+          "label": "Καριέρα",
+          "href": "/careers"
+        },
+        {
+          "label": "Άρθρα",
+          "href": "/journal"
+        }
+      ]
+    },
+    {
+      "title": "Υποστήριξη",
+      "links": [
+        {
+          "label": "Επικοινωνία",
+          "href": "/contact"
+        },
+        {
+          "label": "Ρωτήστε έναν στυλίστα",
+          "href": "/concierge"
+        },
+        {
+          "label": "Αποστολές & Επιστροφές",
+          "href": "/shipping-returns"
+        },
+        {
+          "label": "Οδηγός μεγεθών",
+          "href": "/size-guide"
+        },
+        {
+          "label": "Συχνές ερωτήσεις",
+          "href": "/faq"
+        }
+      ]
+    },
+    {
+      "title": "Νομικά",
+      "links": [
+        {
+          "label": "Πολιτική Απορρήτου",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "label": "Όροι Χρήσης",
+          "href": "/legal/terms-of-service"
+        },
+        {
+          "label": "Πολιτική Cookies",
+          "href": "/legal/cookie-policy"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1369 @@
+# ALEXANDRIS — Progress Notes
+
+## Desktop header slimmed, and a correction — `0c4818d`
+
+Journal and About were crowding a desktop header whose other five links lead into the
+catalogue. The header and the mobile menu render the SAME `navigation.primary` array, so
+shortening one shortened both; `NavItem.mobileOnly` splits them — `DesktopNav` filters on it,
+`MobileMenu` ignores it.
+
+**The condition that makes this a move rather than a removal:** the footer already carries
+both, `/journal` as "Άρθρα" and `/about` as "Η ιστορία μας" in the "Η εταιρεία" column. Hiding
+a header link with no other desktop route would be deleting it. Both the type doc and the
+script say to check the footer before adding an id.
+
+Done as a data flag rather than a hard-coded filter, so it is reversible without a code change,
+and the admin nav editor spreads unknown fields so an edit there preserves it. Verified at
+1440px (five header links, both still in the footer) and 375px (menu still lists both).
+
+**And a correction worth more than the fix it came with.** Earlier passes reported "zero
+user-visible English remaining" on the strength of a scanner. That scanner's pattern looked for
+a capitalised word followed by lowercase ones, so *Title Case* went straight past it: "View
+All", "Shop by Category" and "Discover" were live in the desktop mega-menu the whole time, and
+surfaced only because `DesktopNav.tsx` was opened for an unrelated reason. Now translated. An
+automated all-clear is only as good as the pattern behind it, and that one was reported as
+though it were exhaustive.
+
+## Greek storefront, honest copy, and a live image outage — COMPLETE, 5 commits `10fe289`→`ef36ef2`, 220 tests
+
+### The image outage, which was not a code bug
+
+Reported as "the hero only shows on mobile". It was neither a hero problem nor a viewport one:
+**every `/_next/image` request on production was returning `402`**, with
+`X-Vercel-Error: OPTIMIZED_IMAGE_REQUEST_PAYMENT_REQUIRED`. The account's image-transformation
+quota is exhausted.
+
+It presented as random because already-transformed sizes stayed in cache and kept serving. A
+different viewport asks for a different `w=`, so an image appeared at one width and vanished at
+another purely by whether that variant had been generated before the quota ran out. Product
+photos were broken across the shop while the hero looked fine.
+
+`images.unoptimized` is now on, so the browser fetches each file straight from Vercel Blob. The
+catalogue is ~100KB 3:4 JPEGs — larger than an optimized WebP, incomparably better than not
+loading. `placeholder="blur"` is unaffected: `SHIMMER_BLUR_DATA_URL` is an inline data URI, not
+something the optimizer produces. `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` reverses it; the default is
+off so a fresh deploy cannot silently reintroduce the breakage.
+
+**That fix then broke the images a second way**, which is the part worth remembering. While the
+optimizer was on, every remote image arrived through `/_next/image` and was therefore
+same-origin — `img-src 'self'` covered them all and the CSP only ever needed to name Unsplash.
+Fetching from the real host meant the policy blocked every one: images that had just been fixed
+still did not render, with nothing in the network tab but a console violation. `img-src` is now
+**derived** from the same `REMOTE_IMAGE_HOSTS` list that feeds `images.remotePatterns`, so
+optimization being on or off can never again disagree with what the policy permits.
+
+### Copy the shop could not support
+
+The live homepage brand story read: *"Every pair is developed in small batches with tanneries
+we've worked with for years."* The catalogue is 175 products — **47 own-label "Alexandris
+Shoes", 128 other brands** (U.S Polo Assn., London, Verde, Mont Martre Paris). So "every pair"
+was false for roughly three quarters of the shelf, and nothing in the data supports the
+tanneries. The hero carried "built on full-grain leather and honest construction" across a
+catalogue including synthetic athletic shoes, and a journal post described an in-house workshop
+where every ALEXANDRIS pair begins.
+
+All rewritten to claim only what the data supports: a shoe shop in Heraklion, its own line
+alongside brands it selects, women's and men's. Nothing about manufacture, materials, tanneries
+or batch sizes. The two **disabled** homepage sections were corrected too — false copy in a
+switched-off section just goes live the day someone switches it on.
+
+Same class as the fabricated purchase counter and the seeded social profiles removed in earlier
+passes. It mattered more here because it was the shop describing itself, on the page most
+visitors see first.
+
+### Greek, and where it lives
+
+The storefront is Greek end to end: header, mega-menu, footer, listing headings, collection
+tiles, badges, Quick View, sort dropdown, SEO metadata, the four journal posts, all three legal
+documents, the account forms, the checkout steps, contact, concierge, returns, back-in-stock,
+reviews, cart empty states, and the aria-labels.
+
+**The storage convention is split, deliberately.** Categories and collections have
+`nameEl`/`titleEl` columns, so English stays canonical and Greek lives in the translation
+column. Products, navigation, blog posts and homepage sections have no such columns, so Greek
+sits in the canonical field — the 175 products were imported that way and have no English
+version at all. Writing Greek into a canonical column that already had a populated `*El`
+sibling was my first attempt, and it produced a *second, competing* translation: the homepage
+said "Η Συλλογή Σνίκερ" and `/collections` said "Η επιλογή σε sneakers" for the same collection.
+
+The actual defect was never the content. **Three storefront paths read entities without
+localizing them**: the `/collections` index called `getAllCollections()` directly, and the
+category and collection `generateMetadata` localized nothing — so both pages rendered a Greek
+heading under an English `<title>` and `og:title`. Invisible on screen; precisely what a
+crawler indexes.
+
+Legal was translated at its **source** (`scripts/rewrite-legal.ts`), because `data/legal.json`
+is generated and would have been overwritten. Clause for clause — 7, 11 and 5 sections in, the
+same out — so nothing was added to or removed from the trader's obligations. Statutory terms
+use their established Greek forms. The trader identity line is deliberately **not** translated:
+that is the registered legal identity.
+
+### Numbers and dates
+
+`formatDate` and `formatMoney` both hard-defaulted to `en-US`, so a Greek page printed
+"JULY 1, 2026" and "€1,234.50". Both now default to the site locale through one `LOCALE_TAG`
+map. The date was merely wrong-looking; **the price was genuinely misreadable**, because Greek
+inverts the decimal and thousands separators — "1,234.50" parses to a Greek reader as one euro
+and change. That is the only locale difference here that changes the apparent *number* rather
+than the style, and it is why it was worth touching every price on a live shop. Both are tested.
+
+### The OG image was never missing
+
+`app/opengraph-image.tsx` already rendered a branded 1200×630 card. Naming a `defaultOgImage`
+overrides Next's file-based convention — so setting a "default image" was exactly what kept the
+generated card switched off, which is the opposite of how the field reads. Removing the Unsplash
+URL from both call sites turned it back on.
+
+### Three things that needed restructuring, not string swaps
+
+`SocialSignInButtons` and `CheckoutSteps` held their labels in **module-level constants**,
+evaluated once at import where there is no request and therefore no locale; they now hold
+message keys and translate at render. `Breadcrumbs` and `ReviewsSection` are Server Components,
+so they take `getTranslations` and are async.
+
+A bulk-edit helper drove most of the translation, and it had to tolerate **both line endings** —
+a `\n`-only anchor matched nothing in the CRLF files, inserted no import, and left components
+referencing an undefined `t`, which surfaced at `tsc` rather than at the edit. A scanner now
+reports zero user-visible English across the customer-facing component directories.
+
+## Six post-launch findings closed — COMPLETE, 5 commits `7170a96`→`6dcae75`, 213 tests
+
+QA-018, QA-029, QA-030, QA-041, QA-046 and QA-063. Three were not the problem they were filed
+as, and saying so is most of the value here.
+
+### QA-063 — returns never restocked, and the fix could easily have been worse
+
+The order-level path covered cancelling or refunding a whole order. A return is a subset of one
+and moves through a different status field, so returned goods never came back on sale.
+
+The restock itself is four lines. The interaction is the real work: a return covers *some* of an
+order's lines, so an order refunded after one of its items was returned would credit that item
+twice — **inventing stock that never existed**. That is a worse failure than the bug being fixed.
+Unsellable stock announces itself the moment a customer tries to buy; phantom stock is silent
+until an order cannot be fulfilled.
+
+So the two paths account for each other. `Return.restockedAt` is a separate once-only claim
+beside `Order.restockedAt`; the return path skips entirely when the order was already restocked,
+and the order path subtracts what returns already credited. That subtraction is a pure function
+in `services/restock.ts`, tested — including the case that forced it to consume credit as it
+goes: two order lines for the same variant must not both subtract the same returned unit, or a
+two-line order credits nothing back.
+
+Restocking fires on `received` or `refunded`, whichever lands first, and deliberately **not** on
+`approved` — approving a return only authorises the customer to post the item, and crediting then
+puts a pair of shoes on sale that is still in someone's hallway.
+
+`Return.items` is a Json snapshot, read defensively rather than cast: these are rows already
+written, possibly by an older shape, and a malformed one must not throw inside a stock
+calculation. Unreadable lines contribute nothing, erring toward crediting less.
+
+### QA-041 — the confirmation URL was the credential
+
+`?order=<cuid>` was treated as sufficient authority for a page rendering the customer's name,
+full shipping address, phone number and purchase. The ids are unguessable cuids, so this was
+never brute-forceable — it leaks by being **shared**: browser history, the `Referer` header,
+pasted into a chat. That is the failure mode a capability token in a URL always has.
+
+The id stays in the URL, because redirect-based payment providers need a stable return URL built
+before the payment exists. It now names *which* order rather than permitting it. Authority is an
+httpOnly grant cookie signed when this browser completed the checkout, or ownership by a
+signed-in customer — the second matters because clearing cookies must not lock a customer out of
+their own order.
+
+`SameSite=Lax`, not `Strict`, and it is load-bearing: a payment provider returns the shopper by
+cross-site top-level navigation, and Strict withholds the cookie on exactly that request. The
+shopper would come back from paying and be told they cannot see their order. The grant is issued
+best-effort — a cookie failure must never fail an order that has already taken stock and started
+a payment.
+
+Failing the check renders "we can't show this order here", not a 404: the common case is a real
+customer on a second device, and "not found" reads as "your order failed".
+
+Cart and checkout ids remain capability tokens. Defensible for a guest cart with no identity,
+and unlike the order id neither ever appears in a URL.
+
+### QA-018 — it is a Greek shop, not a half-translated English one
+
+Filed as thin Greek coverage on a bilingual site. The data disagreed: all 175 products store
+**Greek** names and descriptions in `name`/`description`, and the `nameEl`/`descriptionEl`
+translation columns are empty on every single one. Categories, collections, blog posts, legal
+pages and SEO titles have no translation column at all. The only thing with two variants was ~90
+UI chrome strings.
+
+So the site was serving Greek while declaring `<html lang="en">` — the wrong language for nearly
+every word on the page, for both search engines and screen readers, plus `og:locale=en_US`.
+Greek is now the default, the WebSite JSON-LD carries `inLanguage`, and English is what it always
+actually was: a toggle for the chrome.
+
+**No locale-prefixed URLs and no `hreflang`, deliberately.** `hreflang` describes alternate URLs
+carrying the same content in different languages. Both modes here render identical content, so
+`/en/` and `/el/` would be ~95% duplicates of one another — that dilutes rankings rather than
+earning them. A crawler arrives with no cookie and gets Greek, which is the version that should
+be indexed. Locale routing becomes correct the day content is genuinely translated; the note in
+`i18n/request.ts` says so.
+
+Greek-by-default then exposed the second half: the most-seen strings on the site were hard-coded
+English. Badges, Quick View and the sort dropdown appear on every card and every listing page.
+`getProductBadges` is a pure function shared by server and client with no access to the request
+locale, so it returned `"Last size"` as a display string — `ProductBadge` now carries a
+translation **key** and the component translates.
+
+### QA-029 — the consent banner was asking about something that did not exist
+
+`lib/consent.ts` had a gate and nothing called it; there was no analytics at all. Asking
+permission for something that never happens is worse than not asking.
+
+GA4 now loads gated on consent, and only when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set — unset
+ships no analytics whatsoever. Nothing loads *before* consent: the `<Script>` is not rendered at
+all, so no request reaches Google and no cookie is set. Loading the tag then "disabling" it is
+the usual shortcut and is not the same thing — the request *is* the tracking event.
+
+Granting consent takes effect on the visit that granted it, via a change event; a `storage` event
+would not do, since it fires in *other* tabs, so the one visit guaranteed to go unmeasured would
+be the visit that produced the consent. `hasConsent` fails **closed** — no stored choice means no
+consent, because "they didn't say no" is not consent.
+
+The CSP widens to permit Google's hosts **only when the measurement id is set**. Adding them
+unconditionally would let every deployment — including this one, which has no analytics — load
+and exfiltrate to Google. Verified both ways against a running server.
+
+### QA-046 — paging the last two admin lists
+
+Products and media now filter, sort and page in SQL. The blocker was never the query; it was what
+select-all means once the browser holds 25 of 175 rows. The header checkbox now means "this
+page", and "select all N matching" stores the **filter** — the server re-derives the set when the
+action runs. Shipping every matching id to the browser would have smuggled back the unbounded
+payload the change exists to remove, and would act on a selection built before anyone else's
+edits. Selection does not accumulate across pages: an invisible selection surviving navigation is
+how someone deletes 300 products believing they selected three.
+
+Raw SQL for two of the five sorts, which are expressions Prisma cannot express in `orderBy` — the
+effective price `COALESCE(salePrice, price)` and margin, derived from it. The margin ordering was
+verified against **synthetic** values because every product has `costPriceAmount` NULL: real data
+exercises only the NULL branch and would pass whatever the CASE said.
+
+Media was complicated by one filter that cannot live in SQL — "unused" depends on whether an
+asset's URL appears in six other tables' Json columns. Folder and search filter in SQL; the
+single consumer pass the old code already ran decides used/unused. The browser now receives 25
+assets instead of 319 and the server does no more work than before.
+
+### QA-030 — audit clean without downgrading Prisma
+
+`npm audit fix --force` "resolves" this by **downgrading prisma to 6.12.0**, a breaking change and
+a worse outcome than a build-time stack-exhaustion advisory. An `overrides` entry lifts the
+transitive `deepmerge-ts` to 8.0.1 instead, leaving prisma on 7.9.1. Verified `prisma generate`
+and `prisma migrate status` still work, since `@prisma/config` is the actual consumer.
+
+## Go-live — COMPLETE, the shop is publicly open at https://shopalexandris.vercel.app, 2 commits pushed, HEAD `0229648`
+
+All 4 launch blockers from the audit session are closed: two fixed, two deferred by an explicit
+decision. `scripts/check-launch-placeholders.ts` passes for the first time. tsc, eslint,
+`next build` and 186 tests green, and every claim below was verified against the live deployment
+rather than the local build.
+
+### The canonical domain (QA-006)
+
+Canonical tags, `robots.txt` and all ~190 sitemap entries pointed at `alexandris-demo.example`, a
+reserved domain that cannot exist. The shop is served publicly from `shopalexandris.vercel.app`,
+so that became the canonical origin. Now 207 sitemap URLs with zero demo references.
+
+The reason this took three separate writes is the part worth remembering. Three different things
+read the site URL: the live `SiteContent` "seo" row drives canonicals, OG tags, robots.txt and the
+sitemap; `data/seo.json` is only the fallback for when that row is missing; and
+`NEXT_PUBLIC_SITE_URL` builds links inside emails sent from contexts with no incoming request (the
+back-in-stock notification, the daily follow-up cron). **Editing the JSON alone changes nothing a
+visitor sees**, because the running shop reads the database — which is precisely how the demo
+domain survived so long.
+
+`scripts/apply-site-url.ts` does the database half and is the piece needed again the day a real
+domain lands. It parses the URL with `new URL()` rather than string-checking it, so a typo fails at
+the script instead of becoming a canonical tag on 207 pages, and it refuses a non-HTTPS origin. It
+preserves the logo's **path** and swaps only its host, so a logo moved or renamed through the admin
+isn't silently reset to whatever the JSON happens to say.
+
+`NEXT_PUBLIC_SITE_URL` is Production-only on purpose: setting it for Preview would make every
+preview deployment advertise the production URL as its canonical.
+
+A mid-session discrepancy that looked like a bug and wasn't: after updating the database, the
+canonical tag was immediately correct while `robots.txt` still showed the old domain. `robots.txt`
+and `sitemap.xml` are **statically prerendered** — they bake database values at build time — while
+canonicals are dynamic. A redeploy resolved it. Worth knowing before debugging the same "impossible"
+state again.
+
+### One identity, four copies, three of them wrong (QA-024)
+
+The audit filed this as "the four footer social links are seeded handles". It was larger than that.
+The unverified `@alexandris` identity existed in four places serving three audiences:
+`settings.socialLinks` (footer links, for people), `seo.organization.sameAs` (Organization JSON-LD,
+for search engines), `seo.twitterHandle` (the `twitter:creator` meta tag on **every page**), and the
+homepage `socialGrid.handle` (the "@…" under "Follow Along").
+
+`sameAs` and `twitter:creator` are the strong claims — they assert those accounts *are* this
+business. Since none were verified as belonging to this trader, the shop was pointing customers at
+strangers' profiles and simultaneously telling Google and X that the strangers were the shop. All
+four are now empty, which is the honest state until real profiles exist.
+
+The structural fix matters more than the deletion: **the three derived copies are now computed
+rather than maintained.** `scripts/apply-social-links.ts` owns all four fields and derives the X
+handle from the `x` link and the homepage handle from the `instagram` link, each reduced to its
+final path segment. One fact kept by hand in four places is exactly how three of them came to be
+wrong. Adding the real URLs to `data/settings.json` and re-running restores every one of them.
+
+Two details that would otherwise regress:
+
+- Handles are **deleted, not blanked**. `buildMetadata` passes `twitterHandle` straight to
+  `twitter.creator`, and an empty string still emits the meta tag — pointing at nobody instead of at
+  a stranger, which is quieter but no more true.
+- `organizationSchema` **omits `sameAs` entirely** when empty rather than emitting `[]`. A visible
+  empty array in the output invites someone to "fix" it by putting the seeded handles back.
+
+The footer's social `<ul>` is no longer rendered when the list is empty. An empty list collapses to
+zero height but keeps its `mt-6`, leaving 24px of dead space under the newsletter form — and with no
+profiles configured, empty is the shop's normal state, not an edge case.
+
+The homepage "Follow Along" section stays **enabled**. It is real lifestyle photography that stands
+on its own; it simply no longer claims a handle, and its tiles are not links until an Instagram URL
+exists.
+
+### ΓΕΜΗ — recorded as a decision rather than left as an absence
+
+The trader states they are not ΓΕΜΗ-registered. Rather than leave `gemiNumber` null and silence the
+check, `COMPANY.gemiRegistration` now distinguishes three states, because a null number means two
+very different things and only one of them is safe to launch on:
+
+- `"unknown"` — nobody has answered. **The launch check fails on this**, so an unanswered question
+  cannot ship looking like an answered one.
+- `"not-registered"` — a recorded decision. The check passes but **prints the decision on every
+  run**, so a provisional answer doesn't quietly become permanent by ceasing to fail.
+- `"registered"` — requires a `gemiNumber`; the check fails if the two fields disagree, which would
+  otherwise mean the identity line silently omits a number the law requires it to show.
+
+Flagged to the user and reaffirmed by them: a Greek trader selling at distance is normally required
+to register. `scripts/rewrite-legal.ts` regenerates identically today and reports which of the three
+states it wrote under.
+
+### Payments — cash on delivery only, by decision (QA-002)
+
+Both payment config tables are still empty, so cash on delivery runs purely on provider defaults and
+is the single accepted method. Verified the honest way: the footer's accepted-payments list resolves
+through the real `getAcceptedPaymentMethodNames()` availability pipeline against the live database
+and renders exactly "Cash on Delivery".
+
+Bank transfer is real and complete but has no config row, so it never reaches checkout — its
+required fields (bank name, account holder, IBAN) are unset. Enabling it later is three form fields
+in `/admin/settings/payments/bank-transfer` and no code.
+
+### Two production environment problems, found by reading the actual Vercel env
+
+Neither was on the audit's list, and neither is visible from the repository.
+
+- **`PAYMENT_CONFIG_SECRET` is misspelled** in production. The code reads
+  `PAYMENTS_CONFIG_SECRET`. Credential encryption is therefore unconfigured in production: the
+  admin payments page shows its warning banner, and saving a Stripe key would fail outright.
+  Nothing breaks today because cash on delivery and bank transfer store no secrets. **Left open at
+  the user's request** — they are renaming it in the dashboard, which preserves the existing value.
+- **`BLOB_READ_WRITE_TOKEN` was absent from production entirely**, so Media Library uploads and the
+  CSV import's product images would have failed on the live site with a "not configured" error.
+  Copied from local `.env` to Production at the user's direction. Production only — preview
+  deployments still have no Blob token.
+
+Vercel environment changes take effect only on the next deployment; both landed with `0229648`.
+
+### Verified on the live deployment
+
+207 sitemap URLs with zero demo-domain references; robots.txt pointing at the right host; correct
+canonical; no `twitter:creator`; no `@alexandris` anywhere on the homepage; Organization JSON-LD
+carrying the real legal name, address, ΑΦΜ, email and phone with no `sameAs`; the footer identity
+line omitting the ΓΕΜΗ label cleanly. Catalogue browses, the product page selects sizes, add-to-cart
+works, and cart totals are right: €34.90 + €6.95 shipping = €41.85 with €8.10 VAT — 24%
+**inclusive** (`41.85 × 0.24/1.24`), not added on top, which is the bug class the audit session
+fixed.
+
+Checkout was deliberately **not** driven past the contact step. That would mean submitting forms on
+production, and a completed order decrements stock that deleting the order does not restore.
+
+### Also confirmed, and still outstanding
+
+The live database has **exactly one `AdminUser`**, `alexandrisstores@gmail.com`, and its password is
+**not** the seeded `admin123` — the demo account is gone from production. One account is still one
+lost password from lockout, so a second admin remains worth creating. Separately, `README.md` still
+advertises `admin@alexandris-demo.example` / `admin123` as the demo login in a **public** GitHub
+repo; that account no longer exists so it is not a live risk, but the line is now false.
+
+Also noted: Vercel SSO deployment protection is on for `all_except_custom_domains`, so only
+`shopalexandris.vercel.app` is publicly reachable — `my-eshop-alexandris.vercel.app` 302s to a
+Vercel login.
+
+## Full pre-launch audit, then 40 of 63 findings fixed — COMPLETE, verified clean (tsc + eslint + build + 186 tests + production-build walkthrough), 18 commits pushed, HEAD `ebcd82b`
+
+The brief was a complete page-by-page, feature-by-feature functional audit of the whole shop and
+admin — not a design review — followed by fixing what it found. The audit ran against the live
+Neon database: routes requested, forms submitted, API requests crafted, database rows inspected
+before and after, a real order placed end to end and then removed.
+
+**63 findings. 40 fixed and verified, 1 partly fixed, 1 withdrawn as wrong, 21 open, 4 launch
+blockers remaining — and none of the four is code.** Two live artifacts hold the detail:
+Launch Readiness (current) at `https://claude.ai/code/artifact/0795b30b-6cca-4921-a074-cefb8ff50ff4`
+and the original 63-finding audit at `https://claude.ai/code/artifact/bd90ab98-6680-4c70-9d1b-7a0f7d532160`.
+
+### The commercially serious ones
+
+**VAT was being added to VAT-inclusive prices, at a rate that isn't Greek.** `VAT_RATE` was 0.21
+and applied on top of the displayed price, so a €59 shoe billed at €78.34 — while the shop's own
+Terms of Service said "all prices ... include VAT". Now inclusive at 24%. The critical distinction
+is that `vatIncludedIn()` is `gross × rate / (1 + rate)`, not `gross × rate`; confusing those two
+IS the original bug, so it is one named function with a comment saying which is which. VAT is
+extracted from the pre-gift-card total on purpose — a gift card is a means of payment, not a price
+reduction, so redeeming one must not change the VAT the sale bore. The three client-side display
+overlays (shipping rate, gift wrap, payment fee) had to start recomputing the tax line, which was
+correct to skip under the old exclusive model and wrong under this one.
+
+**Every missing page returned HTTP 200 with 404 content.** The cause was `app/loading.tsx`: a ROOT
+`loading.tsx` wraps every route in a Suspense boundary, so Next flushes the shell — committing 200 —
+before the page component resolves, and by the time `notFound()` ran the status had gone out. Now
+scoped to an `app/(listing)/` route group covering only `/women`, `/men`, `/new-in`, `/sale`, which
+cannot 404 and are the only pages a product-grid skeleton ever suited. `/collections` deliberately
+stays outside the group because it contains `/collections/[slug]`, which can. **Adding a
+`loading.tsx` to any route that calls `notFound()` reintroduces this bug.**
+
+**Password reset was completely dead.** `proxy.ts` treated only `/account/login` and
+`/account/register` as reachable without a session, so the emailed reset link 307'd to the login
+page and no customer could ever set a new password. It is now allowed in BOTH states, not simply
+added to the public list: signed out it is where the email lands, and signed in someone who
+requested a reset elsewhere must still be able to finish rather than be bounced with their token
+discarded.
+
+**Two pieces of fabricated content were shipped to customers.** "N people bought this in the last
+48 hours" was `6 + (hash of SKU % 24)` — a product created with zero sales displayed "27 people".
+Deleted, not disabled behind a flag. And the Privacy Policy still ended with a section headed
+"This Is a Demo".
+
+### Storefront search moved into Postgres
+
+Listing pages downloaded the whole scoped catalog before showing a card: `/women` pulled 205 KB
+from `/api/products`, filtered/sorted/faceted/paginated it in JavaScript, and issued a SECOND
+500-product request purely to read the price-slider bounds. **`/women` is now 13,278 bytes, from
+one request instead of two — a 94% cut.**
+
+Written as raw SQL rather than the query builder for one specific reason: every price rule here
+operates on the EFFECTIVE price, `COALESCE(salePrice, price)`, which Prisma cannot express in
+`where` or `orderBy` — and 172 of 175 products carry a sale price, so sorting on
+`salePriceAmount` alone puts every full-price product in the wrong place. Values go through
+`Prisma.sql`; the raw query only decides WHICH products, and rows are hydrated through Prisma and
+the existing `toProduct` mapper. Two details that would have been silent bugs: facets are counted
+over the SCOPE rather than the refined results (otherwise choosing "black" zeroes every other
+colour and strands the shopper), and every sort carries `p.id` as a tiebreaker (without a total
+order, two equally-priced products swap between pages and one is never seen).
+
+### Data integrity and validation
+
+- **Cart quantity was clamped only on the update path.** A first add of 9999 against a size holding
+  one unit stored 9999 and produced a €713,900 cart. Both branches now share one clamp.
+- **Colour was never validated** — any string was accepted, stored on the line item, and
+  snapshotted into `Order.lineItems` for the admin to read while picking. It also broke the dedupe
+  key, letting the per-line stock cap be bypassed.
+- **An order could be created with no payment method at all** — stock decremented, gift cards
+  debited, status `confirmed`, and the confirmation page's `isSettled || !payment` branch showed
+  the green success tick. Now refused; the confirmation page treats a missing payment as failure.
+- **Stock never came back on cancel or refund.** Claimed via a null-guarded new
+  `Order.restockedAt` before any stock is written, so two concurrent status changes can't both
+  credit. Only `deny`-policy lines are restored: for a `continue` product the original decrement
+  was `min(ordered, available)`, so crediting the full amount could invent stock.
+- **Admin product saves silently destroyed page titles.** RHF materialises
+  `seo: {title:"", description:""}`, and `??` doesn't fall back on `""`. **The first fix silently
+  did nothing** — `undefined` is Prisma's "leave this column alone", so nullable JSON columns need
+  `Prisma.DbNull`. The identical latent bug in `videos` was fixed alongside.
+
+### Admin
+
+Server-side paging, search and filters for **orders** (by short reference with or without the `#`,
+email, customer name, tracking, plus status) and **inventory** (25 of 1,050 rows, lowest stock
+first, search + stock-level filter). Shared `lib/pagination.ts` + `Pagination`/`ListFilterBar`
+render as plain links and a GET form, so filters live in the URL and survive a refresh.
+`/admin/products` (175) and `/admin/media` (317) deliberately still filter client-side — their
+filter/sort/bulk-selection state is interdependent, and paging them means first deciding what
+select-all means across pages.
+
+**Admin user management now exists at all** — create, delete, and self-service password change.
+Previously the Users page could only change a role, so adding a colleague or creating a second
+admin meant a direct database write. Deleting yourself is refused (it would invalidate the session
+making the request); deleting the last admin is refused; password change requires the current
+password and clears the session cookie afterwards, since a password changed *because* it may be
+compromised has to actually end the sessions using it.
+
+### Content, legal and merchandising
+
+Trader identity now lives in `constants/company.ts` and feeds the footer, contact page, all three
+legal documents and the Organization JSON-LD — **Alexandris Michail, Arthur Evans 9, 71201
+Heraklion, Crete, ΑΦΜ 146214557, alexandrisstores@gmail.com, 2814 001 031**. `legalName` and
+`brandName` are separate fields on purpose: legal documents must name the registered trader.
+The contact address was replaced in `data/settings.json` AND in the live `SiteContent` row — the
+JSON is only the fallback, which is exactly why the `.example` placeholder survived so long.
+
+All three legal documents were rewritten for a Greek distance seller: lawful bases, processors,
+retention, GDPR rights and the Hellenic DPA, the 14-day withdrawal right alongside the existing
+30-day returns offer, the ODR platform, the Consumer's Ombudsman, governing law.
+
+Merchandising: collections filled from each product's category via a re-runnable
+`scripts/merchandise.ts`; homepage Featured Collections, New Arrivals and editorial banner
+re-enabled; `/new-in` switched from an `isNew` flag nobody had ever set to sorting by `createdAt`
+(which also fixed "Newest" being a **no-op on every listing page**); six seeded test orders purged,
+dropping dashboard revenue from €1,196.43 to €146.52.
+
+**"Best Sellers" was deliberately left OFF** — with 2 real payments, any list under that heading
+would be a claim about sales that never happened, the same class of thing as the purchase counter
+just removed.
+
+### Two corrections to the audit's own findings
+
+The audit reported the homepage `collectionIds` `c1`–`c5` as stale demo values. **They are the
+real IDs** — the section only looked broken because every collection it pointed at was empty.
+
+The audit reported ~1 pair per size as an inventory defect. **That is the real stock and it is
+normal for an independent footwear retailer** — a warehouse model read onto a small shop. The
+useful part survived correction: the scarcity badge counted total UNITS, so it fired on 147 of 164
+products, which is not a signal. It now counts available SIZES and appears on the 27% where that
+means something, saying "Last size" or "Few sizes left" where "Low Stock" had been one word for two
+different messages.
+
+### One regression shipped and then fixed
+
+Making `phone` required broke reading every order placed while it was optional: `addressSchema`
+doubled as an input validator AND as the parser for stored JSON in `toOrder`/`toCheckout`, so the
+admin dashboard and orders list both 500'd on a ZodError. Split into a strict `addressSchema` for
+input and a lenient `storedAddressSchema` for persisted data. It was caught by reading the server
+log — `tsc`, `eslint` and the full test suite stayed green throughout, because none of them touch
+stored rows. **Tightening what an app accepts must never retroactively invalidate what it already
+wrote.**
+
+### Also fixed
+
+Greek public holidays (including 15 August and the Orthodox Easter cluster, computed per year) in
+delivery estimates; production CSP dropped `unsafe-eval` and gained `base-uri`/`form-action`/
+`object-src`; password policy now screens common passwords rather than only counting characters;
+rate limits on order completion, checkout/cart creation, cart writes and the catalog endpoint; CSV
+import routes moved from authentication-only to `catalog:edit`; the 320px horizontal overflow
+(a `<select>`'s intrinsic width — a flex item never shrinks below its intrinsic minimum unless
+`min-width` is cleared); Instagram tiles that linked to `#`; the footer advertising Visa/Mastercard/
+Amex/PayPal on a shop that could only take cash; checkout defaulting to United States; phone
+optional on a cash-on-delivery shop; "Terms of Service" being plain text with no anchor anywhere on
+the page; empty Materials/Care accordions and a "wearing size M" fit note on footwear; admin prices
+showing pre-discount figures on 172 of 175 rows; structured data advertising a `/search` page that
+doesn't exist; "0 items" flashing before results load; size facets in insertion order.
+
+### Testing traps discovered (recorded in NOTES.md — they cost hours)
+
+`pkill -f "next start"` does not kill the process in this environment: every rebuilt server after
+the first failed to bind with `EADDRINUSE` and silently kept serving the OLD build, which made
+byte-identical code appear to behave differently at two paths. Kill by port and check the log.
+Folders named `__something` are PRIVATE in the App Router and never routed, so probe routes named
+`__probe*` returned 404 because the route didn't exist. The dev server must be restarted after a
+Prisma schema change. And deleting an order does not restock it — five units silently went missing
+from the live catalog during testing before that was noticed.
+
+Tests went **145 → 186**. All test data created during the audit was removed and re-verified:
+175 products, 2 orders, 1 admin, stock restored to audit-start values.
+
+## Complete payment architecture + admin payment dashboard — COMPLETE, verified clean (tsc + eslint + build + 145 tests + live browser walkthrough incl. a real COD order, manual confirmation, partial refund and the full webhook pipeline)
+
+The last major gap. Payment had been declined three times across previous sessions and was the
+one thing standing between this and a shop that can take money. The explicit brief was to build
+the **architecture**, not a Stripe integration: modular providers that can be enabled, disabled,
+configured, tested and replaced from the admin, working even where the external API isn't
+connected yet.
+
+**The architectural rule, and what it cost to hold:** `Checkout → Payment Abstraction Layer →
+Selected Provider`. The checkout knows only `PaymentMethod` / `PaymentIntent` / `PaymentStatus` /
+`PaymentResult`, and takes exactly ONE behavioural branch — `customerAction.type === "redirect"`
+— which is about the *action*, not the vendor. There is no `if (stripe)` or `if (cod)` anywhere
+in the storefront. Holding that meant deleting things: `PaymentStep.tsx` was a hardcoded fake
+card form ("Demo checkout — no payment is charged") with a feature-flagged "Pay in 4" that did
+nothing, and `ExpressCheckoutButtons` toasted "not connected in this demo" for Apple/Google
+Pay/PayPal. Both deleted, along with `cardSchema` — this app must never accept a PAN or CVV, and
+leaving the schema around invites a future integration to be wired up wrongly. The
+`express-checkout`/`klarna-payment` feature flags went too: wallet visibility now comes from the
+store's own configuration, not from a boolean in source control.
+
+**Domain layer** (`lib/payments/`) — `types.ts` (the whole vocabulary and the `PaymentProvider`
+contract), `status.ts` (ten-state machine, one `assertTransition` chokepoint every caller funnels
+through, so nothing client-side can set a status), `availability.ts` and `fees.ts` (pure, so both
+the "may we offer this" and "what does it cost" questions are unit-testable without a database),
+`idempotency.ts`, `crypto.ts` (AES-256-GCM at rest + constant-time signature comparison),
+`config.ts` (storage, env-var precedence, the masked browser-safe projection), `registry.ts`.
+Providers are **stateless singletons** — configuration arrives per call rather than being
+captured in a constructor, so a credential change takes effect on the next request with no
+restart and no cache to invalidate.
+
+**Five new tables**, deliberately their own rather than columns on `Order`: `payments`,
+`payment_transactions` (append-only audit trail, never updated or deleted),
+`payment_webhook_events` (unique on `(provider, eventId)` — a database constraint, not an
+in-memory set, because serverless instances don't share memory), `payment_provider_configs`,
+`payment_method_settings`. **Capabilities are not in the database**: `supportsRefunds`,
+`requiresWebhook` and friends live in code beside the provider that implements them, where an
+admin cannot toggle them into being true. Two additive migrations, both applied to the shared
+production DB — safe precisely because they're additive (see the destructive-migration warning
+from the 2026-08-14 session).
+
+**Six providers.** Cash on Delivery and Bank Transfer are *real and complete*, need no external
+account, and are enabled by default so a fresh install has a working checkout on day one. COD
+goes through the same contract as Stripe rather than being a checkout special case — which is
+what gives it a real Payment row, a real status machine, a real audit trail and a real place in
+reporting; the `if (method === "cod")` version most shops end up with is exactly what makes COD
+invisible to accounting. Bank Transfer lands in `awaiting_bank_transfer` and the state machine
+has **no** edge from there to `processing`, so there is no automatic path to settlement at all.
+Stripe is real, via **hosted Checkout Sessions over its REST API with `fetch`** (same approach as
+`lib/courier/providers/acs.ts` and `lib/oauth/*`) — Elements would need Stripe.js, which the CSP
+blocks and which pulls PCI scope back toward us; hosted means no card data touches the app and
+Apple Pay/Google Pay appear on Stripe's verified domain automatically. Apple Pay is modelled as a
+*capability*, not an acquirer: it owns the Apple-specific config and delegates every money
+operation to whichever processor `processingProviderIdFor` names, with the service resolving that
+processor's config into `ctx.processingConfig` (resolving it inside the provider would be an
+import cycle and would let any provider read any other's credentials).
+
+**IRIS and Piraeus ship as integration BOUNDARIES, and this is the part worth not misreading.**
+Everything structural is real — registration, configuration UI, encrypted credential storage, a
+routable webhook endpoint, a place in the status machine and the admin. But
+`validateConfiguration` returns `not_implemented` and **never** `connected`, so filling in every
+credential does not turn the badge green; `isConfigured` returns `false` unconditionally, which
+is what keeps the method off the checkout entirely; and payment creation throws
+`PROVIDER_NOT_IMPLEMENTED`. No endpoint, request body, header or signing algorithm was invented.
+The Piraeus field list is *exactly* the one specified and nothing more — adding a field would be
+presenting an invented parameter to a store owner as if the bank required it, and removing one
+might drop something they do need. Both are built from a shared
+`createPendingIntegrationProvider` factory, which doubles as the pattern for any future bank.
+
+**Admin** — `/admin/settings/payments` (overview cards, method table, webhook endpoints) and
+`/admin/settings/payments/[provider]`, written ONCE and resolved against the registry: every
+field comes from the provider's own `configFields`, so registering a future provider produces its
+settings page for free. `/admin/payments` gives the transaction table with real database-side
+filtering (the one admin list that must never assume it fits in memory), and a detail page with
+the timeline, webhook log, refunds and metadata. Four new capabilities — `payments:view`
+(editors get it, since they need to know an order is paid before dispatching), `payments:manage`,
+`payments:refund`, `payments:configure`. Actions use `capabilityDenied()` rather than throwing,
+per the documented lesson that a thrown error inside a Server Action never reaches the caller's
+`if (result.error)` and reads as a broken button.
+
+**Verified live end to end, not just type-checked**: placed a real COD order (€49.18 → €51.18
+with a €2 fee set through the admin), traced the fee through the order summary, review step,
+confirmation page, stored order and confirmation email; marked it received (status → paid,
+`paidAt` set, timeline recorded the admin actor and note); issued a €10 partial refund
+(→ partially_refunded, €41.18 remaining). Exercised the webhook route directly: a correctly
+signed event was accepted and marked verified, the **same signature with a tampered body was
+rejected 400**, an identical replay returned `duplicate` without applying twice, and a forged
+event carrying a real `paymentId` was rejected without touching the payment. Two concurrent
+`/complete` calls plus a third sequential one all returned the same order and payment id.
+Confirmed AES-GCM ciphertext in the database and that no plaintext secret appears in the DOM or
+the RSC flight payload. Every row created was deleted afterwards; a real order placed by the user
+mid-session was left untouched.
+
+**Three real bugs the type checker could never have caught, all found by actually looking:**
+(1) Apple Pay reported "Connected" with no Stripe credentials anywhere — the admin called
+`provider.isConfigured()` directly, which is true for a delegating provider, so the admin now
+reads the same `getProviderStates()` the checkout does; (2) a fresh install had a working
+checkout that offered nothing, because the two internal *methods* defaulted to enabled while
+every *provider* defaulted to disabled and availability requires both (providers now carry their
+own `defaultEnabled`, with a test asserting the two stay in step); (3) the €2 COD fee was charged
+correctly server-side but never overlaid onto the checkout summary, so the shopper would have
+seen one number and paid another — the exact failure the server-side-fee requirement exists to
+prevent. Also: a real COD payment was tagged "Test" because providers with no sandbox/live split
+still defaulted to `sandbox`.
+
+**Tests went 44 → 145.** New suites cover the state machine (including that nothing un-settles
+money and terminal states never revive), availability (every gate, plus that an empty country
+list means "everywhere" not "nowhere"), fees (including that a negative configured fee can't
+become a discount), idempotency-key derivation, secret storage (tamper detection, rotated-key
+messaging, refusal to fall back to a default), the registry's structural guarantees, both
+internal providers, both pending boundaries, and 21 Stripe tests covering status mapping,
+signature verification (wrong secret, tampered body, replay outside tolerance, multi-signature
+rotation headers) and event normalisation. **A live Stripe API call was deliberately not made** —
+no real credentials exist, and firing a live external API unprompted isn't this project's habit.
+
+**Developer documentation** in `PAYMENTS.md`: how the layer works, a full worked example of
+adding a hypothetical Viva Wallet provider (two files, zero changes to checkout/orders/database/
+admin), and how to add a method, a config field, a webhook, refunds and status transitions.
+`.env.example` documents the mechanical `<PROVIDER_ID>_<FIELD_KEY>` env-var convention and the
+required `PAYMENTS_CONFIG_SECRET`.
+
+## Real WooCommerce catalog migration + Blob image pipeline + menu polish — COMPLETE, verified clean (tsc + eslint + build + live browser + pixel-level image verification)
+
+The user provided a real product export from their actual live business (`alexandrisstores.gr`, a real multi-brand shoe retailer — U.S. Polo Assn., London, Mont Martre Paris, Alexandris' own house line, not a single in-house brand) and asked to bring real inventory into the app. No direct WooCommerce→ALEXANDRIS import path exists (different CSV shapes entirely, and WooCommerce splits variable products into parent+variation rows) — built a one-off converter instead of a reusable feature, since this was framed as a one-time catalog migration, not an ongoing sync.
+
+**Scope**, narrowed via conversation across a few iterations (started at "everything," ended at): the 115 most-recently-uploaded women's + 60 most-recent men's shoes = 175 products, out of 660 real parent products in the full export (561 shoes total; 91 bags/wallets/belts and 1 gift card deliberately excluded — this site is now footwear-only per the earlier clothing→shoes pivot). WooCommerce post ID stood in for "most recently uploaded" since the export has no creation-date column.
+
+**The converter** (`scripts/_tmp_wc_import.ts`, deleted after use — see "gotchas" in the current `NOTES.md` for the reusable patterns/pitfalls if this is ever needed again): linked each variation row to its parent via BOTH `Parent="id:NNNN"` (older rows) and `Parent="<parent SKU>"` (newer rows) — the export genuinely mixes both conventions depending on product age, caught via dry-run sampling of the most-recent products rather than assumed from the first few rows. Parsed European comma-decimal prices ("49,90" → 49.90 — a silent `NaN→0` bug caught the same way, via a dry-run summary showing 70/175 products at a suspicious €1 placeholder price). Transliterated Greek product names to URL-safe slugs (letter-by-letter Greek→Latin table, `-{wcId}` suffix for guaranteed uniqueness). Mapped Greek category taxonomy (e.g. "Ανδρικά > Μοκασίνια") to this app's category/gender fields, with merchandising-only WooCommerce categories ("Προσφορές", "Μεγάλα νούμερα") treated as tags rather than the primary category. Mapped ~20 real Greek color names to hex values. Every mapped row was validated through the actual `productFormSchema` (the same schema the single-product admin form and CSV importer both already use) before writing — 0 validation failures across 175 rows on the final run.
+
+**Written directly via Prisma**, not through the browser CSV-upload UI — same `PrismaPg` adapter construction pattern as `scripts/seed.ts` (proven to work under plain `tsx`, unlike the `server-only`-guarded `lib/prisma.ts`, which fails silently when imported outside Next's own build). Chose this over the real importer's UI specifically because 175 rows through a single Vercel serverless request risked hitting the platform's execution-time limit; a local script has no such ceiling. All 175 created cleanly on the final run (zero failures, zero duplicate slugs).
+
+**Two real, previously-latent bugs found and fixed while migrating** (both are genuine product code changes, not migration-script-only): `next.config.ts`'s `images.remotePatterns` only ever allow-listed `images.unsplash.com`. Both the WooCommerce photos (hosted on `alexandrisstores.gr`, the old WordPress site — chosen deliberately over re-hosting immediately, since the images were verified still publicly reachable) and, later, Vercel Blob's own per-store subdomain (`*.public.blob.vercel-storage.com`) were unconfigured hosts — `next/image` treats an unconfigured remote host as a hard crash (the PDP's error boundary, not a broken-image icon). The Blob one is the more important find: it means the pre-existing admin Media Library upload feature had never actually been exercised end-to-end against a real connected Blob store before this session — it was always going to hit this exact crash the first time anyone used it for real, entirely independent of this migration.
+
+**Vercel Blob connection, done live with the user in the loop**: `vercel login` → `vercel link` → `vercel env pull` needed the PowerShell `.ps1`-execution-policy workaround (`npx.cmd` instead of `npx`, since script execution is disabled by default). First Blob store the user created defaulted to **private** access — this app's entire Blob integration (`lib/blob.ts`) assumes public URLs with no signing anywhere, so every upload failed immediately with "Cannot use public access on a private store." Zero corruption from this — the re-host script's error handling kept every product's original (still-live) `alexandrisstores.gr` URL in place on any upload failure, verified directly against the DB before proceeding. A second, public store worked. Separately, `vercel env pull` surfaced a real environment-parity gap unrelated to Blob: it pulled a **different `DATABASE_URL`** than the project's actual `.env` (a different Neon endpoint entirely) — Next.js prioritizes `.env.local` over `.env` by default, so once `.next` got cache-cleared and the dev server fully restarted, it silently began serving from a different, older/less-migrated database (missing a real column, reverted to a pre-pivot SEO title, the just-imported products 404ing). Diagnosed via the mismatch itself (not assumed) and fixed by deleting `.env.local` outright after hand-copying only the needed `BLOB_READ_WRITE_TOKEN` into `.env`.
+
+**Image re-hosting**: all 175 products' photos (316 images) downloaded from `alexandrisstores.gr` and re-uploaded to the (now-public) Blob store, 0 failures, so this batch no longer depends on the old WordPress site staying up. Then, per a follow-up ask, re-processed a second time: padded from their native 1:1 crop to the site's real `aspect-3/4` (portrait) gallery containers, filled with a solid background color. **First pass used the site's own CSS token value (245,245,245) as a "correction" to what the user asked for (241,241,241) — wrong.** The user's number was their real, deliberate brand/studio value, not a typo; they corrected this back explicitly. Redid the entire batch from the true original WooCommerce-CSV URLs (not the already-padded intermediate version, to avoid double-recompression), using `sharp` (`fit:"contain"` + `background`, already a project dependency — no "AI tool" needed for solid-color letterboxing, it's deterministic image processing). Verified pixel-for-pixel afterward: extracted the actual corner pixel of a real rendered product image and confirmed `rgb(241,241,241)` exactly, plus dimension math (1000×1333 = 0.75 ratio = 3:4). Old wrong-color Blob files cleaned up (`del()`) after each successful replacement, so nothing orphaned.
+
+**Placeholder cleanup**: once the real catalog was live, deleted the original 12 demo/seed shoe products (187 → 175 products). Checked cascade behavior in `schema.prisma` first rather than assuming: `ProductColor`/`ProductSize`/`ProductCollection` all `onDelete: Cascade` (safe, auto-cleaned), and so are `CartLineItem`/`WishlistItem`/`BackInStockRequest` — queried for and found 3 real guest carts (no customer account attached, dated across more than a week) that had one of the 12 in them; disclosed this consequence explicitly before deleting, user accepted it as acceptable collateral. Also found, via the same investigation, that `Collection.productIds` doesn't exist as a separate array field — collections are purely the `ProductCollection` join table (`onDelete: Cascade` both sides), so no dangling-reference risk there either. **User explicitly declined having collections/homepage sections auto-backfilled with real products** ("delete products only, I'll handle collections/homepage myself") — verified this degrades gracefully (empty-state UI, no crashes) rather than assuming it was fine and moving on. `data/reviews.json` cleared to `[]` since every entry referenced one of the deleted 12.
+
+**Navigation polish, unrelated small ask handled the same session**: mobile's Women/Men accordion only let a shopper drill into sub-categories (New In, Heels, Boots, Sandals, etc.) with no way to reach the unfiltered full listing — desktop's mega-menu already had both a clickable top-level label and an explicit "View All" link for this, mobile had neither. Added a "View All Women"/"View All Men" link (localized, `messages/{en,el}.json`) at the top of each mobile accordion panel.
+
+**Verified throughout, not just at the end**: dry-run validation report before any DB write (175/175 passed, then re-verified after each of the two real bugs found via sampling — the dual Parent-linkage convention and the comma-decimal price bug — rather than trusting a clean-looking first pass); live PDP/PLP checks after each phase (product count matched expected math every time: 187 after import, 175 after cleanup, `/women` and `/men` counts matched exactly); pixel-level verification for the image padding rather than trusting a screenshot's visual impression, which had actually been misleading (a tightly-cropped source photo still looks "zoomed in" even with correct padding behind it).
+
+## 7 open engineering-audit findings fixed + legacy seed-file cleanup + live-site polish — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+A prior session's engineering audit had left a backlog of findings; re-verified each against current code before touching anything (2 of the original findings — auth rate limiting, checkout's N+1 query — turned out already fixed by an earlier, unrelated session and were left alone). Planned visibly via `EnterPlanMode` before executing, then worked through the remaining 7 in risk order (cheapest/safest first):
+
+- **Sign-up email-enumeration leak**: the existing-email branch returned a distinct `409 EMAIL_IN_USE`, letting an attacker probe for registered emails. Full fix (the user's explicit choice over a lighter status-code-only patch): both branches now return `200`, the existing-email branch sends a new `accountAlreadyExistsEmail()` notification instead of establishing a session (returning the real customer's session would be account takeover; fabricating one would desync the frontend), and `AuthProvider.signUp()` shows a neutral "check your email or sign in" message either way so the two cases stay indistinguishable to the requester.
+- **Checkout PATCH validation**: `/api/checkout/[checkoutId]` accepted `email`/`shippingAddress`/`billingAddress` with zero schema validation, unlike the sibling `/api/customer/addresses` route. Now validates every provided field up front (before applying any of them, so a bad `billingAddress` can't leave a good `email` update half-applied) via the existing `addressSchema`/`contactSchema`.
+- **PLP re-fetch performance**: `ProductListingPage.tsx` re-fetched every prior page from scratch on each "Load More" click. Added a signature-keyed page cache (keyed on the filter/sort state, not `urlPage`) so a click only fetches the genuinely new page — verified via the Network tab (exactly one new request per click, not N).
+- **First automated tests**: `vitest` + `vitest.config.ts` with a `server-only` alias (`lib/commerce/postgres/cart-totals.ts` has a module-level `"server-only"` import that throws outside Next's own build — the alias points it at the package's own `empty.js`). 15 tests across `lib/shipping.test.ts` and `cart-totals.test.ts`, including a regression test for a real past revenue bug (free shipping bypassed by an explicitly selected rate).
+- **Accessibility**: `aria-live="polite"` on the global toast viewport (one change, covers every `toast()` call site app-wide); `aria-describedby` wired from every hand-rolled form field's error message to its input across Contact, Account Address, all 3 checkout steps, Login, and Register — including the shared `AddressAutocompleteInput` component, which fixed both `AddressForm.tsx` and `ShippingAddressStep.tsx`'s street-address field at once.
+- **SEO**: `/account/*` protected pages now `noindex,nofollow` (matching the pattern already used for `/admin`). The 5 PLP pages (`/women`, `/men`, `/sale`, `/new-in`, `/collections/[slug]`) now get real canonical + OG/Twitter metadata via the existing `buildMetadata()` helper, previously bare `{title, description}` objects.
+
+Verified live end-to-end for the two riskiest fixes rather than trusting the type-checker: created and deleted two disposable test-customer accounts to confirm the sign-up flow (new account still works normally; duplicate-email attempt returns `200`/`{ok:true,requiresLogin:true}` with no session cookie set, confirmed via `document.cookie` and a fresh `/api/auth/session` check) and to confirm `noindex` actually renders (`<meta name="robots">` inspected directly on an authenticated `/account/orders` load, not just the code).
+
+**Also this session, smaller items**: fixed a Vercel deployment mix-up where an old commit got manually re-promoted to production moments after a real push, silently rolling the live site back (diagnosed via the Vercel MCP tools' `list_deployments`, fixed by the user via the dashboard's "Promote to Production" once identified — worth knowing this can happen if a deployment looks stale after a push). Changed the homepage hero to a real Unsplash photo (moody pewter stiletto) via direct `site_content` SQL — a DB-only change, live everywhere immediately, no deploy needed. Fixed a local dev-server port conflict (another session held :3000) by setting `autoPort: true` in `.claude/launch.json`. Updated the last stale clothing-era legacy files (`data/{products,collections,navigation,homepage,seo,settings,blog}.json`, left untouched during the earlier clothing→shoes pivot) to mirror the live shoe catalog — these matter beyond a from-scratch reseed, since `services/{homepage,navigation,settings,seo}.ts` import them as a live fallback if the corresponding Postgres `SiteContent` row is ever missing; deliberately did not execute `scripts/seed.ts` against the live DB to "verify" this, since avoiding exactly that risk was the point of the exercise — verified via `tsc`/`lint`/`build` only, plus care around which IDs could collide with live data (products' seed IDs can't; collections' can and were matched exactly). Also fixed stale Greek `titleEl`/`subtitleEl` translations on 4 of the 5 collections, discovered as a side effect of that same cleanup (leftover from the pre-shoe-pivot clothing catalog, never updated during the pivot itself).
+
+## Admin polish: quick product delete, editable nav dropdowns, redesigned dropdown menu + emails — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+Three small-to-medium asks from the same session, each verified live:
+
+**Quick delete on the products list** — a small "X" button per row (`components/admin/DeleteProductButton.tsx`), reuses the exact same `deleteProduct` Server Action the product detail page's delete button already calls, gated by a native `confirm()` since there's no undo. No new backend logic — just a faster access point to something that already existed.
+
+**Navigation Menu editor now manages dropdown sub-items, not just top-level links** — `components/admin/NavigationEditor.tsx` previously only edited each `NavItem`'s `label`/`href`; its own description literally said "sub-menus... follow in a later iteration." Extended it to add/edit/remove each item's `children` (the actual dropdown contents) — no schema change needed, since navigation was already real Postgres-backed (`SiteContent` key `"navigation"`) and `NavItem.children` already existed in the type/data, just wasn't exposed in the editor UI. Verified live: added a real "Dresses" sub-item to Women's dropdown via the admin, confirmed it appeared in the actual storefront dropdown, then removed it and re-saved to restore original state.
+
+**Desktop dropdown menu redesign** — the user found the existing mega-menu (`components/layout/DesktopNav.tsx`) "a little dull" for a luxury brand (mobile was fine, left untouched). Rebuilt the hover panel: a serif section-title anchor column + "View All" link, a divider, a "Shop by Category" eyebrow above the sub-link list with an underline-reveal hover treatment, and a refined featured-image card (gradient caption, serif title, "Discover →" cta that fades in on hover) — plus an animated underline on the top-level nav links themselves. Same data, same `NavItem`/`featured` shape, purely a visual pass.
+
+**Email redesign** — the user called the transactional emails "boring" and asked for a real visual pass (not an admin-editable system — that was explicitly scoped down via `AskUserQuestion`). Rewrote `lib/email/templates.ts`'s shared helpers (`layout`, plus new `eyebrow`/`heading`/`bodyText`/`ctaButton`) for an editorial look: black masthead band with tracked-out serif logo, serif display headlines, a small uppercase eyebrow above each headline, refined footer. **Biggest single change: line items now show a real product thumbnail image** — every prior version of every email had zero imagery, which was very likely the actual source of "boring" for a fashion brand. Every exported template function's signature was preserved exactly (same params, same `{subject,html,text}` return), so no caller anywhere else in the app needed to change. Verified live: triggered a fresh welcome email and a fresh abandoned-cart email (with a real product thumbnail) through the real dev-provider pipeline, confirmed both rendered correctly in `/admin/emails`, then cleaned up test data.
+
+**Verified live in the browser**: delete-X renders on every product row (not click-tested, to avoid risking real catalog data — same underlying action as the already-proven detail-page delete button); nav dropdown editor round-trips through real Postgres to the real storefront dropdown; new desktop mega-menu renders correctly on hover; both a no-line-items email (welcome) and a with-line-items email (abandoned cart) confirmed the redesign end-to-end via the dev provider.
+
+
+## Follow-up transactional emails (abandoned cart, post-delivery review request, back-in-stock) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+Extends the existing 7-template email system (Resend/dev-provider, admin log viewer) with the "follow-up" category it was missing — everything before this was instant/single-action (order confirmation, welcome, etc.); these three are time-delayed or behavior-triggered.
+
+**New infrastructure this app didn't have at all before**: a daily Vercel Cron job (`vercel.json` + `app/api/cron/email-followups/route.ts`, secured via `CRON_SECRET` → `Authorization: Bearer`, since the user's on Vercel's Hobby plan — capped at once/day/job, so both the abandoned-cart and review-request jobs run from one consolidated endpoint) and a `BackInStockRequest` table + PDP "Notify Me" UI (neither existed before).
+
+**Abandoned cart recovery** (`services/email-followups.ts`'s `runAbandonedCartRecovery`) — only recoverable where an email is knowable: a signed-in customer, or a guest who at least started checkout (`Checkout.email`). A cart that never reached checkout has no email anywhere in the schema — genuinely unrecoverable, disclosed, not a bug. Idle signal is `MAX(CartLineItem.addedAt)`, not `Cart.updatedAt` (the latter doesn't move on line-item writes). One nullable `Cart.abandonedCartEmailSentAt` timestamp both prevents duplicate sends and self-resets for a future abandonment episode, since Cart rows are reused indefinitely and never deleted. Required a small `CartProvider.tsx` fix (a `?cart=` URL param the recovery email links to, since nothing previously let a cart be resumed from anywhere but its own browser's localStorage) — verified live, the email's real link correctly reloaded the exact abandoned cart in a fresh navigation.
+
+**Post-delivery review request** — new `Order.deliveredAt` (set once, exactly when `services/orders.ts`'s `updateOrderStatus` transitions status to `"delivered"`) schedules the email 5 days later. Links to the product page, not a "submit a review" form — this app has no real review-submission mechanism (still static `data/reviews.json`), so the email doesn't promise a feature that isn't built.
+
+**Back-in-stock alerts** — new `BackInStockRequest` table keyed on `(productId, sizeName)`, not `ProductSize.id`, because `writeProductRow` (the shared product-write path built earlier this session) deletes and recreates every size row on every edit — ids churn constantly. Detection hooks directly into `writeProductRow` itself (fetches old inventory state before the transaction, diffs after) rather than a parallel code path, so both the single-product admin form and the CSV importer trigger it for free. New PDP UI: an out-of-stock size button now opens a "Notify Me" dialog instead of just sitting inert.
+
+**Verified live, full pipeline, real data**: created a real test product with a zero-quantity size via the CSV importer, submitted a real back-in-stock request through the actual PDP dialog, re-edited the product to restock it, confirmed the email fired and was correctly labeled in `/admin/emails` — then deleted the test product. Drove a real seeded order to "Delivered" through the actual admin status dropdown (confirming the `deliveredAt` hook fires for real, not just in isolation), back-dated it 6 days via direct SQL (`prisma db execute`, since running one-off scripts through `tsx` silently fails on this project's Prisma client setup — a new gotcha worth knowing, see below), hit the cron endpoint, confirmed a real "Review Request" email. Registered a real test customer, added a real item to their cart, back-dated it 30h via the same SQL approach, hit the cron endpoint again, confirmed a real "Abandoned Cart" email — then clicked its actual resume link fresh (cleared localStorage first) and confirmed the exact right cart loaded. Fixed a pre-existing gap in `/admin/emails`' template-label map along the way (3 of the original 7 templates were falling through to a raw slug).
+
+**New gotcha for next time**: running a one-off script via `npx tsx -e "...import { prisma } from './lib/prisma'..."` fails silently (no output, no error, just nothing) — something about this project's Prisma 7 + driver-adapter setup doesn't resolve cleanly outside Next's own module system when invoked this way. `npx prisma db execute --file <path-to-sql>` works reliably instead (reads `prisma.config.ts` automatically, no `--schema` flag needed/accepted) — use raw SQL for any future one-off data manipulation rather than fighting the TS client from a bare script.
+
+**Still deliberately deferred**: payment/Stripe, real multi-currency (unchanged from before — not touched this batch).
+
+
+## Live on Vercel + real OAuth (Google/Apple/Facebook) + admin CSV bulk-import (Vercel Blob) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+First real production deploy: connected GitHub → Vercel, connected Neon Postgres via Vercel's integration, fixed a build-breaking gap (`lib/generated/prisma` is correctly gitignored but nothing ran `prisma generate` on Vercel's clean checkout — fixed with a `postinstall` script in `package.json`). Production is now green at each push.
+
+Continuing toward "fully functioning," planned via `EnterPlanMode` after confirming scope with the user via `AskUserQuestion` on four real forks: payment stayed deferred (per standing instruction, re-confirmed rather than assumed), OAuth got the full build (all three providers, not just Google), multi-currency stayed EUR-only, and the catalog gap got a real admin bulk-import tool rather than hand-entered demo data.
+
+**Real OAuth login (Google + Apple + Facebook)** — `Customer.passwordHash` is now nullable (an OAuth-only account has none) and a new `CustomerOAuthAccount` join table (unique on `provider`+`providerUserId`) supports linking multiple providers per customer. `lib/oauth/` mirrors the existing `lib/email`/`lib/courier` one-interface-many-vendors shape, except all three providers can be configured and active simultaneously (`getOAuthProvider(name)` returns `null` for an unconfigured one — its button just doesn't render, no error). Standard authorization-code flow at `/api/auth/oauth/[provider]/{start,callback}`, CSRF-protected via a `state` value round-tripped through an httpOnly cookie. Apple is the genuinely complex one: `response_mode=form_post` (its callback is a POST, not the GET the other two use), a short-lived ES256-signed JWT minted per-request as `client_secret` (via `jose`), and — this is expected Apple behavior, not a bug — **name is only ever sent on the customer's first-ever authorization**, captured at that moment since Apple never resends it. Account-linking is automatic on a verified-email match (Google/Apple/Facebook all verify email ownership before issuing a token, matching the trust level this app already extends to plain email/password sign-up, which has no separate verification step either). The `from` redirect target is validated server-side to relative same-origin paths only (tested: an absolute `https://evil.com` value is correctly rejected).
+
+**Admin CSV bulk product-import tool + real Vercel Blob image storage** — `/admin/products/import`: upload a CSV (`papaparse`-parsed — a hand-rolled `.split(",")` would break on any quoted comma in a product description, confirmed by testing exactly that case) with delimiter-encoded sub-fields for images/colors/sizes/tags (documented in `lib/products-import/mapper.ts`; v1 deliberately excludes videos/per-color images/SEO overrides/relatedProductIds — edit those via the existing single-product form after import), validated against the same `productFormSchema` the hand-entry form already uses, with a preview step showing per-row blocking errors vs. non-blocking warnings (e.g. "slug exists — will update") before anything touches the database. Images can be pasted as already-hosted URLs, or uploaded alongside the CSV and matched to rows by filename, pushed to a real Vercel Blob store. The single-product admin form's create/update Server Actions were refactored to share the exact same write path (`lib/products-import/write.ts`'s `writeProductRow`) as the importer's commit route, rather than maintaining two copies of the nested colors/sizes/collections write logic. The Media Library's previously-decorative "Upload" button now calls the same real Blob-upload endpoint.
+
+**Verified live in the browser**: a real 3-row CSV (one new product, one deliberate update-collision against a real seeded product, one all-blank invalid row) previewed correctly — new-product row clean, collision row correctly flagged with a warning and the existing product's real ID, blank row surfaced all nine expected validation errors, including the quoted-comma parsing check. Only the new-product row was committed (to avoid overwriting real seeded catalog data during testing) — confirmed it wrote correctly end-to-end (colors/sizes/images all correct) on both the storefront PDP and `/admin/products`, then deleted via the normal admin delete flow to leave the catalog clean. OAuth: confirmed graceful degradation end-to-end — with no provider credentials set locally, `/account/login` and `/account/register` render zero OAuth buttons (no dead links), and `/api/auth/oauth/{google,notreal}/start` both correctly 404. Full real login round-trips for Google/Apple/Facebook were **not** exercised live — no real provider credentials exist yet; that needs the user's own Google Cloud Console / Meta for Developers / Apple Developer Program setup (Apple specifically needs a **paid $99/yr membership**, a registered Services ID, a private key, and domain verification — cannot be tested over plain `http://localhost` either way).
+
+**Environment note carried forward**: same non-interactive-shell migration gap as every prior session — `prisma migrate dev` doesn't work here, so the new `customer_oauth_accounts` migration was hand-authored to match Prisma's generated style and applied via `prisma migrate deploy`.
+
+
+## "Complete, upload-ready eshop" push — Batch 3 (English + Greek via next-intl) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+Final batch of the same push as Batch 1/2 above. Two real architecture calls were made with the user mid-batch (both via `AskUserQuestion`, not assumed): (1) scope to "full infra + highest-traffic pages" rather than translating literally everything (journal/lookbooks/campaigns/legal stay English, clearly flagged, not silently half-done); (2) **cookie-based locale, no `/en/`/`/el/` URL prefix** — a deliberate downgrade from the original plan's path-prefix routing, chosen because restructuring every route under `app/[locale]/` on top of everything else shipped today was a much larger, riskier change for a same-day pass. Trade-off disclosed to the user before building: no distinct per-language URLs to share or index separately.
+
+**Real infra**: `next-intl` in "without i18n routing" mode (https://next-intl.dev/docs/getting-started/app-router/without-i18n-routing) — `i18n/request.ts` resolves locale from a `NEXT_LOCALE` cookie (default `en`), `next.config.ts` wrapped via `createNextIntlPlugin`, `NextIntlClientProvider` mounted once in the root `app/layout.tsx` (same "harmless everywhere including /admin" pattern as every other global provider — admin components just never call `useTranslations`, so it stays English in practice even though the provider technically wraps it). `LanguageSwitcher` (footer) calls a real Server Action (`setLocaleAction`) that sets the cookie and revalidates.
+
+**Real translation, not just infra**: `messages/en.json`/`el.json` cover header, mobile menu, search overlay, cart, all 5 checkout steps, PLP toolbar/filters, PDP purchase panel, and account nav — wired into each component via `useTranslations`. **Product names/descriptions and collection titles/subtitles are real Greek content**, not just UI chrome: new `nameEl`/`descriptionEl` (Product) and `titleEl`/`subtitleEl`/`descriptionEl` (Collection) columns, populated with real translations for all 12 seeded products and 5 seeded collections, picked via a new `lib/localize.ts` at Server Component render time (PDP, homepage sections via `SectionRenderer`, collection detail pages) — falls back to English for anything untranslated rather than rendering blank.
+
+**Known, disclosed gaps** (matching the agreed scope, not oversights): journal/lookbook/campaign/legal page bodies stay English-only. The client-fetched PLP (`/api/products`, used by `/women`/`/men`/`/new-in`/`/sale`) does **not** localize product names — only Server-Component-rendered surfaces (PDP, homepage sections, collection pages) do, since the PLP's architecture (fetch-and-filter client-side) doesn't have a clean access point to the request locale the way this pass was scoped to use it. Homepage section headline/marketing copy (`data/homepage.json`'s own strings, e.g. "Best Sellers", "The pieces everyone is wearing") stays English — translating it for real would mean a parallel translated `SiteContent` document per section, not done this pass. `RecentlyViewedSection` and a handful of lower-traffic microcopy strings (empty-cart state, `RelatedProducts` "You May Also Like" title, etc.) weren't wired to the message catalog.
+
+**Real cost the user should know about, found via the production build itself, not anticipated in the plan**: because the root layout now reads the locale cookie (via `next-intl`'s request config) to decide what to render, **every route in the app lost static generation** — the build output that used to show `○` (static) and `●` (SSG, e.g. every product/collection/journal/legal page) now shows `ƒ` (dynamic, server-rendered per request) across the board. This is a genuine, non-trivial performance/cost trade-off of the cookie-based approach specifically — a URL-prefixed (`/en/`, `/el/`) implementation would **not** have had this problem, since the locale would be part of the static path rather than a runtime cookie read. Worth revisiting if this ever needs to scale past a demo/foundation deployment — either by moving to URL-prefixed routing after all, or by adopting Partial Prerendering if/when this Next.js version's support for it is confirmed stable (not evaluated this pass).
+
+**Verified live in the browser**: switched language on a PDP — page `<title>`, product name, description, and related-product names all switched to real Greek text; switched on the homepage — collection and product card names switched, homepage section headlines correctly stayed English (the documented gap, not a bug); cookie persisted across navigation to a different page; switching back to English worked; `/admin` confirmed unaffected regardless of the storefront's locale cookie; zero server errors throughout.
+
+
+## "Complete, upload-ready eshop" push — Batch 2 (Flagship differentiators) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+Same push as Batch 1 above, continuing per the plan. All 7 items are real, working features against Postgres — none are UI-only mockups.
+
+- **Loyalty tiers** (`lib/loyalty.ts`) — Member/Silver/Gold/Platinum computed live from a signed-in customer's real completed-order spend (not stored), shown on `/account` with progress to the next tier.
+- **Gift wrapping & message** — the most invasive change: `CartTotals` gained a real `giftWrapTotal` field threaded through `resolveCartAmounts` (server) and `checkout-totals.ts`'s `applyGiftWrap` (client display, mirrors the existing `applySelectedShippingRate` overlay pattern), a checkbox+message on the Delivery step, and display everywhere totals already appear (cart, order summary, review, confirmation, admin order detail, confirmation email). **Real backward-compat bug caught by the production build itself**: existing `Order.totals` JSON snapshots predate this field, so `cartTotalsSchema.parse()` broke on every pre-existing order at build time (`/admin/orders` failed to prerender) — fixed by making `giftWrapTotal` optional in the schema and defaulting to zero (the historically correct value) in `toOrder`. Verified live: a full guest checkout with gift wrap + message end-to-end, €4.50 fee correct at every step through to the admin order view, old pre-gift-wrap orders still render fine.
+- **Wishlist sharing** — `Wishlist.shareToken` (lazily generated, stable once set), a public read-only `/wishlist/shared/[token]` page, "Share" button copies the link. Verified live.
+- **Fit & size recommendation** (`lib/fit-recommendation.ts`) — suggests a size on the PDP from the signed-in customer's own past orders in the same product category (real data, category resolved via a batched product lookup since `CartLineItem` snapshots don't carry category).
+- **Experimentation platform** (`lib/experiments.ts`) — extends `lib/feature-flags.ts`'s pattern to deterministic-hash variant assignment (same non-`Math.random()` convention as `lib/product.ts`), applied for real to the homepage hero CTA copy, exposure tracked via the existing `AnalyticsService`.
+- **"Ask a Stylist" concierge** — real Postgres-backed request form (`ConciergeRequest`) at `/concierge`, linked from the footer, admin inbox at `/admin/concierge` with a real status workflow. Verified live end-to-end.
+- **Referral program** — `?ref=CODE` captured client-side into localStorage on any landing page (`ReferralCapture`, mounted globally — no middleware changes needed), merged into the sign-up payload, a `Referral` row created on signup, rewarded with a real minted `GiftCard` (emailed to the referrer) the moment the referred customer's first order completes (`services/checkout.ts`, best-effort). `/account/referrals` shows the shareable link + status; `/admin/referrals` for visibility. Verified live: link generation confirmed for a real customer.
+
+**Environment note for next time**: `prisma migrate dev` cannot run in this non-interactive shell at all (always errors "environment is non-interactive," even with `--create-only`) — every migration this session used a hand-authored `migration.sql` (matching the exact style of prior auto-generated ones) applied via `prisma migrate deploy`, which also intermittently hit a Neon advisory-lock timeout while the dev server held a connection open — stopping the dev server first fixed it every time. Worth setting up a real non-interactive migration path if this project's tooling changes.
+
+**Deferred to Batch 3**: English + Greek via `next-intl` — see the Batch 3 entry above, since completed.
+
+
+## "Complete, upload-ready eshop" push — Batch 1 (Production essentials) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+User's direction (2026-07-23): make the whole eshop "ready to use" except payment, plus fix the admin dashboard (specifically flagged: can't inspect what was ordered, can't actually change homepage sections — both turned out to be real gaps, not misunderstandings). Planned via `EnterPlanMode`; executed as three batches, this entry covers Batch 1.
+
+**Real transactional email (Resend)**: `lib/email/providers/resend.ts` implements the existing `EmailProvider` interface for real; `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + `EMAIL_FROM` (`.env.example` documents all three) activates it, falling back to the `dev` (EmailLog-only) provider if the key is missing rather than throwing. Added a `welcomeEmail` template (signup previously sent nothing) wired into `sign-up/route.ts`.
+
+**Rate-limit gaps closed**: `lib/rate-limit.ts` (already real, Postgres-backed) is now also called from `reset-password`, `change-password` (scoped per-customer, not per-IP — an authenticated action), and the checkout `PATCH /api/checkout/[checkoutId]` route (by IP, generous limit since a real shopper legitimately calls this several times per checkout).
+
+**Real returns flow** (previously a complete facade — `data/returns.json`, admin status-select was local `useState` only, "Start a Return" only toasted): new `Return` Prisma model (`prisma/schema.prisma`), `services/returns.ts`. Customer `/account/returns` now has a real `ReturnRequestDialog` (pick items + reason, `POST /api/customer/returns`, session-gated) and shows real request statuses. Admin `/admin/returns` reads Postgres, `ReturnStatusSelect` persists via a real Server Action (`updateReturnStatusAction`, mirrors `OrderStatusSelect`), and the previously-dead `returnStatusUpdateEmail` template now actually fires on status change. Deleted `data/returns.json` and the old `getReturns()`/`AdminReturn` type.
+
+**Order tracking + real ACS Courier port**: `Order` gained `trackingNumber`/`carrier`/`trackingUrl` columns. New `lib/courier/` — vendor-neutral `CourierProvider` interface (same single-factory pattern as `lib/commerce/index.ts`/`lib/email/index.ts`), a `manual` provider (default — admin types a tracking number, no live call) and a real `acs` provider (`ACS_Create_Voucher`/`ACSAlias`/`ACSInputParameters` envelope, `AcsApiKey` header, field names sourced from ACS's own published API guide + a reference implementation since the source PDF wasn't machine-readable — **not yet exercised against a live ACS account**, the error path surfaces the raw response body specifically so a first real call's actual shape is immediately visible if field names need adjusting). Admin order detail page (`/admin/orders/[id]`, new — order list previously had no way to actually inspect what was ordered) shows line items/totals/addresses and a `OrderTrackingForm` (manual entry, always available, real persistence; a "Create ACS Shipment" button only when `COURIER_PROVIDER=acs`). `shippingUpdateEmail` and the customer orders page both show tracking when present. ACS's real tracking page turned out to be a Liferay portlet with no documented simple deep-link format — `buildTrackingUrl()` links to the general track-and-trace page rather than guessing a param that might 404.
+
+**Cookie consent + real Contact form**: `CookieConsentBanner` (Accept All / Decline Non-Essential, localStorage-persisted, privacy-preserving default) mounted in `app/layout.tsx`; `lib/consent.ts`'s `hasConsent()` is the real seam any future analytics/marketing script must check (unused today — no such script exists, matching the existing "don't fake infrastructure" pattern). Cookie Policy content got a light copy pass describing the real choice mechanism. `ContactForm` was a pure UI no-op ("this form isn't actually wired to an inbox") — now persists to a new `ContactMessage` table via `POST /api/contact` (rate-limited) and best-effort emails a notification to `CONTACT_EMAIL` (falls back to `settings.contactEmail`); new admin `/admin/messages` inbox.
+
+**Admin CMS editors made real** (the dashboard complaint): Homepage Sections/Hero Management, Navigation Menu, SEO Settings, and Site Settings were ALL local-`useState`-only ("Saved (mock)" toasts, discarded on reload) despite `services/homepage.ts` etc. reading from `data/*.json` — genuinely no persistence layer existed for any of them. New `SiteContent` Prisma model (a real key/Json store — one table for all four singleton documents, since none are queried by field and it means one persistence path instead of four near-identical tables) + `lib/site-content.ts`. All four services rewired to read/write Postgres; all four admin editors now call real Server Actions (`publishHomepageSections`, `saveNavigationAction`, `saveSeoDefaultsAction`, `saveSiteSettingsAction`) via `useTransition`, with real success/error states. **Real bug fixed during this work**: the Hero Management page passed the editor only the single hero section as `initialSections`, so a real save there would have silently wiped every other homepage section — fixed to always pass the full section list, filtered for display only. Blog Posts got full real CRUD (new `BlogPost` Prisma model, `services/blog.ts`, admin new/edit/delete pages) — the "New Post" button had never had an `href`. Appearance and Media Library stay intentional read-only placeholders (design tokens; no real image storage/DAM exists to manage) — not what was reported broken, and building either for real needs infra this phase doesn't have.
+
+**A second instance of the documented barrel/client-bundle landmine** (see Real Backend Phase 1 entry above for the first): making `services/homepage.ts`/`navigation.ts`/`settings.ts`/`blog.ts` Prisma-backed broke the client bundle, because `lib/commerce/providers/mock/cms.service.ts` (part of the browser-side `createMockCommerceProvider()`, reachable from `WishlistProvider`) imported them directly. Fixed the same way Phase 1 fixed Products/Collections: new `/api/cms/{homepage,navigation,settings,blog,blog/[slug]}` Route Handlers + `cms.service.ts` now calls them via the existing `fetchJson` helper instead of importing the services. Confirmed nothing actually calls `commerce.cms.*` anywhere today (every real page reads `services/*.ts` directly as a Server Component) — this was dead-weight-that-still-had-to-compile, not a live regression, but real all the same.
+
+**Seeding**: `scripts/seed.ts` extended to seed `SiteContent`/`BlogPost` from the existing JSON files (idempotent for `SiteContent` — never overwrites a real admin edit on re-run). Running it directly via `tsx` hits a pre-existing gap (not introduced here): `lib/auth.ts`'s `server-only` guard throws under plain `tsx` execution (no `react-server` export condition set outside Next's own build). Worked around for this one-time run with a throwaway script that skipped the admin-user seed step; not fixed generally — flagged for whoever next needs to run this outside `next build`.
+
+**Verified live in the browser**: submitted the real Contact form → appeared immediately in `/admin/messages`; toggled a homepage section off and clicked Publish → confirmed live on `/` immediately, then restored it; set + cleared real tracking info on an order via `/admin/orders/[id]`, persisted across a hard reload; confirmed `/admin/returns` and `/account/returns` both load against the real (empty) `Return` table with no errors. Did not trigger a live ACS voucher creation (would create a real shipment against a real account) — verified the `manual` provider path and reviewed the `acs` provider's request shape instead, per the plan.
+
+**Deferred to later batches** (same session, same plan): loyalty tiers, gift wrapping, wishlist sharing, fit recommendation, an experimentation platform, an "Ask a Stylist" concierge flow, and a referral program (Batch 2 — buildable without external accounts); English + Greek via `next-intl` (Batch 3). Payment/Stripe remains explicitly out of scope per the user's original ask.
+
+
+Session continuity notes. See `README.md` for user-facing docs; this file tracks *decisions* and *what's mid-flight* so work can resume without re-deriving context.
+
+## Full site QA pass + fix pass (2026-07-22, after the engineering audit below) — COMPLETE, verified clean (tsc + eslint + build + live browser verification incl. two full guest checkouts on the same cart)
+
+Walked the site page-by-page as a real shopper — homepage/nav, every PLP, PDP + add-to-cart, cart, full guest checkout through confirmation, auth + protected account pages, all content pages, admin — and fixed every real bug found rather than only reporting them. Full detail in `NOTES.md` (this session's summary); the highlights, roughly in order of severity:
+
+- **Revenue/trust bug**: Standard shipping stopped being free (over the €150 threshold) the moment it was explicitly selected at checkout — `resolveCartAmounts`'s override path used the rate's raw listed price unconditionally, ignoring the free-shipping rule that only applies once a rate is picked. Every qualifying order was overcharged €6.95, contradicting the sitewide "Free shipping over €150" banner. New `computeShippingChargeForRate()` in `lib/shipping.ts` is now the single source of truth for both the checkout display and the final charge.
+- **Correctness bug, real schema migration**: a second purchase on the same (permanently-reused) cart either crashed or silently returned the customer's FIRST order's confirmation instead of processing their new one — `Checkout.cartId`/`Order.checkoutId` were both hard 1:1 uniques. Migration `20260722193457_checkout_multiple_per_cart` makes `Checkout` one-to-many off `Cart`; `createCheckout` now opens a fresh row per purchase instead of resuming a completed one. Verified live with two sequential full checkouts on one cart.
+- **Robustness bug**: `/complete` wasn't idempotent — a double-click/retry on an in-flight checkout 500'd on a Prisma unique-constraint crash even though the first request had already succeeded, showing a false "couldn't place your order" error. Now recognizes an already-completed checkout (plus a race-condition fallback) and returns the existing order.
+- **Broken navigation**: the Women/Men mega-menu's "New In"/"Outerwear"/"Clothing"/"Accessories" sub-links all 404'd (routes that never existed). Rewired to real PLP filter URLs, which required adding `category`/`isNew`/`tag` as URL-readable filters to `ProductListingPage`. Also fixed the gender scope filter to include `unisex` products — the 4 accessory products were invisible from `/women` and `/men` entirely before this.
+- **9 missing pages**: Sustainability, Careers, Contact, Shipping & Returns, Size Guide, FAQ, and the 3 legal pages were all linked from the global footer (every page) but 404'd. Built all 9 for real — see `services/content.ts`, `components/shared/SimplePageContent.tsx`, and the FAQ page finally using the long-unused `faqSchema()` JSON-LD helper. Added to `sitemap.ts`.
+- Smaller fixes: `ProductCard`'s `<Image fill>` had no positioned parent (console warning on every listing page), admin Analytics' revenue chart used a colliding React key (same-day orders), `ReviewStep`'s delivery recap showed the rate's sticker price instead of what was actually being charged.
+
+**Two environment-only findings, not app bugs** (see `NOTES.md` for detail): the Browser pane wasn't composited this session, which made click-simulation and CSS-transition checks unreliable (verified via direct JS dispatch instead); and every page ships a hidden, inert duplicate of its content in the initial HTML, which is standard Next.js streaming-SSR behavior for a `<Suspense>` boundary that bails to client rendering — confirmed present in a production build too, harmless.
+
+## Engineering audit + fix pass (2026-07-22, after Real Backend Phase 2) — COMPLETE, verified clean (tsc + eslint + build + live browser verification)
+
+Ran the previously-paused full audit (5 parallel research passes: bugs & dead code, performance, SEO & accessibility, security, dependencies & testing readiness), then applied the highest-value fixes directly rather than just reporting them. Full report published as an artifact (scorecard + fix log + open findings + a tiered "what ALEXANDRIS needs to be a €100M flagship" roadmap) — ask the user for the link if picking this up fresh, or re-derive from this entry.
+
+**Fixed and verified live against Neon Postgres:**
+- **Revenue bug**: `CartDiscount`/`CartGiftCard` amounts were computed once at apply-time and persisted — never recalculated as the cart changed, so emptying a cart after applying a code left the frozen discount/gift-card fully in place (clamped total, not re-percented). Rewrote `lib/commerce/postgres/cart-totals.ts`'s `resolveCartAmounts` (renamed from `computeTotals`) to recompute both fresh from the stored rule (type/value, balance) against the *current* cart on every read. Verified live: a 10% code on a €398 cart went from €19.90 → €39.80 automatically after doubling quantity.
+- **Revenue bug**: choosing Express shipping (€14.95) during checkout never actually changed what was charged — `Cart.totals.shippingTotal` only ever computed the generic flat/free rate, ignoring whichever rate the checkout had selected, and `Order.totals` inherited that same wrong number. New `lib/commerce/checkout-totals.ts`'s `applySelectedShippingRate` (client display) + a `shippingAmountOverride` param on `resolveCartAmounts` (server charge in `services/checkout.ts`) fix both sides. Verified live end-to-end: display updated €433.42→€448.37 on selecting Express, and the completed order's confirmation page showed the same €448.37.
+- **Critical security**: `/admin/login` pre-filled the real demo admin email/password directly into the public form — anyone finding the page had instant admin access, and the plaintext password shipped in client JS regardless of the visible pre-fill (the constant's file, `lib/auth.ts`, had no `server-only` guard). Pre-fill removed; `server-only` guard added so this can't silently regress.
+- **Migration gap**: `/admin/users` was still reading `data/admin-users.json` (a Phase-1-era leftover) instead of the real `AdminUser` table — now reads Postgres directly via a new mapper in `services/admin.ts`.
+- **Dead code removed**: `data/customers.json`/`orders.json`/`admin-users.json` (fully superseded by Postgres, zero remaining references), the unreachable `app/api/cart/[cartId]/merge` HTTP route + its client SDK method (real merge logic lives in `services/carts.ts`, called directly server-side — never was reachable via HTTP), `WishlistService.isInWishlist` (defined three times, called nowhere — `WishlistProvider` computes membership locally instead), the dead `ROUTES.search` constant (no `/search` page exists — search is the header overlay, not a route).
+- **Small correctness fixes**: cart's decrease-quantity button now disables at qty 1 (previously silently no-op'd with zero feedback); `productImagesSchema` now requires at least one image (previously a zero-image product would crash cart-add with an unhandled error).
+- **Dependency cleanup**: `shadcn` (codegen CLI, never imported at runtime) moved from `dependencies` to `devDependencies`; `dotenv` — previously an undeclared transitive dependency the app silently relied on — added explicitly.
+
+**Open findings, not yet actioned** (full detail in the published report): no rate limiting on any auth endpoint (High — brute force/fake-account creation both open today); sign-up leaks registered-email existence (Medium, unlike password-reset which correctly stays silent); checkout's PATCH endpoint accepts address/email fields with far weaker validation than every sibling customer-address route (Medium); `completeCheckout`'s per-line-item stock/gift-card loop does 2N+ sequential DB round-trips inside one lock-holding transaction (High, fine today, will not scale); PLP/search still fetch-and-filter the *entire* catalog client-side, compounded by a page-by-page re-fetch loop that redoes prior pages every time (High, confirmed still the known scaling bottleneck, now worse than previously documented); zero automated tests anywhere (Vitest recommended, `computeTotals`/`resolveCartAmounts` flagged as the highest-value first target — pure function, money-critical); form validation errors and toasts aren't exposed to screen readers (`aria-describedby`/`aria-live` both missing, systemic across every RHF form); `/account/(protected)/*` pages have no robots disallow or per-page noindex (only the login-redirect protects them today); filtered PLP URLs lack a canonical (duplicate-content risk once the catalog/traffic grow).
+
+**Explicitly out of scope, surfaced as a roadmap instead of fixes**: real payment gateway (Stripe — next up per the user's own sequencing), transactional email (literally nothing is sent today — order confirmation, shipping, password reset all no-op), cookie/privacy consent, a real returns/RMA flow, real carrier order-tracking, multi-currency/region, production search, real inventory/ERP sync, marketing pixels, fraud/risk scoring, real hosting/CDN/photography, i18n, and further out — loyalty/VIP, concierge chat, gift wrapping, fit recommendation, social commerce, affiliate program, real A/B testing, editorial-content-at-scale SEO strategy.
+
+## Completed Phases (1–4) — foundation, verified clean (tsc + eslint + build)
+
+- **Foundation**: Next.js 16 App Router, TS, Tailwind v4, shadcn/ui (Base UI), Framer Motion. Palette `#FFFFFF/#111111/#F5F5F5/#555555` as Tailwind tokens (`luxe-white/black/gray-light/gray-dark`). Playfair Display + Inter via `next/font`. Brand name: **ALEXANDRIS**.
+- **Architecture**: `data/*.json` (mock content) → `services/*.ts` (async CMS/content functions, the only things allowed to import `data/`) → components (prop-driven, never touch JSON directly).
+- **Layout**: announcement bar + transparent-over-hero header (`components/layout/Header.tsx`, fixed masthead pattern — see `.pt-header` utility class in `globals.css` for offsetting non-hero pages), mega menu, mobile sheet+accordion nav, footer.
+- **Homepage**: config-driven sections (`data/homepage.json`, discriminated union `HomepageSection` in `types/homepage.ts`) rendered by `components/sections/SectionRenderer.tsx`.
+- **SEO**: per-page `generateMetadata`, JSON-LD helpers in `lib/seo.ts` (Organization/WebSite sitewide, Product/Breadcrumb on PDP, FAQ ready), `robots.ts`/`sitemap.ts`/`manifest.ts`/`icon.svg`/`opengraph-image.tsx`.
+- **Admin dashboard** (`/admin`): mock auth via `proxy.ts` (Next 16 renamed middleware→proxy; file is `proxy.ts` at root, exported fn is `proxy` not `middleware`) + Server Action cookie (`lib/auth.ts`, `app/admin/actions.ts`). Sidebar/topbar shell, dashboard stats, data tables (Products/Collections/Categories/Discounts/Orders/Customers/Newsletter/Blog/Users), **Homepage Sections visual editor** (`components/admin/homepage-editor/`) with drag reorder + per-type edit forms — this is the same `HomepageSection` shape the storefront renders.
+- **Commerce Provider abstraction** (`lib/commerce/`): 10 vendor-neutral interfaces in `types.ts` (Product, Collection, Cart, Checkout, Customer, Wishlist, Search, CMS, Auth, Analytics) aggregated into `CommerceProvider`. Mock adapter in `providers/mock/` — Product/Collection/CMS wrap existing `services/*.ts`; Cart/Wishlist/Auth/Checkout use `localStorage` (helpers in `providers/mock/storage.ts`); Search does real substring filtering/faceting. DI used throughout (Cart/Search take `ProductService` as a constructor arg). **Single factory**: `getCommerceProvider()` in `lib/commerce/index.ts` — swapping a real backend means implementing the same interfaces under `providers/<name>/` and adding one switch case there. `CommerceError` class carries a `.code` for branching in UI.
+- **Product model (Phase 2)**: `types/product.ts` extended with video, per-size inventory (`quantity`/SKU/barcode), preorder/backorder, gender/season/materials/care, related products, SEO override. Derived logic centralized in `lib/product.ts` (`getEffectivePrice`, `getProductBadges`, `isSizePurchasable`, `getRecentPurchaseCount` — deterministic hash, NOT `Math.random()`, to avoid hydration mismatches). All 12 mock products in `data/products.json` fully populated. `data/reviews.json` + `services/reviews.ts` for future-ready reviews.
+- **Product Detail Page** (`app/products/[slug]/page.tsx`, statically generated via `generateStaticParams`): `Gallery` (zoom, video, lightbox), sticky `PurchasePanel`, `VariantSelector`, `SizeGuideDialog`, `ProductAccordion`, `ReviewsSection`, `RelatedProducts`, `RecentlyViewedSection` (`hooks/use-recently-viewed.ts`, localStorage).
+- **Cart system**: `CartProvider`/`useCart` (`components/providers/CartProvider.tsx`) — optimistic updates, undo-remove via a custom toast system (`components/providers/ToastProvider.tsx` + `components/shared/ToastViewport.tsx`, no external toast lib). `WishlistProvider`/`useWishlist` same pattern. Both mounted in `app/layout.tsx` (wraps *everything* including `/admin`, which is harmless — admin doesn't use them). `CartDrawer` mounted globally, opens on add. Full `/cart` page. Promo codes validate against real `data/discounts.json` (via `getDiscounts()`); gift cards against new `data/gift-cards.json`. Auto VAT (21% flat, documented as illustrative) + free-shipping-over-€150 threshold computed in `cart.service.ts`'s `computeTotals`. **"Continue to Checkout" button on `/cart` is currently disabled** with a "coming in the next phase" note — this is the first thing Phase 5 makes real.
+
+## Phase 5 (Checkout) — COMPLETE, verified clean (tsc + eslint + build + full browser flow)
+
+- `lib/validations/checkout.ts` — Zod schemas: `contactSchema`, `addressSchema`, `cardSchema` (mock card fields, Luhn-length regex only, no real Stripe Elements).
+- `lib/address-autocomplete.ts` — mock Places-style dataset + `suggestAddresses(query)`; real integration swaps this module only.
+- `constants/countries.ts` — small static country list (code/name) for the shipping/billing country `<select>`.
+- `components/providers/CheckoutProvider.tsx` — full state machine. Steps: `contact → shipping → delivery → payment → review`. Wraps `CheckoutService` + calls `cart.estimateShipping()` for rates. Tracks `furthestStep` so `CheckoutSteps` nav only allows going back to already-completed steps. Exposes `confirmPayment()` (advances `payment → review`, called by `PaymentStep` after card + optional billing-address validation) and `orderPlaced` (see race-condition note below). `placeOrder()` calls `completeCheckout` + the cart's `clearCart()`, fires `analytics.track({name: "purchase"})`, returns the `Order` (or `null` + error toast on failure).
+- `components/providers/CartProvider.tsx` — now exposes a `clearCart()` action (wraps `commerce.cart.clearCart` through the same `withMutation` path as every other cart mutation). **Bug fixed during Phase 5 build**: `CheckoutProvider.placeOrder()` originally called `commerce.cart.clearCart(cart.id)` directly on the service, bypassing `CartProvider`'s React state — the cart badge/drawer/page would've kept showing stale items after a completed order. Always mutate cart state through `useCart()`'s exposed actions, never by reaching into `commerce.cart` directly from another provider.
+- `components/checkout/CheckoutHeader.tsx`, `CheckoutSteps.tsx`, `OrderSummary.tsx`, `AddressAutocompleteInput.tsx` (dropdown wired to `suggestAddresses`, computed inline via `useMemo` — no state+effect needed since the lookup is a pure sync function), `ExpressCheckoutButtons.tsx` (Apple Pay/Google Pay/PayPal — onClick shows a toast "Not connected in this demo").
+- `components/checkout/steps/`: `ContactStep`, `ShippingAddressStep` (RHF+Zod, autocomplete-driven), `ShippingMethodStep` (radio list over `shippingRates`), `PaymentStep` (express buttons, Pay-in-full/Klarna "Pay in 4" cosmetic toggle, card form, billing-same-as-shipping checkbox with a separate RHF instance for the billing fields, "Demo checkout — no payment is charged" disclaimer), `ReviewStep` (recap + Place Order, writes `sessionStorage.setItem('alexandris_last_order', ...)` then `router.push('/checkout/confirmation')`).
+- `app/checkout/layout.tsx` — wraps children in `<CheckoutProvider>`, renders `<CheckoutHeader>` with server-fetched `settings.siteName`.
+- `app/checkout/page.tsx` — renders the step matching `useCheckout().step` + `<CheckoutSteps>` + `<OrderSummary>`. Redirects to `/cart` if the cart is empty — guarded by `orderPlaced` from `CheckoutProvider` so the redirect doesn't race the post-order navigation to `/checkout/confirmation` (clearing the cart and navigating away both happen right after `placeOrder()` resolves).
+- `app/checkout/confirmation/page.tsx` — reads the placed order via **sessionStorage** (a transient UI handoff, not a commerce-data lookup — avoids adding a `getOrder(id)` method to `CheckoutService` for a one-off need), then clears the key. **Bug fixed**: the read-then-clear effect must be guarded with a `useRef` idempotency flag — React Strict Mode double-invokes effects in dev, so an unguarded version reads+clears the key on the first invocation and then reads `null` on the second, clobbering the just-set order state back to "no order found". Any one-time "consume an external value on mount" effect in this app needs the same ref guard.
+- `/cart` page: "Continue to Checkout" button re-enabled, links to `/checkout`.
+
+## Sequencing decision (2026-07-22)
+
+User queued Phases 6–11 across two messages; asked to let the assistant order them. Agreed order: **6 (Search) → 7 (PLP) → 8 (Auth) → 9 (Admin expansion) → 10 (CMS abstraction) → 11 (Enterprise polish)**. Rationale: Search/PLP are pure storefront additions with no dependencies; Auth unlocks real account pages (and is a documented dependency for prefilling checkout addresses); Admin/CMS are backend-side and don't block the storefront; Polish goes last since it touches everything and is cheapest to apply once the surface area is stable. For Phase 11 specifically: build the mock/local half for real (skeletons, transitions, optimistic UI, error/empty states, analytics abstraction, feature-flag hooks), stub the genuine-infra half (Sentry, PWA, i18n, edge caching, rate-limiting, real A/B testing) with clearly-labeled placeholders — same honesty pattern as Express Checkout.
+
+## Phase 6 (Search) — COMPLETE, verified clean (tsc + eslint + build + browser-tested)
+
+- `hooks/use-debounce.ts` — generic `useDebounce<T>(value, delayMs)`.
+- `hooks/use-recent-searches.ts` — localStorage-backed recent search terms (`alexandris_recent_searches`, max 6, most-recent-first, case-insensitive de-dupe).
+- `data/trending-searches.json` + `services/search.ts` (`getTrendingSearches()`) — called directly from the client `SearchOverlay` (not prop-drilled through `Header`/pages) since it's a plain static-JSON read with no server-only APIs involved, same class of call `CartProvider`/`WishlistProvider` already make client-side to `getCommerceProvider()`.
+- `lib/commerce/providers/mock/search.service.ts`'s `matches()` extended to also match SKU, per-size SKU, color names, and size names (previously name/description/category/tags/materials only).
+- `components/layout/search/SearchProductResult.tsx` and `SearchCollectionResult.tsx` — compact result rows, take an `active` prop for keyboard-nav highlighting.
+- `components/layout/SearchOverlay.tsx` rewritten: debounced (250ms) live search via `commerce.search.search()`, client-side title-substring filter over `commerce.collections.getAll()` for collection matches, recent/trending term chips when the query is under 2 chars, full keyboard nav (arrow up/down cycles a flat `entries` array covering whichever mode is active, Enter activates the highlighted entry or records the typed term, Escape closes — already existed). Two `react-hooks/set-state-in-effect` disables needed (clearing stale results when the query drops below threshold, resetting `activeIndex` when the entry list changes) — both are the documented clear-derived-state-on-dependency-change pattern.
+- Collection search results link to `/collections/[slug]`, which 404s until Phase 7 lands (next in sequence) — same as the nav links PROGRESS.md already flagged.
+
+## Phase 7 (PLP) — COMPLETE, verified clean (tsc + eslint + build + browser-tested incl. mobile filter sheet + infinite scroll)
+
+- `lib/commerce/types.ts`: `SearchOptions` extended with `collectionId`, `colors`, `sizes`, `tags`, `availability`, `isNew`, `isSale`, `page`, `pageSize`. `SearchResult` extended with `page`/`pageSize`. `search.service.ts` rewritten to apply **scope filters** (query/category/gender/collectionId/isNew/isSale) first, build facets from that scoped set (so counts reflect "what's in this section," not the user's already-applied refinements), *then* apply **refinement filters** (colors/sizes/tags/availability/price) before sorting and paginating. `buildFacets()` now also returns color/size/tag facets, not just category/gender.
+- `components/plp/PriceRangeSlider.tsx` — two overlaid native `range` inputs (a `.range-thumb` utility in `globals.css` makes the track `pointer-events-none` but re-enables it on each thumb, so both stay independently draggable). `PlpSortSelect.tsx`, `PlpFilterSidebar.tsx` (color/size chips from facets, price slider, in-stock-only checkbox, "Clear all" — takes a `showTitle` prop since the mobile sheet already renders its own "Filter" header), `PlpToolbar.tsx` (result count, sort, mobile filter trigger using the existing `ui/sheet.tsx`, same `showCloseButton={false}` + custom header pattern as `MobileMenu`).
+- `components/plp/ProductListingPage.tsx` — the shared template. Reads `color`/`size`/`availability`/`minPrice`/`maxPrice`/`sort`/`page` from `useSearchParams()`, writes back via `router.replace(..., {scroll:false})`. Any filter/sort change resets `page`. Price bounds are fetched once per scope (ignoring the user's adjustable filters) so the slider's min/max don't shift as they drag it. The **same page-loading effect re-fetches pages `1..currentPage` from scratch on every dependency change** (rather than manually appending) — deliberate simplification: negligible cost against an in-memory mock catalog, and it makes a deep-linked `?page=3` "just work" by loading everything up to that page. Infinite scroll via `IntersectionObserver` on a sentinel div (`rootMargin: "400px"`) bumps the URL's `page` param; a "Load More" button is the non-JS/no-observer fallback. Takes an optional `showHeader` prop (false on the collection page, which renders its own hero as the H1).
+- Routes: `app/women/page.tsx`, `app/men/page.tsx` (`baseFilters: {gender}`), `app/new-in/page.tsx` (`{isNew: true}`), `app/sale/page.tsx` (`{isSale: true}`), `app/collections/page.tsx` (reuses the existing `FeaturedCollections` section component as a plain grid), `app/collections/[slug]/page.tsx` (`notFound()` + `generateStaticParams`, hero banner + `{collectionId}`). All wrap `ProductListingPage` in `<Suspense>` since it calls `useSearchParams()`.
+- Catalog is only 12 products (4 women / 4 men / 4 accessories), so most listing pages never actually reach a second page at the real `PAGE_SIZE=8` — infinite-scroll was verified by temporarily dropping `PAGE_SIZE` to 2 and confirming the `IntersectionObserver` auto-fired a `?page=2` fetch (visible in dev server logs), then reverted. Don't be surprised if a future look at this catalog makes pagination feel "invisible" — it's working, there just isn't enough mock data to need it yet.
+
+## Phase 8 (Auth) — COMPLETE, verified clean (tsc + eslint + build + full browser walkthrough)
+
+- `lib/commerce/types.ts`: `AuthenticationService` gained `changePassword(customerId, {currentPassword, newPassword})` + a `ChangePasswordInput` type — needed for a real Security settings page, implemented in `auth.service.ts` against the same `PASSWORDS_KEY` map `signIn`/`signUp` already use.
+- **Bug fixed in `auth.service.ts`'s `getSession()`**: it returned the `AuthSession.customer` snapshot captured at sign-in/sign-up time verbatim. Any later mutation through `CustomerService` (add/update/remove address, update profile) writes to the separate `CUSTOMERS_KEY` record but never touched the persisted session — so a full page navigation (which remounts `AuthProvider` and re-reads the session) would silently revert the customer back to their sign-up-time state, e.g. addresses added five minutes ago would vanish on next load. Fixed by having `getSession()` always re-hydrate `customer` from the live `CUSTOMERS_KEY` record by id before returning. Found via browser testing (added an address, navigated to checkout, address prefill was blank) — worth remembering that any mock service caching a denormalized snapshot of another service's data needs this same "re-read the source of truth" treatment.
+- `components/providers/AuthProvider.tsx` + `useAuth()` — `customer`/`isLoading` state, `signIn`/`signUp`/`signOut`/`requestPasswordReset`/`changePassword`/`refreshCustomer`, all toast-on-error via the existing `ToastProvider`. Mounted in `app/layout.tsx` between `ToastProvider` and `CartProvider` (harmless on `/admin`, same pattern as Cart/Wishlist).
+- `lib/validations/auth.ts` — `loginSchema`, `magicLinkSchema`, `registerSchema` (password confirmation via `.refine`), `profileSchema`, `securitySchema`. Address validation reuses the existing `addressSchema` from `lib/validations/checkout.ts` rather than duplicating it.
+- `components/account/SocialSignInButtons.tsx` — Google/Apple/Facebook, same "Not connected in this demo" toast pattern as `ExpressCheckoutButtons`. `LoginForm.tsx` toggles between password and a "magic link" mode that calls the existing `requestPasswordReset` (there's no separate passwordless-link method on the interface — reusing this one is the pragmatic mock-adapter choice; a real adapter would swap in an actual magic-link endpoint).
+- Route structure: `app/account/login`, `/register` are plain public pages. Everything else lives under `app/account/(protected)/` — a route group (invisible in the URL, so `app/account/(protected)/page.tsx` serves `/account`) whose `layout.tsx` is a server component (fetches nav/settings, renders `Header`/`Footer`) wrapping `components/account/RequireAuthShell.tsx` (client: redirects to `/account/login` once `!isLoading && !customer`, renders `AccountNav` sidebar + the page). Pages: dashboard overview, `orders` (`CustomerService.getOrders`), `addresses` (full CRUD via `components/account/AddressForm.tsx`, reuses `AddressAutocompleteInput` from checkout), `returns` (placeholder — "Start a Return" toasts, not wired to any real RMA flow), `profile`, `preferences` (marketing opt-in only — no fake language/currency selectors), `security` (password change).
+- `/wishlist` is a **top-level** route, not under `/account` — matches where `Header`/`nav.json` already link it, and stays guest-accessible (the existing `WishlistProvider` is anonymous-id-based, unchanged). `components/wishlist/WishlistPageContent.tsx` fetches full `Product` objects via `ProductService.getByIds` from the wishlist's product ids.
+- Closed a documented Phase 5 gap: `ShippingAddressStep` now prefills from the signed-in customer's default address (`customer.addresses[customer.defaultAddressIndex ?? 0]`) via a `useEffect` + `reset()`, guarded so it never fires if the checkout session already has an address or the shopper has started typing (`formState.isDirty`). Guest checkout is unaffected — the effect simply no-ops when there's no `customer`.
+
+## Phase 9 (Admin dashboard expansion) — COMPLETE, verified clean (tsc + eslint + build + browser-tested)
+
+Before starting, audited what already existed from Phases 1–4: Product Management (read-only list), Homepage Builder (already has a full draft/publish workflow — "Save Draft"/"Publish" buttons with status feedback, nothing to add there), Navigation Builder (primary links only, intentionally partial per its own description), SEO, Blog, Media Library, Orders, Customers, and Discounts (which doubles as "Coupons" — no separate page needed) were all already built. That narrowed Phase 9 to genuinely new work:
+
+- **Variant Editor**: since `Product.colors` and `Product.sizes` are two independent flat arrays in the real data model (not a color×size stock grid — stock is tracked per-size only, colors are a separate display dimension with no stock of their own), `components/admin/VariantEditor.tsx` honestly reflects that: a Colors list (name + hex color-picker + hex text) and a separate Sizes & Inventory list (name/quantity/SKU/in-stock toggle), each with add/remove. Lives on the new `app/admin/(dashboard)/products/[id]/page.tsx` (added `getProductById` to `services/products.ts`), linked from the Products table's row. Save is local-state-only ("Saved" confirmation, 2.5s), matching every other admin form's existing mock-persistence convention (`SiteSettingsForm`, `DiscountActiveToggle`) — nothing in this admin actually persists across reloads yet, so a real save handler would need to be added consistently across all of these at once, not just this one.
+- **Inventory** (`app/admin/(dashboard)/inventory/page.tsx`) — flattens every product's `sizes[]` into one table (product, size, SKU, quantity, in-stock/low-stock/out-of-stock, linking back to the product detail page).
+- **Returns** — new `data/returns.json` + `AdminReturn` type + `getReturns()`, `app/admin/(dashboard)/returns/page.tsx` with `components/admin/ReturnStatusSelect.tsx` (local-state status changer, same pattern as `DiscountActiveToggle`).
+- **Gift Cards** (`app/admin/(dashboard)/gift-cards/page.tsx`) — reuses the existing `data/gift-cards.json` the storefront cart already validates against; added `AdminGiftCard` type + `getGiftCards()`.
+- **Analytics** (`app/admin/(dashboard)/analytics/page.tsx`) — derives real aggregates (total revenue, AOV, orders-by-status, top customers by spend) from the existing mock `orders`/`customers` data — no new dependency, no chart library; `components/admin/MiniBarChart.tsx` is a plain CSS bar (a `<div>` with a width percentage), reused for both the revenue-by-order and orders-by-status breakdowns.
+- **Roles & Permissions** — `constants/permissions.ts` defines a static admin-vs-editor capability matrix, rendered at `app/admin/(dashboard)/roles/page.tsx`; `components/admin/RoleSelect.tsx` added to the Users table (local-state role changer). Kept honest about what this is: since the demo's admin auth is one hardcoded login (`lib/auth.ts`/`proxy.ts`), there's no real per-user session to enforce these permissions against yet — this is a reference matrix and a role-assignment UI, not live enforcement.
+- **Activity Log** — new `data/activity-log.json` (seeded historical entries) + `ActivityLogEntry` type + `getActivityLog()` (sorted newest-first), `app/admin/(dashboard)/activity/page.tsx`. Deliberately not wired to fire on every admin mutation — since none of those mutations persist today either, a "live" log would reset on every reload and misrepresent itself as more real than the rest of this admin currently is.
+- `constants/admin-nav.ts` updated with all six new entries across the existing Catalog/Customers/Configuration groups plus a new "Insights" group for Analytics.
+
+## Phase 10 (CMS abstraction) — COMPLETE, verified clean (tsc + eslint + build + browser-tested)
+
+- `CMSService` (`lib/commerce/types.ts`) extended with `getAboutPage`, `getCampaigns`/`getCampaign`, `getLookbooks`/`getLookbook`, `getLandingPage` — alongside the pre-existing `getHomepage`/`getNavigation`/`getSettings`/`getBlogPosts`/`getBlogPost`. New `types/content.ts`: `AboutPageContent`, `Campaign`, `Lookbook`, `LandingPage`. **Deliberate scope decision**: Collections stay under the existing `CollectionService` rather than moving into `CMSService` to match the Phase 10 prompt's diagram literally — collections are a merchandising concern (products, pricing, availability) with their own already-solid interface; folding them into CMS would blur that line for no real benefit. The abstraction's actual point — swap Sanity for Strapi by writing one adapter — doesn't require every content-shaped thing to live under one interface.
+- New per-domain services (matching the existing one-file-per-domain convention: `products.ts`, `collections.ts`, `blog.ts`): `services/about.ts`, `services/campaigns.ts`, `services/lookbooks.ts`, `services/landing-pages.ts`. Mock data: `data/about.json` (single object, not an array), `data/campaigns.json`, `data/lookbooks.json`, `data/landing-pages.json`. `lib/commerce/providers/mock/cms.service.ts` wires all of it — still the only adapter.
+- **`LandingPage` reuses `HomepageSection[]`** — a landing page is literally "a homepage-shaped list of sections at an arbitrary slug," rendered by the exact same `components/sections/SectionRenderer.tsx` the homepage uses. `app/landing/[slug]/page.tsx` is ~25 lines because of this — no new section-schema system, no new renderer, verified in the browser that `featuredCollections`/`hero`/`newArrivals` sections all render correctly from `landing-pages.json`'s data. This is the cleanest proof that the abstraction works: a whole new page *type* cost nothing beyond a thin route + one data file.
+- Real pages, not just interfaces: `/about` (hero + intro + editorial sections), `/journal` (index grid) + `/journal/[slug]` (post detail — `BlogPost.content` isn't populated in any mock post, so the detail page only renders `excerpt`; don't add fake body copy, it's honest as-is), `/campaigns/[slug]` (one seeded example, `autumn-layering`), `/lookbooks/[slug]` (one seeded example, `resort-2026`), `/landing/[slug]` (one seeded example, `the-edit`). All were previously-dead links from `nav.json` (About, Journal) or newly introduced routes.
+- **Bug caught and fixed during browser verification**: the `autumn-layering` campaign's hero image used an invented Unsplash photo id that 404'd (`_next/image` returned 404, visible in `read_network_requests`). Replaced with a `curl`-verified working id. Lesson for next time a new mock-data image URL is added: verify it resolves (`curl -s -o /dev/null -w "%{http_code}"`) before assuming an Unsplash id pattern is safe to invent — most guessed ids happen to 200, but not all.
+
+## Phase 11 (Enterprise polish) — COMPLETE, verified clean (tsc + eslint + build + browser-tested incl. curl-verified response headers)
+
+Split per the earlier plan: build the mock/local half for real, document the infra-heavy half as intentional gaps rather than fake scaffolding.
+
+**Built for real:**
+- `app/error.tsx` (route-segment error boundary, "Try Again"/"Back to Home") + `app/global-error.tsx` (catches errors in the root layout itself — necessarily inline-styled since it replaces the entire `<html>`, can't rely on `globals.css` having loaded). Both log through the new `lib/logger.ts`.
+- `app/not-found.tsx` — replaced Next's plain default 404 with a branded empty state (Header/Footer, "Back to Home" CTA) — same visual language as the empty-cart/empty-wishlist states.
+- `app/loading.tsx` — a generic content-shaped skeleton (via the pre-existing `components/ui/skeleton.tsx`, unused until now) shown by Next.js during route-segment data loading. Necessarily generic since it wraps every route including `/admin`.
+- `lib/blur-placeholder.ts` — a shimmer-tone SVG data URI (matches `luxe-gray-light`) wired into `ProductCard`'s two `<Image>`s via `placeholder="blur"`. Applied to the highest-repetition image component (every PLP/homepage/search grid) rather than exhaustively to every `<Image>` in the app — none of the mock catalog images carry a real per-image `blurDataURL`, so this is a deliberately generic placeholder, not fake per-image LQIP data.
+- `lib/feature-flags.ts` — a static local registry (`isFeatureEnabled(flag)`), documented as the seam a real provider (LaunchDarkly/GrowthBook/Statsig) would replace with an async fetch behind the same signature. Wired into two real call sites to prove it's live, not just declared: `PaymentStep` gates both `ExpressCheckoutButtons` (`"express-checkout"`) and the Klarna "Pay in 4" option (`"klarna-payment"`); `LoginForm` gates the magic-link toggle (`"magic-link-auth"`). Verified by flipping `klarna-payment` to `false`, confirming the option disappeared from `/checkout`'s payment step, then reverting.
+- `lib/logger.ts` — leveled (`debug`/`info`/`warn`/`error`) structured console wrapper; the one seam a real backend (Datadog, Sentry breadcrumbs) would replace.
+- **Security headers, for real** (`next.config.ts` `headers()`): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Strict-Transport-Security`, and a CSP. Verified with `curl -sI http://localhost:3000/` that all six are actually present on the response — not just written in config and assumed. The CSP is explicitly documented in a comment as a **baseline, not hardened**: `unsafe-inline`/`unsafe-eval` are required because Next.js dev/hydration and Framer Motion's inline transform styles need them without a nonce-based setup wired through `proxy.ts` — tightening that is real follow-up work, not done here.
+
+**Documented as intentional gaps, not stubbed with fake scaffolding** (per the earlier plan — building empty placeholder files for these would misrepresent them as more real than they are):
+- **Offline support / PWA**: `app/manifest.ts` + icons already existed (Phase 1–4) and are real; there's no service worker, so there's no actual offline capability. Adding one means picking a strategy (Workbox via `next-pwa`, or a hand-rolled SW) and deciding a caching strategy per route type — a real architectural decision, not a config flip.
+- **i18n / RTL**: the entire storefront is single-locale, LTR-only, with English strings hardcoded directly in components rather than routed through a message catalog. Retrofitting either means picking a library (`next-intl` is the natural Next.js App Router fit) and restructuring every user-facing string — a large, mechanical, high-file-count change better done as its own dedicated pass.
+- **Monitoring (Sentry)**: `lib/logger.ts` is the seam; wiring a real Sentry SDK means an account + DSN the user would need to provide.
+- **Real A/B testing**: `lib/feature-flags.ts`'s boolean-flag shape is one step from an experiment (return a variant key instead of a boolean), but real experimentation needs assignment persistence (which bucket a visitor is in, kept stable across sessions) and an analytics pipeline to measure outcomes — neither exists here.
+- **Rate-limiting**: no API routes exist yet to rate-limit (all "backend" logic is client-side mock services against `localStorage`) — there's nothing to attach a rate limiter to until there's a real server boundary.
+- **Image CDN**: `next/image` already optimizes the existing Unsplash-hosted images on-the-fly; a dedicated CDN (Cloudinary, imgix) would matter once images are self-hosted, which they aren't.
+- **Edge caching**: nearly every route in this app is already static (`○`) or SSG (`●`) per the build output — there's no dynamic per-request data to cache at the edge yet, since all "backend" state lives in the browser's `localStorage`. This isn't a gap so much as a consequence of the mock-commerce architecture; it becomes relevant once real API calls exist.
+- **Performance budgets**: no CI step enforces one; would need a real deploy pipeline to attach Lighthouse CI or `next build`'s bundle-analyzer output to.
+
+## Real Backend — Phase 1 (Postgres/Prisma + real admin CRUD) — COMPLETE, verified clean (tsc + eslint + build + full browser walkthrough against the live Neon DB)
+
+User's new direction (2026-07-22, later in the day, after the audit request below was paused): turn ALEXANDRIS from a mock-commerce demo into a real operating eshop. Chose **custom Postgres (Neon) + Prisma + Stripe** (Stripe is a later phase) over Medusa/Shopify. This phase scoped deliberately to just the catalog + admin — see the plan's "Explicitly deferred" list below before assuming anything else is real.
+
+**Scope:** Postgres is now the source of truth for Products and Collections. Admin dashboard has real create/edit/delete for both, with real per-admin-user authentication. Everything else (customer accounts, cart, wishlist, checkout, orders, discounts, gift cards) is **still the original localStorage-backed mock** — that's the next phase, not done yet.
+
+- **Schema** (`prisma/schema.prisma`): `Product` (flat columns, `Decimal` for price/compareAtPrice/salePrice sharing one `currencyCode` — app is single-currency, EUR hardcoded in `cart.service.ts`), `Json` for `images`/`videos`/`seo` (order-sensitive, Zod-validated on every read/write since Postgres won't enforce shape), native `String[]` for tag-like arrays. `ProductColor`/`ProductSize` are real child tables with a `position` column (Postgres doesn't guarantee row order) — needed as real rows because size-level inventory will need row-level updates once checkout starts decrementing stock. `ProductCollection` is a real many-to-many join table with its own `position` — replaces the JSON model's two independently-maintained arrays (`Product.collectionIds`/`Collection.productIds`) so deleting either side can't leave a dangling reference (cascade-delete verified live in the browser — see below). `AdminUser` (bcrypt hash).
+- **`lib/prisma.ts`**: the standard `globalThis`-cached singleton, required so Next dev's hot-reload doesn't spawn a new connection pool on every edit and exhaust Neon's connection limit.
+- **`lib/validation/product.ts` / `lib/validation/collection.ts`**: the Zod schemas are the single source of truth, reused by (a) the Json-column read/write validation in the data-access layer, (b) the admin forms via `zodResolver`, (c) the Server Actions' `safeParse`. `productToFormValues`/`collectionToFormValues`/`emptyProductFormValues`/`emptyCollectionFormValues` bridge the domain type ↔ form-values shape.
+- **`services/products.ts` / `services/collections.ts` rewired, not replaced**: same exported function signatures/shapes as the old JSON-backed versions (documented back in Phase 1–4 as "shaped like a future API response, so a Server Component can `await` this today and swap in a real network fetch later without callers changing" — that promise held). Every server-side caller (admin pages calling these directly, storefront PDP/PLP, `sitemap`/`robots`/`opengraph-image`) needed zero changes. Both files now start with `import "server-only"` — a hard build-time guard against accidental client-side import, since Prisma Client cannot run in the browser at all.
+- **The client-side split** (the part that actually took the most iteration): `CartProvider`, `WishlistProvider`, `SearchOverlay`, and `ProductListingPage` are all `"use client"` and call `getCommerceProvider()` **in the browser**. Its `CartService`/`SearchService` need a `ProductService` to look up price/stock/related products — can't be the Prisma-backed one. Added `app/api/products/route.ts` + `app/api/collections/route.ts` (GET, thin façades over the same Prisma-backed services) and `lib/commerce/providers/remote/{product,collection}.service.ts` (fetch-based `ProductService`/`CollectionService` implementations). `lib/commerce/providers/mock/index.ts`'s factory now injects the *remote* product/collection services (not the old direct-Prisma ones, which were deleted along with `VariantEditor.tsx`, both fully superseded). **A subtler landmine in the same family**: `lib/commerce/providers/mock/cart.service.ts` and `cms.service.ts` imported from the `@/services` **barrel** (`services/index.ts`, which does `export * from "./products"`) for unrelated functions (`getDiscounts`, `getAboutPage`, etc.) — a barrel import evaluates every re-exported module's top-level code regardless of which named export you actually use, so importing anything from `@/services` transitively pulled in the now-server-only, now-Prisma-requiring `products.ts`/`collections.ts` into the client bundle and broke the Turbopack build with raw `pg`/`node:net` resolution errors. Fixed by importing from the specific submodule (`@/services/admin`, `@/services/about`, etc.) instead of the barrel, in every client-reachable file. **If a new client component ever needs a service function, import its specific file, never the `@/services` barrel** — that barrel is now a server-only-tainted single point of failure for bundling.
+- **Real admin auth**: `AdminUser` table + `bcryptjs`. `app/admin/actions.ts`'s `loginAction` looks up the user, compares the hash, signs a `jose` JWT (`lib/auth.ts`'s `signAdminSession`/`verifyAdminSession` — no `next/headers` import in this file on purpose, since it's shared with `proxy.ts`/middleware which can't use it) as the session cookie, replacing the old literal unsigned string `"mock-session-token"`. `proxy.ts` now verifies the signature, not just cookie presence, and deletes a garbage/tampered cookie on the way to the login redirect. `lib/admin-session.ts` adds `requireAdminSession()` (throws — used inside every Server Action, since Next's own docs warn route/matcher gating alone can silently miss a Server Action's actual POST target) and `requireAdminSessionOrRedirect()` (used in `app/admin/(dashboard)/layout.tsx`, now `async`).
+- **Admin CRUD**: `app/admin/(dashboard)/products/actions.ts` (`createProduct`/`updateProduct`/`deleteProduct`) and the collections equivalent — Zod-validated, session-checked, `revalidatePath("/", "layout")` after every mutation (a deliberately blunt full-tree revalidation — nothing in this phase can compute the precise set of affected PLPs/related-product cross-links from an arbitrary catalog edit; a documented tradeoff, not an oversight). `components/admin/ProductForm.tsx` and `CollectionForm.tsx` are new RHF+Zod forms — the admin dashboard had **zero** form validation anywhere before this (every admin "form" was raw `useState`); these are the first. `ProductForm` folds in what `VariantEditor.tsx` used to do (colors/sizes) as `useFieldArray` sections rather than keeping it a separate bolted-on component. Wired the two long-dead "New Product"/"New Collection" buttons (no `href`, no `onClick`, ever) to real `/new` routes.
+- **`scripts/seed.ts`**: imports the existing `data/products.json`/`data/collections.json` into Postgres (all 12 products + 5 collections + 16 collection links survived the migration intact) and seeds one `AdminUser` from the pre-existing demo credentials (`admin@alexandris-demo.example` / `admin123` — still the documented login, now for real).
+- **Real bug found via the browser walkthrough, not code review**: see the `.optional()`-select gotcha in "Environment gotchas" above — it silently blocked **every** product/collection submission (client-side validation failure, no error shown, no network request, no console error) until caught by adding an `onInvalid` handler to `handleSubmit` and inspecting the actual `formState.errors` payload. Both `ProductForm`'s Season select and `CollectionForm`'s CTA-style select had it; fixed identically.
+- **Known minor gap, not fixed**: leaving a product's SEO meta title/description blank in the admin form stores empty strings rather than `undefined`, so `generateMetadata`'s `<title>` falls back incorrectly (renders `| ALEXANDRIS` instead of `Product Name | ALEXANDRIS`) when the optional field is empty. Low severity, flagged to the user, not silently patched — a small follow-up for whoever touches `toProductWriteData`/the SEO mapping next.
+- **Verified live end-to-end in the browser against the real Neon DB** (not just build-time checks): created a product → appeared in the admin list, the storefront PDP, and instant search (search literally found the just-created product by name). Edited an existing seeded product's price → persisted after a hard reload and updated live in an in-progress cart (proving the `RemoteProductService`/Route Handler split actually works, not just compiles). Created a collection, assigned a product, confirmed the relationship both directions (admin checkbox state + storefront collection page product count). Deleted a product that was assigned to a collection — the collection page degraded to "0 items" cleanly, no crash, confirming the join-table cascade delete. All test data created during verification was cleaned up afterward (test product/collection deleted, the edited seed product's price/quantity restored to its original seeded values) — the catalog is back to exactly its original 12 products / 5 collections.
+- **Credentials**: `.env` (gitignored, not committed) holds the real `DATABASE_URL` (Neon pooled connection string) and a generated `ADMIN_SESSION_SECRET`. `.env.example` documents the shape for anyone else setting this up. Don't regenerate `ADMIN_SESSION_SECRET` casually — it invalidates every existing admin session cookie.
+
+**Explicitly deferred to later phases** (ask before assuming any of this is real): customer accounts/cart/wishlist/checkout moving into Postgres, Stripe integration, real image upload/storage (S3/Cloudflare R2 — this phase kept URL-based images, exactly like before), a production search engine (this phase kept the existing in-memory JS filtering, just now over DB-sourced data — `SearchService`/`ProductListingPage` still fetch-then-filter client-side, which means every filter change ships the whole catalog over `/api/products`; harmless at 12 products, the real scaling bottleneck once the catalog grows), orders/discounts/gift-cards backend, deployment/hosting/rate-limiting.
+
+## Real Backend — Phase 2 (Customer accounts, Cart, Wishlist, Checkout, Orders + Discount/GiftCard catalogs) — COMPLETE, verified clean (tsc + eslint + build + full browser walkthrough against the live Neon DB)
+
+User's direction (2026-07-22, continuing the same day): "customer accounts + cart + orders → Postgres next and then the rest" (Stripe/checkout-gateway and the paused engineering audit come after). Planned via `EnterPlanMode` — an `Explore` agent produced a full current-state research report first, then a `Plan`-type subagent turned that into a 17-sub-phase (A–Q) file-by-file plan, which was reviewed against the actual source (caught and corrected one real discrepancy: the plan assumed new orders start at `"processing"`, but the mock's actual code sets `"confirmed"` immediately — fixed before implementation, not after) before execution.
+
+**Scope:** Customer, CustomerAddress, Cart, CartLineItem, CartDiscount, CartGiftCard, Checkout, Order, Wishlist, WishlistItem, Discount, GiftCard are now all real Postgres tables — the only mock/localStorage-backed services left in `lib/commerce/providers/mock/index.ts` are CMS, Search, and Analytics (the factory/name `"mock"` is intentionally kept as-is for now, a cosmetic rename deferred past this phase).
+
+- **Schema** (`prisma/schema.prisma`): follows every Phase 1 convention exactly (cuid ids, `@@map` snake_case, `Decimal(10,2)` + shared `currencyCode`, `position` + explicit `orderBy` for child rows, `onDelete: Cascade` on structural FKs). Cart/Order totals are **never persisted** — always recomputed at read time from `lineItems`/`discounts`/`giftCards` (`lib/commerce/postgres/cart-totals.ts`'s `computeTotals`, the mock's formula moved server-side verbatim) to avoid stored/derived drift, a deliberate departure from the "store everything as columns" instinct. `Order.lineItems/totals/shippingAddress/billingAddress/shippingRate` are Json snapshots (Zod-validated) — an order must keep showing what was actually bought/charged even if the product/price/address later changes. `Wishlist` is owned by *either* `customerId` *or* `anonymousId`, never both.
+- **`lib/shipping.ts`** (new): single source for VAT rate/shipping thresholds/rates — previously duplicated independently in the mock's `cart.service.ts` and `checkout.service.ts` (same two rates, defined twice).
+- **Customer auth moved fully server-side** — the biggest structural change, not just a storage swap, since Prisma can't run in the browser but `AuthProvider`'s methods were called imperatively client-side. New `lib/customer-auth.ts` (jose HS256, 7-day expiry, own `CUSTOMER_SESSION_SECRET` — separate from `ADMIN_SESSION_SECRET` so compromising one doesn't compromise the other) + `lib/customer-session.ts`, mirroring `lib/auth.ts`/`lib/admin-session.ts` exactly. Real bcrypt-hashed passwords on `Customer.passwordHash` (was a parallel plaintext map in the mock — the biggest security gap this phase closed). 6 new Route Handlers under `app/api/auth/*`.
+- **Identity-resolution rule, asymmetric by design**: Cart stays a pure capability token forever — holding the cart id authorizes every operation, identical security properties to the old localStorage model, no session check on any cart route except `link-customer`. Wishlist/Customer/Order routes resolve identity from the verified session cookie and **ignore any client-supplied id** — closes an IDOR class the mock never had to worry about (localStorage has no "other user" to protect against). `services/customers.ts`'s `requireOwnAddress` double-checks address ownership even though the session already scopes to one customer.
+- **~24 new Route Handlers** across `app/api/cart/*`, `app/api/checkout/*`, `app/api/customer/*`, `app/api/wishlist/*`, `app/api/auth/*` — same thin-facade-over-`services/*.ts` convention as Phase 1's products/collections routes, scaled up. `lib/commerce/http-errors.ts` centralizes the `{error:{code,message}}` response shape; `lib/commerce/providers/remote/http.ts`'s `fetchJson` reconstructs a `CommerceError` client-side from it.
+- **`services/carts.ts`** is the highest-complexity file: preserves the mock's exact stock-aware `maxQuantity` logic (via `lib/product.ts`'s `isSizePurchasable`/`findSizeVariant`, untouched), discount/gift-card validation (now against real `Discount`/`GiftCard` tables via `services/discounts.ts`/`services/gift-cards.ts` instead of JSON — this also fixed a mock inconsistency where gift cards bypassed `services/admin.ts` and imported the JSON file directly), and **fixes a real quirk**: the mock's gift-card `remainingDue || match.balance.amount` fallback meant a fully-covered cart would still apply a new card's full balance instead of 0 — now correctly `min(balance, remainingDue)` with no fallback. Real `mergeCarts`/`linkCustomerCart` union guest-cart line items into the customer's cart (dedupe by productId+color+size, capped at maxQuantity) — the mock's version was a no-op stub since it only ever had one persisted cart.
+- **`services/checkout.ts`'s `completeCheckout`** is the money-critical transaction, in a single `prisma.$transaction`: re-validates + decrements `ProductSize.quantity` per line item (re-checked at purchase time, not just add-to-cart time — new logic, the mock never decremented stock at all), decrements applied `GiftCard.balanceAmount` (also new), creates the `Order` snapshot, marks the checkout completed, clears the cart. **Deliberately ignores any client-supplied cart** in the Route Handler body even though `CheckoutService.completeCheckout(checkoutId, cart)` keeps its interface shape for parity — always re-fetches authoritative data server-side.
+- **Client-side**: `CartProvider` now persists the cart *id* in localStorage (`alexandris_cart_id` — the mock's "whole cart lives in localStorage" shortcut is gone, Postgres needs an id to look up) and exposes `linkToCustomer()`; `WishlistProvider` gets the same. `AuthProvider` calls both (best-effort, `Promise.allSettled` — a failed link shouldn't block a successful sign-in) right after `signIn`/`signUp`, which required reordering `app/layout.tsx`'s providers from `Auth(Cart(Wishlist(children)))` to `Cart(Wishlist(Auth(children)))` so `AuthProvider` can call `useCart()`/`useWishlist()`.
+- **`proxy.ts`** extended (not duplicated — Next only allows one proxy export) with a customer-session branch alongside the existing admin branch; `app/account/(protected)/layout.tsx` gained a `requireCustomerSessionOrRedirect()` call, the same belt-and-suspenders pattern the admin dashboard already used with the client-side `RequireAuthShell`.
+- **`CustomerAddress` gained a real id** (`components/account/AddressForm.tsx`'s callers and `app/account/(protected)/addresses/page.tsx` now key/mutate by `address.id`, not array index) — a deliberate, documented `CustomerService` interface break (`updateAddress`/`removeAddress` took an `index: number`, now take an `addressId: string`).
+- **Admin wiring**: Discounts and Gift Cards got real CRUD (`components/admin/ActiveToggle.tsx` + `DeleteRowButton.tsx`, shared between both — replaces the old `DiscountActiveToggle.tsx`, which was pure local `useState`) — wired the two long-dead "New Discount"/"New Gift Card" buttons. Orders got a real `OrderStatusSelect` (persists via Server Action, same pattern as `RoleSelect`/`ReturnStatusSelect`) over a unified 6-value status enum (`confirmed → processing → shipped → delivered`, `cancelled`/`refunded` terminal — `constants/order-status.ts`). `types/admin.ts`'s separate, simpler `Order`/`Customer`/`Discount`/`AdminGiftCard` types (JSON-mock-only) were retired in favor of the canonical shapes in `lib/commerce/types.ts`/`types/commerce.ts` — admin pages now read the same real data the storefront does, via new `getAllOrdersForAdmin`/`getAllCustomersForAdmin` (the latter computing `ordersCount`/`totalSpent` via a Prisma aggregate). `services/admin.ts`'s `getDashboardStats()` also rewritten to pull real counts (it wasn't in the original five-domain scope but was flagged as a correctness gap worth closing in the same phase — the admin homepage would've otherwise silently frozen at stale JSON numbers forever).
+- **A Prisma 7 gotcha hit during implementation, not in Phase 1**: writing a plain TS interface (`Address`, `ShippingRate`, `CartLineItem[]`, `CartTotals`) directly into a `Json` column field fails type-checking — Prisma 7's `InputJsonValue` requires a type with an index signature, which named interfaces don't structurally have, even when every property value is JSON-safe. Fixed with a small exported `toJsonInput<T>(value: T): Prisma.InputJsonValue` assertion helper in `lib/commerce/postgres/mappers.ts`, used at every Json write site in `services/checkout.ts`. Also: `Money`/`Product` types live in `@/types`, not `@/lib/commerce/types` (which only re-exports a few of them) — importing from the wrong module compiles in some files and not others depending on what that file already re-exports, easy to get backwards.
+- **Verified live end-to-end in the browser against the real Neon DB**: guest cart → applied `WELCOME10` (10% off, hand-verified: €99 → −€9.90 discount → tax recomputed on the discounted subtotal → €114.76) → applied `GIFT25` (−€25 → €89.76) → full 5-step checkout (contact/shipping/delivery/payment/review) → placed order. Confirmed server-side: `ProductSize.quantity` for the purchased size decremented (16→15), `GiftCard.balanceAmount` decremented (€25→€0), `Order` row created with the correct `customerEmail` and a `null` `customerId` (guest checkout), admin Orders page showed it immediately with the real shipping-address-derived name. Separately: added an item to the wishlist and cart as a guest, signed up a new customer (Grace Hopper) — both the wishlist item and cart line item were present on her account immediately after sign-up (confirming the adopt/merge-on-signup flow), added a real address by id, admin Customers page showed her with `0 orders`/`€0.00` (correctly excluding the unrelated guest order). Toggled a Discount's active state in the admin UI and confirmed it survived a full page reload (real Server Action + Prisma, not local state). Confirmed `/account/*` redirects to `/account/login` when signed out (both the new server-side `proxy.ts` guard and the pre-existing client-side `RequireAuthShell`). All test data (the guest order, the Grace Hopper customer, the decremented stock/gift-card balance) was cleaned up afterward via a one-off script, then deleted — Discounts/GiftCards/catalog are back to exactly their original seeded state.
+- **Browser-tool flakiness, confirmed a third time**: `read_console_messages` returned the *exact same* stale Turbopack compile error (referencing an import that had already been fixed and rebuilt clean) across a fresh dev-server restart and multiple page navigations; `read_network_requests` reported a `500` on an `/api/cart` request that the dev server's own terminal log shows never happened (only `200`s, real Prisma warnings, no error stack). Trust `preview_logs`/actual page content/a direct DB check over these two tools, same conclusion as Phase 1 — this is now confirmed across two separate real-Postgres phases, not a one-off.
+- **Credentials**: `.env` gained `CUSTOMER_SESSION_SECRET` (generated, separate from `ADMIN_SESSION_SECRET`) — `.env.example` documents it. Don't regenerate it casually; it invalidates every existing customer session cookie.
+
+**Explicitly deferred to later phases**: Stripe/real payment gateway (checkout is still cosmetic — card fields validate client-side only, no real charge), real image upload/storage, a production search engine, deployment/hosting/rate-limiting, a customer-deletion admin flow, "set as default address" UI (the field exists, nothing sets it — matches the mock's exact behavior), destination-based shipping rates. The paused engineering audit (bugs/dead code/performance/SEO/a11y/security/dependency audit) from earlier the same day is still paused, untouched.
+
+## Ready for the requested engineering audit
+
+Phases 6–11 are all complete and independently verified (tsc/eslint/build/browser-tested at the end of each). Per the user's request, the next pass is a full audit-and-refactor sweep of the whole codebase — see the conversation for that request's exact scope (bugs, dead code, performance, SEO, accessibility, security, dependency audit, testing readiness, final scored report). — see sequencing note above for the mock-vs-infra split. Mock/local half: skeleton loading (`components/ui/skeleton.tsx` already exists, needs wiring throughout), page transitions, progressive image loading + blur placeholders (`Image.blurDataURL` field already on the `Image` type, unused so far), optimistic UI (cart already does this — extend the pattern), error boundaries, empty states, loading states, toast notifications (already built), analytics abstraction (already built — `AnalyticsService`/`analytics.track()` — extend event coverage), feature-flag hooks (simple local config, no vendor). Infra half to stub with labeled placeholders: offline support, PWA support, i18n, RTL, real A/B testing, Sentry/monitoring hooks, logging, performance budgets, security headers, rate-limiting hooks, image CDN, edge caching. WCAG 2.2 AA accessibility is the one infra-adjacent item worth doing for real throughout (no vendor dependency, just correct semantics/contrast/focus management).
+
+## Environment gotchas (don't re-discover these)
+
+- **Node.js path**: not on PATH for this shell's inherited env. Prepend `export PATH="/c/Program Files/nodejs:$PATH"` on every Bash call that needs `node`/`npm`/`npx`.
+- **Dev server**: `.claude/launch.json` points at `.claude/dev.cmd` (a wrapper that sets PATH then runs `npm run dev`) — direct `npm`/`node` paths didn't work for the preview tool's own spawned process.
+- **Browser tool flakiness**: this sandboxed browser occasionally lags between `navigate`/`screenshot`/`javascript_exec` calls (stale screenshots, scroll position resets). Not an app bug — confirmed repeatedly by cross-checking with `window.location.href` and fresh tabs. If something looks wrong, re-screenshot before assuming a real bug. **Confirmed again in the Postgres phase, worse**: `read_console_messages` and `read_network_requests` returned frozen/stale snapshots (same timestamps across multiple calls, old errors from before a dev-server restart) that did not reflect current page state at all. When debugging "did my action actually do anything," trust `window.location.href`, a direct DB query, or a server-side access-log line (`preview_logs` search) over these two tools — they're the ones that lied.
+- **`react-hooks/set-state-in-effect`**: newer strict lint rule. Legitimate for localStorage-hydration-on-mount and clear-derived-state-on-dependency-change patterns — disable comment must sit directly above the flagged `setState(...)` line, not above the `useEffect(` line, or ESLint reports "unused directive" AND the original error.
+- **`@typescript-eslint/no-unused-vars`**: `eslint.config.mjs` now has `argsIgnorePattern: "^_"` added — safe to use `_paramName` for interface params a given adapter intentionally ignores.
+- **Prisma 7 is not the Prisma you remember**: `generator client { provider = "prisma-client" }` (not `prisma-client-js`) generates plain TS source into an `output` folder (no `package.json`, import the class directly from `<output>/client`). The datasource `url` no longer lives in `schema.prisma`'s `datasource` block — it's set in a root `prisma.config.ts` via `defineConfig({ datasource: { url: env("DATABASE_URL") } })`, and that file needs `import "dotenv/config"` itself since the CLI doesn't auto-load `.env` anymore. The generated client also **requires an explicit driver adapter** (`new PrismaClient({ adapter: new PrismaPg({ connectionString }) })` from `@prisma/adapter-pg` — install `@prisma/adapter-pg` + `pg` separately) instead of the old bare `new PrismaClient()`.
+- **RHF + Zod `.optional()` + a `<select>`'s "None" option is a silent trap**: an `<option value="">None</option>` submits the empty string, not `undefined`. `z.enum([...]).optional()` only treats `undefined` as absent, so `""` fails validation — but the failure is invisible unless you specifically check `formState.errors` or pass an `onInvalid` handler to `handleSubmit`, because there's no thrown exception, no console error, and no network request either (the browser tools above made this worse by not reflecting the lack of a request either). Fix: wrap the `<select>` in a `Controller` and map `e.target.value === "" ? undefined : e.target.value` in `onChange`, keep the Zod schema as plain `.optional()` with no coercion. Also avoid `z.coerce`/`z.preprocess`/`.default()` anywhere in a schema that's shared between `useForm<T>()` and `zodResolver` — any of those make the schema's input type diverge from its output type, which `zodResolver`'s generics reject with a wall of TS errors pointing at unrelated-looking lines. Numeric `<input type="number">` fields have the same class of problem (`valueAsNumber: true` turns an emptied field into `NaN`, not `undefined`) — same fix, a `Controller` with manual `e.target.value === "" ? undefined : Number(e.target.value)`.
+
+---
+
+# Session — 2026-08-06: Codebase audit, real Category management, product lifecycle
+
+Six commits on `perf/plp-scoped-product-fetch`. **Not merged to main** — `origin/main` is still at `7421c19`. No `gh` CLI and no `GITHUB_TOKEN` on this machine, so PRs must be opened from the GitHub web UI.
+
+## Batch 1 — PLP scoped fetching (`8a74746`)
+
+Category/gender pages pulled the **entire catalog** on every request and filtered in JS — twice, because a separate full-catalog fetch computed price-slider bounds and the product grid was blocked behind it (`if (!priceBounds) return`). Three fixes: `getAllProducts` now takes a filter pushed into the Prisma `where`; `search.service.ts` stopped calling `productService.getAll()` with no args on every search; and the bounds fetch was decoupled from the results fetch (omitting `minPrice`/`maxPrice` when the user hasn't narrowed them is equivalent to filtering by the full bounds anyway).
+
+## Batch 2 — Full codebase audit (`b3440d1`)
+
+Baseline was already green, and the codebase is genuinely clean (zero TODOs, zero commented-out code, zero `any` in hand-written code, well-structured authorization). **Every real defect was in an error path** — code that works until something fails, then fails badly.
+
+- **Stale-session crash (critical, firing on every page load).** `getCustomerSession()` verified the JWT cryptographically but never checked the customer row still existed. ~15 call sites treat `session.sub` as a live id and hand it to Prisma, so a valid-but-dangling cookie (deleted customer, reseeded DB) meant `/api/wishlist` threw P2003 on `wishlists_customerId_fkey` for *every request*, with the same latent failure behind addresses, returns and back-in-stock. Now validated against the DB and memoized with React `cache()` — the Data Access Layer pattern `node_modules/next/dist/docs/01-app/02-guides/authentication.md` explicitly recommends. Note `proxy.ts` keeps its JWT-only check (it runs before the DB is reachable) — that is the optimistic pass, this is the authoritative one. It deliberately cannot clear the stale cookie: Server Components may not mutate cookies, so callers redirect to login instead.
+- **Three root providers could pin the app in a permanent loading state** — Cart/Wishlist/Auth each called `setIsLoading(false)` only inside `.then()`, so any rejection left the spinner unresolvable. This is what the wishlist 500 was actually triggering sitewide.
+- **Duplicate checkout rows.** `CartProvider` hands back a new cart object on every mutation, so a quantity change while the first `createCheckout` was in flight re-ran the effect with `checkout` still null. Guarded by cart id in a ref; a failed create no longer wedges the flow with no retry.
+- **Stored XSS in JSON-LD.** The schema.org *shape* is app-generated but its *values* are not (`product.name`/`description`, CMS FAQ answers, SEO settings — all admin-authored or CSV-imported). `JSON.stringify` does not escape `<`, so `</script>` in any of them executed on every visitor. Extracted to `lib/json-ld.ts` (a plain `.ts` so vitest can reach it without a JSX transform) with 5 tests including a round-trip check proving escaping does not corrupt payloads.
+- **N+1 on the sign-in path.** Cart merge ran ~2N sequential queries and wishlist merge N; both now read once, batch the writes, and run in a transaction — which also closed a real correctness hole, since a mid-merge failure previously deleted the guest row with items left untransferred.
+- **Dead code removed** after verifying each was unreferenced repo-wide: `config/site.ts` (superseded by `lib/format.ts` + `Product.currencyCode`), `fadeIn`, `imageZoom`, `ORDER_STATUS_COLOR`, `formatMaterials`, `getNewProducts`, `getProductsByCategory`, `getSaleProducts`, `Paginated`, `SeoMeta`.
+
+## Batch 3 — The five deferred items (`91f218b`)
+
+- **Newsletter was a lie.** The form awaited a 500ms timer and reported success while **discarding the address**; the sitewide footer used it, and admin showed a hardcoded "3 subscribers" from JSON. Now a real `NewsletterSubscriber` table + rate-limited `POST /api/newsletter`, wired to both forms with a real error path. Signup is an **upsert**, so re-subscribing is idempotent *and* indistinguishable from a first signup — the endpoint cannot be used to probe whether an address is on the list.
+- **`Product` had zero indexes** despite being the hottest read path. Added `[gender, categoryId]` + `[categoryId]`; `EXPLAIN` confirms the planner moved from a seq scan to a Bitmap Index Scan. `isNew`/`isSale` left unindexed on purpose — booleans splitting the catalog in half are not selective enough to beat a scan.
+- **`next` 16.2.11 to 16.3.0** cleared the postcss/sharp advisories the semver-safe pass could not reach. `npm audit`: **0 vulnerabilities**, down from 9.
+- Removed 10 unused shadcn primitives; merged `lib/validations/` into `lib/validation/` (28 import sites + a stale `schema.prisma` comment).
+
+## Batch 4 — Real Category management (`5297014`)
+
+Categories were not a feature. Admin "Categories" was `getAllProducts()` grouped by a plain string; the product form had a **free-text** category input (typos silently created new "categories"); PDPs linked their breadcrumb to `/${product.category}`, **a route that never existed**.
+
+- **Schema**: `Category` with self-relation parent/children (unlimited nesting), `position`, `image` + `bannerImage`, SEO override, `isFeatured`/`isVisible`. `Product.category` (String) became `Product.categoryId` (required FK, `onDelete: Restrict` as a DB backstop behind the app-level delete guard).
+- **Migrated in two phases against the live DB**: additive migration (new table, nullable `categoryId`, loosened `NOT NULL` on the old column), then a one-off backfill (**175/175 products into 6 categories, zero nulls, slug-mismatch check clean**, verified *before* proceeding), then a finalize migration (`NOT NULL` + drop the old column, auto-dropping its stale indexes). The destructive step only ran after the backfill was proven.
+- **`Product.category` was kept as a slug string** on the mapped type (now sourced from the joined `Category.slug`) specifically so ~10 existing consumers — PLP `?category=` scoping, search facets, breadcrumb, fit-recommendation — kept working untouched. `categoryId` is the new field for anything needing the real row.
+- **Admin**: full CRUD; parent picker excludes self + descendants (cycle prevention) with a server-side re-check; `CategoryTree` renders the real hierarchy with `@dnd-kit` drag-reorder **scoped to siblings only** (independent `DndContext` per group, so cross-parent drag is structurally impossible — moving parent is a deliberate field edit, not a gesture that could quietly misfile a category). Delete guarded app-side *and* DB-side.
+- **Storefront**: new `app/category/[slug]/page.tsx` (hero, child chips, real SEO, hidden categories 404 like a draft page), fixed breadcrumb, sitemap entries.
+- **Bug found in browser testing that tsc/lint/build all missed**: the category form's optional image fields silently blocked every submit that left them blank — a dead button with no error. See NOTES.md's RHF gotcha. Fixed at the root cause + `lib/validation/category.test.ts`.
+
+## Batch 5 — Auditing my own category work (`7b6f8d0`)
+
+Self-audit graded it **B−, not a pass**, and found two real defects introduced by that batch:
+
+- **C1 — parent categories hid their descendants' products.** Exact-slug match meant nesting a category (the entire point of the hierarchy) made its products vanish from the parent page. Verified by making it fail: moved a real product into a child, confirmed `/category/sneakers` still reported **33** (32 direct + 1 nested) where it would previously have reported 32. Unknown slug resolves to an empty set (matches nothing, not everything).
+- **C2 — every category had `position = 0`.** The Batch 4 backfill omitted it, so all six took `@default(0)`; `orderBy: position` with no tiebreaker made order arbitrary. It only *looked* stable because a tiny table seq-scans in heap order — which MVCC rewrites on UPDATE and vacuum reshuffles. Backfilled sequential positions (ordered by `createdAt`, preserving what admins already saw) plus a `name` tiebreaker.
+- `findOrCreateCategoryBySlug` TOCTOU race became an `upsert`. `isSameOrDescendant` N+1 per level became one recursive CTE. `useState(props)` (never re-syncs) became `useOptimistic`, so server data stays the source of truth and a rejected reorder self-corrects. Added `KeyboardSensor` + `sortableKeyboardCoordinates` — drag-reorder was mouse-only, a WCAG 2.1.1 failure; verified end-to-end (persisted `sandals:0, heels:1`) with dnd-kit's live-region announcements firing.
+
+## Batch 6 — Product lifecycle, unit economics, bulk ops (`76922a6`)
+
+Products had real CRUD but no lifecycle. The **"Status" column was a lie** — it rendered `availableForSale` (purchasability) as "Active"/"Draft" (publication) — and the only retirement path was a hard delete that cascades to `CartLineItem`/`WishlistItem`, emptying customers' carts and destroying what past orders contained.
+
+- **Schema** (purely additive, `@default("active")` backfills existing rows with no table rewrite): `status`, `archivedAt`, `costPriceAmount`, `brand`, `vendor`.
+- **Publication filtering designed to fail closed** — the risk was leaking drafts to customers, so the default is the safe one. Full rationale and the per-function split is in NOTES.md; all 15 call sites were reviewed individually rather than swept.
+- **Margin computed on read, never stored** (cannot drift from price/cost), measured against the price *actually charged* so discounted items do not report optimistic list-price margins; returns `null` when cost is unknown rather than implying 100%. 6 tests in `lib/product.test.ts`.
+- **Archive is now primary**, hard delete the de-emphasised exception with a confirm spelling out what it destroys. Restore returns to **draft**, never straight to live. Duplicate copies colors/sizes/collections as a draft, suffixing slug and SKU until free.
+- **Bulk** publish/draft/archive/delete plus live search (name, SKU, **and brand** — merchandisers look products up by SKU constantly), status/category filters, sorting including by margin.
+- **Verified by making it fail first**: flipped one real product to draft and another to archived, then confirmed via real HTTP paths that the PLP dropped 33 to 31, both PDPs 404 while an active product still rendered with its buy box, the sitemap excluded both, and — critically — **the cart/wishlist path still resolved the draft product by id**. Admin showed "175 products, 173 active, 1 draft, 1 archived"; status filter narrowed to exactly the draft; bulk publish moved counts to 174/0. Margin checked live at 60%, then -33.3% with a "Selling below cost" warning. All test data restored: 175 products, all active, no leftover duplicates.
+
+## Batch 7 — Roles & permissions: a live authorization gap
+
+Picked over the Media Library after checking whether the roles matrix was actually
+enforced. It wasn't. This was a security fix, not a feature build.
+
+**What was wrong** — four separate things pointing the same way:
+- `signAdminSession` put only `email`/`name` in the JWT. `AdminSessionPayload` had no
+  `role` field, so nothing *could* check it.
+- `requireAdminSession()` only asked "is there a valid session". Every one of the 31
+  admin mutations called it and stopped there — being signed in was treated as being
+  allowed.
+- `app/admin/(dashboard)/layout.tsx` passed a hardcoded `role: "admin"` to the topbar, and
+  `AdminSession.role` in `lib/auth.ts` was typed as the *literal* `"admin"` — the type
+  itself encoded the assumption that every signed-in user is an admin.
+- `RoleSelect` was local `useState` with no server call: assigning a role appeared to work
+  and reverted on reload.
+
+Net effect: an "editor" could delete products, manage users and edit site settings, while
+`/admin/roles` displayed a matrix telling the owner they couldn't. The matrix was
+display-only strings with `admin: true / editor: false` booleans that nothing read.
+
+**What was built**
+- `constants/permissions.ts` rewritten around 13 keyed `Capability` values with
+  `ROLE_CAPABILITIES`, and it is now the single source of truth for *both* the guards and
+  the roles page, so the two can't drift apart again. Admin's capability list is derived
+  (`CAPABILITIES.map(c => c.key)`) rather than enumerated, so adding a capability can never
+  silently lock the owner out of their own dashboard.
+- The role is read from the `AdminUser` row rather than the JWT, memoized with React
+  `cache()`. Reading it from the token would have meant: pre-existing sessions have no role
+  to read, a demotion doesn't take effect until the token expires (up to a day of continued
+  elevated access), and a deleted admin's token keeps working. Reading it live fixes all
+  three — and the row's existence doubles as session validation. An unrecognised value in
+  the column degrades to the least-privileged role rather than being trusted.
+- `requireCapability` on all 31 mutations; `requireCapabilityOrRedirect` on the 9
+  capability-gated pages, because hiding a nav link isn't protection when the URL is still
+  typeable. Bulk delete is checked against the stricter `catalog:delete` specifically so
+  the bulk endpoint can't be used to do in one call what the single-product path refuses.
+- `RoleSelect` persists via a real action behind `admin:users`, with a guard refusing to
+  demote the last remaining admin (an unrecoverable dashboard lockout — there's no
+  self-service escalation).
+- Roles page rebuilt from the real model, showing the signed-in user's own role. Nav
+  filters to what the role can use. `/admin/appearance` was deliberately *un*-gated after a
+  look: it's a read-only list of design tokens with no data or actions to protect.
+
+**Verified with a real throwaway editor account, against the live DB**
+Signed in as an editor: topbar correctly read "editor" (previously hardcoded "admin"), and
+discounts/gift-cards/homepage/navigation/returns/seo/settings/users were all absent from
+the nav. Typing `/admin/settings` directly redirected to `/admin?denied=admin%3Asettings`.
+Bulk-deleting a product was refused — **175 products still present afterwards, nothing
+deleted** — while "Move to draft" (`catalog:edit`, which editors do have) succeeded,
+proving the boundary blocks the right things without over-blocking. Role changes were then
+driven through the real dropdown as a temp admin and confirmed persisted in the database in
+both directions, plus self-demotion while another admin exists.
+
+**Found during that verification and fixed**: the first bulk-delete attempt was correctly
+blocked but showed *no error at all* — `requireCapability` throws, and a thrown error in a
+Server Action never reaches the caller's `if (result?.error)`. The guard held but the UI
+looked broken. Added `capabilityDenied()` (returns the message instead of throwing) for
+actions that already carry an `{ error }` channel; the editor now sees "Your role (editor)
+doesn't have permission to do this."
+
+**Not tested live, deliberately**: the last-admin refusal branch. Firing it requires making
+the owner's account the sole admin being demoted, and a failure mid-test could lock them
+out of their own production dashboard. Covered by code review and
+`constants/permissions.test.ts` instead — the risk wasn't worth the test.
+
+Both temp accounts were deleted and the drafted product restored: one admin (the real
+owner, still `admin`), 175 products all active. The owner's password was never read or
+reset. 37 tests (up from 31).
+
+## Batch 8 — Real Media Library (last of the five admin phases)
+
+The Media Library was a *derived view*, not a library: it scanned products/collections/
+homepage for image URLs and deduped them. Consequences — an uploaded file was invisible
+until someone attached it to a product (the upload button's own comment documented this as
+expected behaviour), there was nowhere to put alt text/folders/tags, and nothing could be
+deleted, because there was nothing to delete *from*.
+
+**What was built**
+- `MediaAsset` table (url unique, pathname, filename, altText, folder, tags, contentType,
+  size, dimensions). Folder is a flat label, not a tree — media folders are organisational,
+  unlike Category which is customer-facing taxonomy and genuinely needed nesting.
+- **317 already-referenced images backfilled**, so the library starts complete rather than
+  empty. The backfill walks arbitrary Json (product images/videos/seo, colour swatches,
+  collection and category images, blog covers, site content) pulling out anything that
+  parses as an image URL.
+- Upload now records an asset as well as writing to Blob, so upload-then-attach works. The
+  CSV import path records assets too (folder `imports`), so bulk-imported images are
+  manageable afterwards instead of existing only inside a product's images array.
+- Deletion removes the row *and* the Blob object, and is **refused while the image is still
+  referenced anywhere**, naming what uses it. Without that check, deleting from the library
+  would silently blank a live product photo — consumers store the URL, so it would keep
+  pointing at a file that no longer exists.
+- Usage detection has two implementations on purpose: a per-asset one (six `LIKE` queries,
+  used at delete time where accuracy matters most) and a bulk one that loads each
+  referencing record once and scans in memory, because the grid needs every asset's in-use
+  state at once and the per-asset version would be an N+1 across six tables.
+- New capabilities `content:media` (admin + editor) and `content:media-delete` (admin
+  only), mirroring the archive-vs-hard-delete split already used for products.
+
+**A real bug found by verification, not by the toolchain**
+The page crashed outright. `next/image` throws a **fatal, route-killing** error for any
+hostname missing from `remotePatterns` — it does not degrade to a broken image — so one
+legacy or mistyped URL blanks the entire library. (Two such URLs existed immediately: a
+placeholder `alexandris-demo.example` logo picked up from site content, plus the test
+fixture.) The naive fix — swap every `next/image` for `<img>` — would have meant pulling
+~318 full-size photos to fill 200px tiles, roughly 95MB. So `lib/image-hosts.ts` is now the
+single source of truth for both `next.config.ts`'s `remotePatterns` and a runtime
+`isOptimizableImageUrl()` check: configured hosts get the optimizer, anything else degrades
+to one broken thumbnail instead of a broken page. 7 tests cover the host matching,
+including the lookalike-suffix and multi-label-subdomain cases that would otherwise slip
+through a naive `endsWith`.
+
+**Also learned:** the sandboxed verification browser cannot reach external hosts directly,
+so a plain `<img>` pointing at Blob appears broken there while the identical URL returns 200
+through `/_next/image`. Confirmed with a `fetch()` before drawing any conclusion — it was
+the harness, not the app.
+
+**Verified live**: 318 assets listed (317 real + 1 deliberately-unused fixture), in-use
+badges correct, real product photos rendering through the optimizer while the two
+unconfigured URLs fell back cleanly. Deleting an in-use image was refused with
+"1 image is still in use and was not deleted: … (Product: …). Remove it from those first."
+and the count stayed at 318; the unused filter narrowed to `1 of 318`, and deleting that one
+succeeded — "Deleted 1 image." → `317 images · 0 unused`.
+
+Temp admin removed and fixtures cleaned: the real owner is the only admin, 317 media assets,
+175 products all active. Two new advisories (`js-yaml`, `nanoid`) had appeared since the
+last audit and were cleared with a lockfile-only `npm audit fix` — back to 0. 44 tests.
+
+## Test-data discipline
+
+Every live-DB verification this session was set up, proven, then **restored and re-verified**: a nested category with a moved product, two products flipped to draft/archived, newsletter signups, and a throwaway admin account (created and deleted — the real `alexandrisstores@gmail.com` admin was never touched, and its password was never reset or read).
+
+## Batch 9 — Category slug redirects + media loose ends
+
+**Slug redirects.** Renaming a category 404'd its old URL, losing accumulated ranking and
+breaking inbound links. `CategorySlugHistory` now records each outgoing slug inside the
+same transaction as the rename, so a rename that committed without its history row is
+impossible. History points at the *category* rather than storing a from/to pair, which
+makes rename chains (a to b to c) resolve in one hop to whatever the current slug is, with
+no chain-walking and no stale intermediate redirects. Reverting a rename deletes the row
+that would otherwise redirect the now-live URL back to itself in a loop.
+
+**Where the redirect lives, and why it matters.** The obvious implementation —
+`permanentRedirect()` in the page — silently does not work for this purpose. Next's own
+docs state that in a *streaming* context it inserts a client-side
+`<meta http-equiv="refresh">` rather than returning a 308, and every storefront route here
+streams. The observed symptom was `HTTP 200`, no `Location` header, and the 404 page
+rendering. The redirect therefore lives in `proxy.ts`, which runs before the response
+begins and returns a real 308 (proxy is Node runtime by default in Next 16, so Prisma is
+available). The page keeps a `permanentRedirect` backstop for anything that bypasses the
+proxy, documented as a soft redirect.
+
+That diagnosis was slower than it should have been because three things masked it at once:
+dev returns 200 for `notFound()`, dev served `x-nextjs-cache: HIT` from a disk cache that
+survived both restarts and deleting `.next`, and renaming via a script instead of the real
+action never triggers `revalidatePath`. What finally isolated it was a control (the
+`/admin` middleware redirect, which proved the harness could see 3xx at all) plus a
+throwaway route that called `permanentRedirect` unconditionally.
+
+**Verified**: a category renamed twice returns 308 from BOTH old slugs straight to the
+final one; the current slug returns 200 and does not self-redirect; an unknown slug 404s;
+and a slug retired and then reissued to a different category serves that new category
+rather than redirecting away from it — without that ordering the reissued category would be
+permanently unreachable.
+
+**Media loose ends**: dimensions are measured client-side before upload and sent along
+(avoids taking `sharp` on as a direct dependency for display metadata, and is parsed
+defensively server-side); bulk re-folder/re-tag, where a blank field means "leave alone"
+rather than the destructive "clear", and tags are additive and deduped; and a
+drag-and-drop drop zone covering the whole library, sharing one upload path with the button
+rather than a second one that could drift.
+
+All test data removed afterwards: 6 real categories with their original positions, 0 slug
+history rows, one admin (the real owner), 317 media assets, 175 products.
+
+### Two bugs the verification caught (both would have shipped)
+
+**Dimension capture was dead on arrival.** It measured via `URL.createObjectURL` + `<img>`,
+and this app's CSP allows `img-src 'self' data: …` with no `blob:`. The image load was
+blocked, `onerror` fired, and because `measureImage` correctly treats "couldn't decode" as
+"no metadata" — so a weird file never fails an upload — every upload was recorded with null
+dimensions and looked completely healthy. Nothing errored, nothing logged. Now measured
+with `createImageBitmap`, which decodes the File directly with no URL and no CSP surface,
+falling back to a `data:` URL for formats it can't handle. Confirmed by dropping a
+known-size image and reading the row back: 200 × 140.
+
+**A deleted admin account could deadlock the dashboard.** With a valid session cookie whose
+user row no longer exists, the DAL found no user and redirected `/admin` → `/admin/login`,
+while the proxy saw an intact JWT signature and redirected `/admin/login` → `/admin` — an
+infinite bounce with no way to sign in as anybody, lasting the full 24-hour cookie
+lifetime. Deleting an admin user or restoring a database snapshot triggers it. The proxy
+now confirms the user still exists before bouncing away from the login page, and clears the
+stale cookie when it doesn't. Found by accident: it was blocking my own verification, and
+the same conditions occur in production.
+
+Verified in the browser end to end: drop zone highlights and accepts a dropped file; a bulk
+apply with the folder field left blank changed tags and left folders untouched; a second
+apply moved both to a new folder and merged tags additively without duplicates
+(`[a,b]` + `[a,c]` → `[a,b,c]`); only selected assets were affected. Test uploads were then
+deleted through the library's own delete path, so their blobs went with them, and the two
+real assets used for the bulk test were restored to their exact prior folder and tags.
+
+## Batch 10 — Mobile Core Web Vitals
+
+Baseline Lighthouse on the deployed site: mobile **89**, desktop 98, with accessibility,
+best-practices and SEO already at **100/100/100**. The entire mobile deficit was Largest
+Contentful Paint at 3.6s, and none of it was server time — the root document responds in
+50ms, which Lighthouse scores a perfect 1.0. It was 2,925ms of *render delay*: the page had
+arrived and simply wasn't painting.
+
+Three independent causes, each of which only became visible after fixing the one in front
+of it. Every step was re-measured rather than assumed.
+
+**1. Framer Motion serialises its `initial` state into the SSR HTML.** The hero headline —
+the LCP element — shipped as `opacity:0` and stayed invisible until React had hydrated and
+the animation ran. Chrome does not count a transparent element as painted, so LCP was
+effectively a measure of hydration. Replaced with a CSS animation carrying the same easing,
+durations and stagger; CSS starts at first paint and needs no JavaScript.
+
+**2. With the headline fixed, the LCP element turned out to be the cookie banner.** It is
+fixed to the bottom of the viewport, its paragraph is wide enough to out-measure the
+headline, and it rendered only inside a `useEffect` — so the store's Core Web Vitals were
+being set by its consent notice. It is now server-rendered. Consent lives in localStorage,
+which the server cannot read, so a tiny inline script stamps `data-consent` on `<html>`
+before first paint and CSS hides the banner for anyone who has already answered: no flash,
+no hydration wait. Verified both paths, including that the banner never appears for a
+visitor who has already consented.
+
+**3. Fading the LCP element costs LCP even in pure CSS** — the same rule as (1), which the
+measurement caught rather than the theory. The headline now animates transform only, fully
+opaque from the first frame, while the copy around it still fades. Observed LCP went
+**2,017ms -> 1,012ms, exactly equal to FCP**: the headline now paints at first paint.
+
+A methodological note worth keeping: Lighthouse reports two different sets of numbers, and
+against localhost they disagree sharply. The `observed*` metrics are real paint times from
+the trace; the score comes from Lantern's *simulated* values, which model a 4G network that
+does not exist in front of a local server. Simulated LCP still read 3.8s locally while
+observed LCP had already collapsed to equal FCP. Local runs are for confirming mechanism;
+only the deployed site's score is meaningful.
+
+Deliberately not done, with reasons: `browserslist` is unset, so ~14 KiB of polyfills ship
+for browsers older than `Object.hasOwn` (Safari < 15.4) — narrowing it decides which
+customers can shop, which is a business call, for a saving too small to move the score.
+Back/forward cache is disabled by `cache-control: no-store` on the document, which follows
+from rendering dynamically for locale and session; it is real for returning visitors but
+carries no weight in the performance score.
+
+**Result, measured on the deployed site over three runs: mobile 95 / 99 / 100 (median 99),
+up from 89.** LCP 3.6s -> 1.4s, consistent across all three runs; TBT 120ms -> 50-80ms;
+accessibility, best-practices and SEO unchanged at 100. The 95 was a cold serverless start
+(TTFB 2.2s, Speed Index 5.7s); the two warm runs both landed at 2.6s Speed Index. One run
+showed CLS 0.015 — still well inside "good", but noted rather than smoothed over.
+
+Workflow change from this point: work goes **straight to `main`**, no feature branches, no
+pull requests. The `perf/plp-scoped-product-fetch` branch is deleted. It was a solo repo, so
+a PR meant reviewing your own work, and the preview deployment that would have justified it
+has failed on every branch build this project has ever produced. The deploy gate is the
+push, not the PR.
+
+## Batch 11 — Larger product images on phones
+
+Product cards measured 156x207 on a 375px screen, which left the imagery smaller than it
+needs to be on the device most customers browse from. They are now **172x229** — about 10%
+wider and 11% taller — still two to a row.
+
+Half the width comes from halving the column gap (16px -> 8px); the other half from
+narrowing the page inset from 24px to 12px on phones. The inset is applied to the **whole
+content block**, not the grid alone, so the heading and the filter/sort toolbar stay flush
+with the cards — a grid wider than the controls above it reads as a mistake rather than a
+choice. (Both variants were built and compared before picking this one.) A side effect is
+that "115 items" no longer wraps onto two lines.
+
+Implemented as a negative margin rather than a `px-3` override, because `container-luxe` is
+declared inside `@layer utilities` in globals.css: its `px-6` beats a competing padding
+utility regardless of class order, so `container-luxe px-3` would silently do nothing. Worth
+remembering for any future layout override.
+
+Verified at 320, 360, 375, 768 and 971px — two columns on phones, three on tablet, four on
+wide desktop, with tablet and desktop completely unchanged. Badges, prices, colour swatches
+and the infinite-scroll sentinel all intact, and confirmed again on the deployed site.
+
+Noted and left alone: at 320px the sort `<select>` is intrinsically wider than the toolbar
+row gives it, so the page scrolls sideways by a few pixels. Proven pre-existing rather than
+assumed — measuring with the change reverted in the live DOM gave 338px of scroll width
+against a 320px viewport, versus 326px with it. The change improves it; it does not fix it.
+The same two-up grid on the homepage, wishlist, cart and PDP sections keeps the old spacing.

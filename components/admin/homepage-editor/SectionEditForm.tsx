@@ -1,0 +1,274 @@
+"use client";
+
+import Image from "next/image";
+import { IdChipList } from "@/components/admin/homepage-editor/IdChipList";
+import type { HomepageSection } from "@/types";
+
+interface SectionEditFormProps {
+  section: HomepageSection;
+  onChange: (next: HomepageSection) => void;
+}
+
+const inputClass = "h-10 w-full border border-border px-3 text-sm outline-none focus:border-luxe-black";
+const textareaClass = "w-full border border-border px-3 py-2 text-sm outline-none focus:border-luxe-black";
+const labelClass = "mb-1 block text-xs font-medium text-luxe-gray-dark uppercase";
+
+/** Renders the right fields for whichever homepage section type is being edited. */
+export function SectionEditForm({ section, onChange }: SectionEditFormProps) {
+  switch (section.type) {
+    case "hero":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Eyebrow" value={section.data.eyebrow ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, eyebrow: v } })} />
+            <Field label="Subheadline" value={section.data.subheadline ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subheadline: v } })} />
+          </div>
+          <TextAreaField label="Headline" value={section.data.headline} onChange={(v) => onChange({ ...section, data: { ...section.data, headline: v } })} />
+          <ImageField src={section.data.image.src} alt={section.data.image.alt} onChangeSrc={(v) => onChange({ ...section, data: { ...section.data, image: { ...section.data.image, src: v } } })} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Primary CTA Label" value={section.data.primaryCta?.label ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, primaryCta: { label: v, href: section.data.primaryCta?.href ?? "/" } } })} />
+            <Field label="Primary CTA Link" value={section.data.primaryCta?.href ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, primaryCta: { label: section.data.primaryCta?.label ?? "", href: v } } })} />
+            <Field label="Secondary CTA Label" value={section.data.secondaryCta?.label ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, secondaryCta: { label: v, href: section.data.secondaryCta?.href ?? "/" } } })} />
+            <Field label="Secondary CTA Link" value={section.data.secondaryCta?.href ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, secondaryCta: { label: section.data.secondaryCta?.label ?? "", href: v } } })} />
+          </div>
+        </div>
+      );
+
+    case "featuredCollections":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Title" value={section.data.title} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
+            <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
+          </div>
+          {/*
+            One ordered list rather than a list per kind, because ORDER is content here: the
+            first tile renders at double size, so "which comes first" is a merchandising
+            decision the editor has to be able to make across both kinds.
+
+            Each chip is "category:<slug>" or "collection:<id>". A bare value with no prefix is
+            read as a collection id, which is what every homepage saved before tiles existed
+            contains.
+          */}
+          <IdChipList
+            label="Tiles — category:<slug> or collection:<id>"
+            ids={(section.data.tiles ?? (section.data.collectionIds ?? []).map((id) => ({ type: "collection" as const, id }))).map((tile) =>
+              tile.type === "category" ? `category:${tile.slug}` : `collection:${tile.id}`
+            )}
+            onChange={(entries) =>
+              onChange({
+                ...section,
+                data: {
+                  ...section.data,
+                  tiles: entries.map((entry) =>
+                    entry.startsWith("category:")
+                      ? { type: "category" as const, slug: entry.slice("category:".length) }
+                      : { type: "collection" as const, id: entry.replace(/^collection:/, "") }
+                  ),
+                  // Dropped once tiles exist, so the two cannot disagree about what is shown.
+                  collectionIds: undefined,
+                },
+              })
+            }
+          />
+        </div>
+      );
+
+    case "bestSellers":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Title" value={section.data.title} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
+            <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
+          </div>
+          <Field label="View All CTA Label" value={section.data.viewAllCta?.label ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, viewAllCta: { label: v, href: section.data.viewAllCta?.href ?? "/" } } })} />
+          <IdChipList label="Products" ids={section.data.productIds} onChange={(ids) => onChange({ ...section, data: { ...section.data, productIds: ids } })} />
+        </div>
+      );
+
+    case "newArrivals":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Title" value={section.data.title} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
+            <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
+          </div>
+          {section.data.rows?.length ? (
+            // Rows are queried, so there is no product list to edit here — only what each
+            // row is called and where its link goes. Which products appear follows from the
+            // "New arrival" checkbox on each product, which is the point of the change:
+            // this section stops being a list somebody has to remember to rewrite.
+            <div className="space-y-3">
+              {section.data.rows.map((row, index) => (
+                <div key={row.gender} className="grid grid-cols-1 gap-4 border border-border p-3 sm:grid-cols-3">
+                  <Field
+                    label={`Row ${index + 1} — ${row.gender}`}
+                    value={row.title}
+                    onChange={(v) => onChange({ ...section, data: { ...section.data, rows: section.data.rows?.map((r) => (r.gender === row.gender ? { ...r, title: v } : r)) } })}
+                  />
+                  <Field
+                    label="Link label"
+                    value={row.viewAllLabel}
+                    onChange={(v) => onChange({ ...section, data: { ...section.data, rows: section.data.rows?.map((r) => (r.gender === row.gender ? { ...r, viewAllLabel: v } : r)) } })}
+                  />
+                  <Field
+                    label="Link"
+                    value={row.viewAllHref}
+                    onChange={(v) => onChange({ ...section, data: { ...section.data, rows: section.data.rows?.map((r) => (r.gender === row.gender ? { ...r, viewAllHref: v } : r)) } })}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <IdChipList label="Products" ids={section.data.productIds} onChange={(ids) => onChange({ ...section, data: { ...section.data, productIds: ids } })} />
+          )}
+        </div>
+      );
+
+    case "editorialBanner":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Eyebrow" value={section.data.eyebrow ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, eyebrow: v } })} />
+            <div>
+              <label className={labelClass}>Image Position</label>
+              <select
+                value={section.data.imagePosition ?? "right"}
+                onChange={(e) => onChange({ ...section, data: { ...section.data, imagePosition: e.target.value as "left" | "right" } })}
+                className={inputClass}
+              >
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+          </div>
+          <Field label="Headline" value={section.data.headline} onChange={(v) => onChange({ ...section, data: { ...section.data, headline: v } })} />
+          <TextAreaField label="Body" value={section.data.body ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, body: v } })} />
+          <ImageField src={section.data.image.src} alt={section.data.image.alt} onChangeSrc={(v) => onChange({ ...section, data: { ...section.data, image: { ...section.data.image, src: v } } })} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="CTA Label" value={section.data.cta?.label ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, cta: { label: v, href: section.data.cta?.href ?? "/" } } })} />
+            <Field label="CTA Link" value={section.data.cta?.href ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, cta: { label: section.data.cta?.label ?? "", href: v } } })} />
+          </div>
+        </div>
+      );
+
+    case "brandStory":
+      return (
+        <div className="space-y-4">
+          <Field label="Eyebrow" value={section.data.eyebrow ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, eyebrow: v } })} />
+          <Field label="Headline" value={section.data.headline} onChange={(v) => onChange({ ...section, data: { ...section.data, headline: v } })} />
+          <TextAreaField label="Body" value={section.data.body} onChange={(v) => onChange({ ...section, data: { ...section.data, body: v } })} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="CTA Label" value={section.data.cta?.label ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, cta: { label: v, href: section.data.cta?.href ?? "/" } } })} />
+            <Field label="CTA Link" value={section.data.cta?.href ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, cta: { label: section.data.cta?.label ?? "", href: v } } })} />
+          </div>
+        </div>
+      );
+
+    case "socialGrid":
+      return (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Title" value={section.data.title} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
+          <Field label="Handle" value={section.data.handle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, handle: v } })} />
+        </div>
+      );
+
+    case "brandStrip":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Title" value={section.data.title ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
+            <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
+          </div>
+          <div className="space-y-2">
+            <label className={labelClass}>Brands</label>
+            {section.data.brands.map((brand, index) => (
+              <div key={index} className="grid grid-cols-1 gap-3 border border-border p-3 sm:grid-cols-3">
+                <Field
+                  label="Name"
+                  value={brand.name}
+                  onChange={(v) => onChange({ ...section, data: { ...section.data, brands: section.data.brands.map((b, i) => (i === index ? { ...b, name: v } : b)) } })}
+                />
+                {/* Leave blank and the name is set as a wordmark, which is the default and
+                    the reason the row looks uniform. Fill it in only with a logo the brand
+                    supplied — see the note in BrandStrip.tsx. */}
+                <Field
+                  label="Logo URL (optional)"
+                  value={brand.logo ?? ""}
+                  onChange={(v) => onChange({ ...section, data: { ...section.data, brands: section.data.brands.map((b, i) => (i === index ? { ...b, logo: v || undefined } : b)) } })}
+                />
+                <Field
+                  label="Link (optional)"
+                  value={brand.href ?? ""}
+                  onChange={(v) => onChange({ ...section, data: { ...section.data, brands: section.data.brands.map((b, i) => (i === index ? { ...b, href: v || undefined } : b)) } })}
+                />
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...section, data: { ...section.data, brands: section.data.brands.filter((_, i) => i !== index) } })}
+                  className="justify-self-start text-xs text-destructive hover:underline sm:col-span-3"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => onChange({ ...section, data: { ...section.data, brands: [...section.data.brands, { name: "" }] } })}
+              className="h-9 border border-luxe-black px-4 text-xs font-medium tracking-[0.05em] uppercase"
+            >
+              Add brand
+            </button>
+          </div>
+        </div>
+      );
+
+    case "newsletter":
+      return (
+        <div className="space-y-4">
+          <Field label="Headline" value={section.data.headline} onChange={(v) => onChange({ ...section, data: { ...section.data, headline: v } })} />
+          <Field label="Subheadline" value={section.data.subheadline ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subheadline: v } })} />
+          <Field label="CTA Label" value={section.data.ctaLabel} onChange={(v) => onChange({ ...section, data: { ...section.data, ctaLabel: v } })} />
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      <input value={value} onChange={(e) => onChange(e.target.value)} className={inputClass} />
+    </div>
+  );
+}
+
+function TextAreaField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={textareaClass} />
+    </div>
+  );
+}
+
+function ImageField({ src, alt, onChangeSrc }: { src: string; alt: string; onChangeSrc: (v: string) => void }) {
+  return (
+    <div>
+      <label className={labelClass}>Image</label>
+      <div className="flex items-center gap-3">
+        <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-luxe-gray-light">
+          <Image src={src} alt={alt} fill sizes="64px" className="object-cover" />
+        </div>
+        <input
+          value={src}
+          onChange={(e) => onChangeSrc(e.target.value)}
+          placeholder="Image URL"
+          className={inputClass}
+        />
+      </div>
+    </div>
+  );
+}

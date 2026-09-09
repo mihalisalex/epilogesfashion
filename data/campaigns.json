@@ -1,0 +1,17 @@
+[
+  {
+    "id": "camp-1",
+    "slug": "autumn-layering",
+    "title": "Autumn Layering",
+    "subtitle": "Leather boots and oxfords built for the season ahead",
+    "heroImage": {
+      "src": "https://images.unsplash.com/photo-1556121017-bc6f100e2b4a?auto=format&fit=crop&w=1600&q=80",
+      "alt": "Autumn layering campaign"
+    },
+    "description": "Our Autumn edit builds around full-grain leather in three finishes — smooth, suede, and brushed — designed to move from the studio to the street.",
+    "cta": { "label": "Shop the Edit", "href": "/new-in" },
+    "productIds": [],
+    "startsAt": "2026-09-01",
+    "endsAt": "2026-11-30"
+  }
+]

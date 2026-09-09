@@ -1,0 +1,46 @@
+[
+  {
+    "id": "b1",
+    "slug": "the-art-of-tailoring",
+    "title": "The Art of Tailoring",
+    "excerpt": "Inside the hand-stitching and finishing that separates a real blazer from an imitation.",
+    "content": "A great blazer starts with a single bolt of wool, cut by hand around a canvas. What follows — the half-canvas construction, the hand-finished seams, a hem left generous enough to let out rather than replace — is the difference between a jacket you wear for a season and one you wear for a decade.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1600&q=80", "alt": "Close-up of a wool blazer's hand-finished seam" },
+    "author": "Epiloges Journal",
+    "publishedAt": "2026-07-01",
+    "tags": ["craftsmanship", "tailoring"]
+  },
+  {
+    "id": "b2",
+    "slug": "caring-for-natural-fibres",
+    "title": "Caring for Natural Fibres, Season After Season",
+    "excerpt": "A simple routine that keeps wool and silk looking new for years.",
+    "content": "Air every piece out after wear, dry clean or hand wash on the schedule the label calls for, and always let a damp garment dry flat away from direct heat. A little care, repeated often, does more for a garment's lifespan than any single treatment.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=1600&q=80", "alt": "Folded merino wool sweater" },
+    "author": "Epiloges Journal",
+    "publishedAt": "2026-06-15",
+    "tags": ["care", "wool"]
+  },
+  {
+    "id": "b3",
+    "slug": "how-to-style-a-trench-coat",
+    "title": "How to Style a Trench Coat, Three Ways",
+    "excerpt": "From tailored trousers to a slip dress, the trench coat's quiet versatility.",
+    "content": "A black wool trench is one of the few pieces that moves convincingly between a desk, a dinner, and a weekend away. Cropped trousers keep the silhouette clean; a slip dress plays the coat's structure against something softer.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=1600&q=80", "alt": "Black wool trench coat" },
+    "author": "Epiloges Journal",
+    "publishedAt": "2026-06-01",
+    "tags": ["style", "outerwear"]
+  },
+  {
+    "id": "b4",
+    "slug": "inside-the-atelier",
+    "title": "Inside the Atelier",
+    "excerpt": "A look at the small workshop where every Epiloges Fashion Boutique piece begins.",
+    "content": "Every piece passes through the same small team, from the first cut of fabric to the final pressing. It is slower than a factory line, and that is the point.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1600&q=80", "alt": "Garment rack, editorial" },
+    "author": "Epiloges Journal",
+    "publishedAt": "2026-05-15",
+    "tags": ["craftsmanship", "atelier"]
+  }
+]

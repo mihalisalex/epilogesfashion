@@ -1,0 +1,414 @@
+[
+  {
+    "id": "p1",
+    "slug": "italian-wool-blazer",
+    "name": "Italian Wool Blazer",
+    "description": "Cut from Italian wool with a half-canvas construction and a hand-finished edge — tailored to be taken in, not replaced.",
+    "price": { "amount": 245, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1200&q=80", "alt": "Charcoal wool blazer, tailoring detail" }
+    ],
+    "colors": [{ "name": "Charcoal", "hex": "#3B3B3F" }],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 6, "sku": "EPI-BLZ-S" },
+      { "name": "M", "inStock": true, "quantity": 10, "sku": "EPI-BLZ-M" },
+      { "name": "L", "inStock": true, "quantity": 10, "sku": "EPI-BLZ-L" },
+      { "name": "XL", "inStock": true, "quantity": 6, "sku": "EPI-BLZ-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 2, "sku": "EPI-BLZ-XXL" }
+    ],
+    "category": "blazers",
+    "collectionIds": ["c4"],
+    "tags": ["wool", "tailored", "handmade"],
+    "gender": "men",
+    "materials": ["Italian wool", "Half-canvas construction", "Cupro lining"],
+    "careInstructions": [
+      "Dry clean only",
+      "Steam to remove creases",
+      "Store on a shaped hanger",
+      "Brush after each wear"
+    ],
+    "relatedProductIds": [],
+    "isNew": true,
+    "isSale": false,
+    "sku": "EPI-BLZ-CHA",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p2",
+    "slug": "wool-blend-sport-coat",
+    "name": "Wool-Blend Sport Coat",
+    "description": "An unstructured sport coat in a wool blend, slightly more relaxed than a suit jacket but built for the same distance.",
+    "price": { "amount": 235, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=80", "alt": "Brown wool-blend sport coat, street style" }
+    ],
+    "colors": [{ "name": "Chestnut", "hex": "#6B4226" }],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 5, "sku": "EPI-SPC-S" },
+      { "name": "M", "inStock": true, "quantity": 9, "sku": "EPI-SPC-M" },
+      { "name": "L", "inStock": true, "quantity": 9, "sku": "EPI-SPC-L" },
+      { "name": "XL", "inStock": true, "quantity": 7, "sku": "EPI-SPC-XL" },
+      { "name": "XXL", "inStock": false, "quantity": 0, "sku": "EPI-SPC-XXL" }
+    ],
+    "category": "blazers",
+    "collectionIds": ["c4"],
+    "tags": ["wool", "tailored"],
+    "gender": "men",
+    "materials": ["Wool-blend", "Half-canvas construction"],
+    "careInstructions": [
+      "Dry clean only",
+      "Steam to remove creases",
+      "Store on a shaped hanger",
+      "Brush after each wear"
+    ],
+    "relatedProductIds": [],
+    "isNew": true,
+    "isSale": false,
+    "sku": "EPI-SPC-CHE",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p3",
+    "slug": "merino-crewneck-sweater",
+    "name": "Merino Crewneck Sweater",
+    "description": "A fine-gauge merino crewneck built for everything between the office and the weekend.",
+    "price": { "amount": 155, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=1200&q=80", "alt": "Brown merino wool crewneck sweater" }
+    ],
+    "colors": [{ "name": "Camel", "hex": "#8B5E3C" }],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 4, "sku": "EPI-KNT-XS" },
+      { "name": "S", "inStock": true, "quantity": 7, "sku": "EPI-KNT-S" },
+      { "name": "M", "inStock": true, "quantity": 9, "sku": "EPI-KNT-M" },
+      { "name": "L", "inStock": true, "quantity": 9, "sku": "EPI-KNT-L" },
+      { "name": "XL", "inStock": true, "quantity": 7, "sku": "EPI-KNT-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 4, "sku": "EPI-KNT-XXL" },
+      { "name": "XXXL", "inStock": true, "quantity": 2, "sku": "EPI-KNT-XXXL" }
+    ],
+    "category": "knitwear",
+    "collectionIds": ["c2"],
+    "tags": ["merino", "casual"],
+    "gender": "unisex",
+    "materials": ["Merino wool"],
+    "careInstructions": [
+      "Hand wash cold or dry clean",
+      "Dry flat, away from direct heat",
+      "Store folded, not on a hanger",
+      "Pill comb as needed"
+    ],
+    "relatedProductIds": [],
+    "isNew": false,
+    "isSale": false,
+    "sku": "EPI-KNT-CAM",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p4",
+    "slug": "merino-turtleneck",
+    "name": "Merino Turtleneck",
+    "description": "The same fine-gauge merino in a turtleneck, built to move from desk to dinner.",
+    "price": { "amount": 165, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=1200&q=80", "alt": "Black merino wool turtleneck sweater" }
+    ],
+    "colors": [{ "name": "Black", "hex": "#1C0F2B" }],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 3, "sku": "EPI-TNK-XS" },
+      { "name": "S", "inStock": true, "quantity": 6, "sku": "EPI-TNK-S" },
+      { "name": "M", "inStock": true, "quantity": 8, "sku": "EPI-TNK-M" },
+      { "name": "L", "inStock": true, "quantity": 8, "sku": "EPI-TNK-L" },
+      { "name": "XL", "inStock": true, "quantity": 6, "sku": "EPI-TNK-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 3, "sku": "EPI-TNK-XXL" },
+      { "name": "XXXL", "inStock": true, "quantity": 2, "sku": "EPI-TNK-XXXL" }
+    ],
+    "category": "knitwear",
+    "collectionIds": ["c2"],
+    "tags": ["merino", "formal"],
+    "gender": "unisex",
+    "materials": ["Merino wool"],
+    "careInstructions": [
+      "Hand wash cold or dry clean",
+      "Dry flat, away from direct heat",
+      "Store folded, not on a hanger",
+      "Pill comb as needed"
+    ],
+    "relatedProductIds": [],
+    "isNew": false,
+    "isSale": false,
+    "sku": "EPI-TNK-BLK",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p5",
+    "slug": "straight-leg-selvedge-jeans",
+    "name": "Straight-Leg Selvedge Jeans",
+    "description": "A clean-lined straight leg in Japanese selvedge denim, with no logos and nothing to prove.",
+    "price": { "amount": 175, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1200&q=80", "alt": "Straight-leg raw selvedge denim jeans" }
+    ],
+    "colors": [{ "name": "Indigo", "hex": "#26314B" }],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 6, "sku": "EPI-JNM-S" },
+      { "name": "M", "inStock": true, "quantity": 10, "sku": "EPI-JNM-M" },
+      { "name": "L", "inStock": true, "quantity": 12, "sku": "EPI-JNM-L" },
+      { "name": "XL", "inStock": true, "quantity": 10, "sku": "EPI-JNM-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 5, "sku": "EPI-JNM-XXL" }
+    ],
+    "category": "denim",
+    "collectionIds": ["c1"],
+    "tags": ["denim", "everyday"],
+    "gender": "unisex",
+    "materials": ["100% cotton selvedge denim"],
+    "careInstructions": [
+      "Wash cold, inside out",
+      "Line dry",
+      "Wash sparingly to preserve the indigo"
+    ],
+    "relatedProductIds": [],
+    "isNew": true,
+    "isSale": false,
+    "sku": "EPI-JNM-IND",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p6",
+    "slug": "relaxed-denim-jacket",
+    "name": "Relaxed Denim Jacket",
+    "description": "A relaxed trucker jacket in heavyweight denim with a corduroy collar.",
+    "price": { "amount": 195, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1601333144130-8cbb312386b6?auto=format&fit=crop&w=1200&q=80", "alt": "Relaxed denim trucker jacket" }
+    ],
+    "colors": [{ "name": "Washed Indigo", "hex": "#3A4A6B" }],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 5, "sku": "EPI-DJK-S" },
+      { "name": "M", "inStock": true, "quantity": 9, "sku": "EPI-DJK-M" },
+      { "name": "L", "inStock": true, "quantity": 11, "sku": "EPI-DJK-L" },
+      { "name": "XL", "inStock": true, "quantity": 9, "sku": "EPI-DJK-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 6, "sku": "EPI-DJK-XXL" }
+    ],
+    "category": "denim",
+    "collectionIds": ["c1"],
+    "tags": ["denim", "streetwear"],
+    "gender": "unisex",
+    "materials": ["Cotton denim", "Corduroy collar"],
+    "careInstructions": ["Wash cold, inside out", "Line dry"],
+    "relatedProductIds": [],
+    "isNew": false,
+    "isSale": false,
+    "sku": "EPI-DJK-IND",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p7",
+    "slug": "silk-slip-dress",
+    "name": "Silk Slip Dress",
+    "description": "A bias-cut slip dress in black silk charmeuse, built for evening.",
+    "price": { "amount": 285, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1200&q=80", "alt": "Black silk slip dress, editorial" }
+    ],
+    "colors": [{ "name": "Black", "hex": "#0D0D0D" }],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 4, "sku": "EPI-DRS-XS" },
+      { "name": "S", "inStock": true, "quantity": 6, "sku": "EPI-DRS-S" },
+      { "name": "M", "inStock": true, "quantity": 8, "sku": "EPI-DRS-M" },
+      { "name": "L", "inStock": true, "quantity": 8, "sku": "EPI-DRS-L" },
+      { "name": "XL", "inStock": true, "quantity": 6, "sku": "EPI-DRS-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 3, "sku": "EPI-DRS-XXL" }
+    ],
+    "category": "dresses",
+    "collectionIds": ["c3"],
+    "tags": ["silk", "evening"],
+    "gender": "women",
+    "materials": ["Silk charmeuse", "Bias cut"],
+    "careInstructions": [
+      "Dry clean only",
+      "Store on a padded hanger",
+      "Avoid prolonged exposure to sunlight"
+    ],
+    "relatedProductIds": [],
+    "isNew": true,
+    "isSale": false,
+    "sku": "EPI-DRS-BLK",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p8",
+    "slug": "draped-satin-midi-dress",
+    "name": "Draped Satin Midi Dress",
+    "description": "A cognac satin midi with a draped neckline, built for long evenings.",
+    "price": { "amount": 245, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1200&q=80", "alt": "Draped satin midi dress" }
+    ],
+    "colors": [{ "name": "Cognac", "hex": "#9C5A2E" }],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 3, "sku": "EPI-MDI-XS" },
+      { "name": "S", "inStock": true, "quantity": 5, "sku": "EPI-MDI-S" },
+      { "name": "M", "inStock": true, "quantity": 7, "sku": "EPI-MDI-M" },
+      { "name": "L", "inStock": true, "quantity": 7, "sku": "EPI-MDI-L" },
+      { "name": "XL", "inStock": true, "quantity": 5, "sku": "EPI-MDI-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 2, "sku": "EPI-MDI-XXL" }
+    ],
+    "category": "dresses",
+    "collectionIds": ["c3"],
+    "tags": ["satin", "evening"],
+    "gender": "women",
+    "materials": ["Satin", "Draped neckline"],
+    "careInstructions": [
+      "Dry clean only",
+      "Store on a padded hanger",
+      "Avoid prolonged exposure to sunlight"
+    ],
+    "relatedProductIds": [],
+    "isNew": false,
+    "isSale": false,
+    "sku": "EPI-MDI-COG",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p9",
+    "slug": "wool-trench-coat",
+    "name": "Wool Trench Coat",
+    "description": "A double-breasted wool trench with a belted waist, built for city weather.",
+    "price": { "amount": 365, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=1200&q=80", "alt": "Black wool trench coat" }
+    ],
+    "colors": [{ "name": "Black", "hex": "#111111" }],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 3, "sku": "EPI-TRC-XS" },
+      { "name": "S", "inStock": true, "quantity": 6, "sku": "EPI-TRC-S" },
+      { "name": "M", "inStock": true, "quantity": 8, "sku": "EPI-TRC-M" },
+      { "name": "L", "inStock": true, "quantity": 8, "sku": "EPI-TRC-L" },
+      { "name": "XL", "inStock": true, "quantity": 6, "sku": "EPI-TRC-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 2, "sku": "EPI-TRC-XXL" }
+    ],
+    "category": "outerwear",
+    "collectionIds": ["c5"],
+    "tags": ["wool", "weather-resistant"],
+    "gender": "women",
+    "materials": ["Wool-blend shell", "Belted waist"],
+    "careInstructions": [
+      "Dry clean only",
+      "Steam to remove creases",
+      "Store on a shaped hanger",
+      "Avoid prolonged exposure to water"
+    ],
+    "relatedProductIds": [],
+    "isNew": true,
+    "isSale": false,
+    "sku": "EPI-TRC-BLK",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p10",
+    "slug": "shearling-lined-field-jacket",
+    "name": "Shearling-Lined Field Jacket",
+    "description": "A shearling-lined field jacket in waxed cotton, built for the days that need it.",
+    "price": { "amount": 395, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=1200&q=80", "alt": "Waxed cotton field jacket, shearling collar" }
+    ],
+    "colors": [{ "name": "Black", "hex": "#0D0D0D" }],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 4, "sku": "EPI-FLD-S" },
+      { "name": "M", "inStock": true, "quantity": 7, "sku": "EPI-FLD-M" },
+      { "name": "L", "inStock": true, "quantity": 8, "sku": "EPI-FLD-L" },
+      { "name": "XL", "inStock": true, "quantity": 9, "sku": "EPI-FLD-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 6, "sku": "EPI-FLD-XXL" },
+      { "name": "XXXL", "inStock": true, "quantity": 3, "sku": "EPI-FLD-XXXL" }
+    ],
+    "category": "outerwear",
+    "collectionIds": ["c5"],
+    "tags": ["shearling", "utility"],
+    "gender": "unisex",
+    "materials": ["Waxed cotton shell", "Shearling collar"],
+    "careInstructions": [
+      "Spot clean only",
+      "Professional leather/shearling clean when needed",
+      "Store on a shaped hanger",
+      "Avoid prolonged exposure to water"
+    ],
+    "relatedProductIds": [],
+    "isNew": false,
+    "isSale": false,
+    "sku": "EPI-FLD-BLK",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p11",
+    "slug": "linen-button-down-shirt",
+    "name": "Linen Button-Down Shirt",
+    "description": "A relaxed linen button-down built for the days between seasons.",
+    "price": { "amount": 105, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1620012253295-c15cc3e65df4?auto=format&fit=crop&w=1200&q=80", "alt": "Taupe linen button-down shirt" }
+    ],
+    "colors": [{ "name": "Taupe", "hex": "#A69B8D" }],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 8, "sku": "EPI-SHT-S" },
+      { "name": "M", "inStock": true, "quantity": 10, "sku": "EPI-SHT-M" },
+      { "name": "L", "inStock": true, "quantity": 12, "sku": "EPI-SHT-L" },
+      { "name": "XL", "inStock": true, "quantity": 10, "sku": "EPI-SHT-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 8, "sku": "EPI-SHT-XXL" },
+      { "name": "XXXL", "inStock": true, "quantity": 5, "sku": "EPI-SHT-XXXL" }
+    ],
+    "category": "shirts",
+    "collectionIds": ["c2"],
+    "tags": ["linen", "summer"],
+    "gender": "unisex",
+    "materials": ["100% linen"],
+    "careInstructions": ["Machine wash cold", "Line dry", "Iron warm while damp"],
+    "relatedProductIds": [],
+    "isNew": false,
+    "isSale": false,
+    "sku": "EPI-SHT-TAU",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  },
+  {
+    "id": "p12",
+    "slug": "silk-cami-top",
+    "name": "Silk Cami Top",
+    "description": "A silk cami on adjustable straps, built for warm-weather layering.",
+    "price": { "amount": 95, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1551803091-e20673f15770?auto=format&fit=crop&w=1200&q=80", "alt": "Natural silk cami top" }
+    ],
+    "colors": [{ "name": "Natural", "hex": "#C9B79C" }],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 5, "sku": "EPI-CAM-XS" },
+      { "name": "S", "inStock": true, "quantity": 7, "sku": "EPI-CAM-S" },
+      { "name": "M", "inStock": true, "quantity": 8, "sku": "EPI-CAM-M" },
+      { "name": "L", "inStock": true, "quantity": 8, "sku": "EPI-CAM-L" },
+      { "name": "XL", "inStock": true, "quantity": 6, "sku": "EPI-CAM-XL" },
+      { "name": "XXL", "inStock": true, "quantity": 3, "sku": "EPI-CAM-XXL" }
+    ],
+    "category": "shirts",
+    "collectionIds": ["c4"],
+    "tags": ["silk", "summer"],
+    "gender": "women",
+    "materials": ["100% silk"],
+    "careInstructions": ["Hand wash cold or dry clean", "Line dry away from direct heat"],
+    "relatedProductIds": [],
+    "isNew": true,
+    "isSale": false,
+    "sku": "EPI-CAM-NAT",
+    "inventoryPolicy": "deny",
+    "availableForSale": true
+  }
+]
