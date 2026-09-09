@@ -37,7 +37,11 @@ interface SeedGiftCard {
   active: boolean;
 }
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+// POSTGRES_PRISMA_URL fallback: see the matching comment in lib/prisma.ts — this is the
+// name Vercel's native Supabase integration gives the pooled connection string.
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL,
+});
 const prisma = new PrismaClient({ adapter });
 
 /** The JSON fixture predates both the Category table and the product lifecycle fields
