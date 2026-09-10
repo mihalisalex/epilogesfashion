@@ -55,22 +55,26 @@ const CATEGORIES: StoryCategory[] = [
  */
 export function CategoryStories({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex shrink-0 justify-between gap-2 border-b border-border px-6 py-5">
+    // Centered with a fixed gap, not `justify-between`: that stretched the outer gap to fill
+    // whatever width was left, which put the first/last circle flush against the row's own
+    // padding with zero slack on a real 375px phone — reading as the ring overlapping the
+    // menu's edge. Centering means any extra width becomes margin around the row instead.
+    <div className="flex shrink-0 justify-center gap-3 border-b border-border px-4 py-5">
       {CATEGORIES.map((category) => (
         <Link
           key={category.label}
           href={category.href}
           onClick={onNavigate}
-          className="group flex flex-col items-center gap-2"
+          className="group flex flex-col items-center gap-1.5"
         >
-          <span className="rounded-full bg-gradient-to-tr from-[#f9a13f] via-[#e0356b] to-luxe-purple p-[2.5px] transition-transform duration-200 group-hover:scale-105">
-            <span className="block rounded-full bg-luxe-white p-[2.5px]">
-              <span className="relative block size-16 overflow-hidden rounded-full bg-luxe-gray-light">
+          <span className="rounded-full bg-gradient-to-tr from-[#f9a13f] via-[#e0356b] to-luxe-purple p-[2px] transition-transform duration-200 group-hover:scale-105">
+            <span className="block rounded-full bg-luxe-white p-[2px]">
+              <span className="relative block size-14 overflow-hidden rounded-full bg-luxe-gray-light">
                 <Image
                   src={category.image.src}
                   alt={category.image.alt}
                   fill
-                  sizes="64px"
+                  sizes="56px"
                   className="object-cover"
                 />
               </span>

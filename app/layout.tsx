@@ -5,7 +5,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { JsonLd } from "@/components/shared/JsonLd";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
-import { getSeoDefaultsCached } from "@/services";
+import { getSeoDefaultsCached, getSiteSettings } from "@/services";
+import { TikTokLiveModal } from "@/components/shared/TikTokLiveModal";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { CartProvider } from "@/components/providers/CartProvider";
@@ -74,6 +75,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const seo = await getSeoDefaultsCached();
+  const settings = await getSiteSettings();
   const locale = await getLocale();
   const messages = await getMessages();
 
@@ -165,6 +167,13 @@ export default async function RootLayout({
             </CartProvider>
           </ToastProvider>
           <ReferralCapture />
+          {/* Sibling to ReferralCapture, outside the cart/auth/toast providers on purpose —
+              it's a dashboard-toggled marketing takeover, not app state, and has nothing to
+              coordinate with any of them. */}
+          <TikTokLiveModal
+            enabled={settings.liveOnTikTok ?? false}
+            tiktokUrl={settings.tiktokLiveUrl ?? "https://www.tiktok.com/live"}
+          />
         </NextIntlClientProvider>
       </body>
     </html>

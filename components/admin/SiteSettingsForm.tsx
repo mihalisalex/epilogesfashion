@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, Radio, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { SiteSettings } from "@/types";
 
 interface SiteSettingsFormProps {
@@ -116,6 +117,38 @@ export function SiteSettingsForm({ initialSettings, onSave }: SiteSettingsFormPr
             <Plus className="size-3.5" strokeWidth={1.5} />
             Add Message
           </button>
+        </div>
+
+        <div className="border border-border bg-luxe-gray-light p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-2.5">
+              <Radio className="mt-0.5 size-4 shrink-0 text-luxe-purple" strokeWidth={1.5} />
+              <div>
+                <p className="text-sm font-medium text-luxe-black">&quot;We&apos;re Live on TikTok&quot; Popup</p>
+                <p className="mt-0.5 max-w-md text-xs text-luxe-gray-dark">
+                  While on, every storefront visitor gets a full-screen incoming-call-style popup
+                  inviting them to join your TikTok live. Turn it on right before you go live, and
+                  off again when the stream ends — the shop looks completely normal while it&apos;s off.
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.liveOnTikTok ?? false}
+              onCheckedChange={(checked) => field("liveOnTikTok", checked)}
+              className="mt-0.5 shrink-0"
+            />
+          </div>
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-luxe-gray-dark uppercase">
+              TikTok Live URL
+            </label>
+            <input
+              value={settings.tiktokLiveUrl ?? ""}
+              onChange={(e) => field("tiktokLiveUrl", e.target.value)}
+              placeholder="https://www.tiktok.com/@yourhandle/live"
+              className="h-10 w-full border border-border bg-luxe-white px-3 text-sm outline-none focus:border-luxe-black"
+            />
+          </div>
         </div>
       </div>
 

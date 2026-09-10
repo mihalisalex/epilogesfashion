@@ -51,7 +51,17 @@ export function MobileMenu({ items, productCareLink, open, onOpenChange, trigger
       <SheetContent
         side="left"
         showCloseButton={false}
-        className="flex w-full flex-col border-none bg-luxe-white p-0 sm:max-w-md"
+        /**
+         * `!w-full` / `sm:!max-w-md`, not the plain (unimportant) versions: the base
+         * SheetContent already carries `data-[side=left]:w-3/4` and
+         * `data-[side=left]:sm:max-w-sm` (see components/ui/sheet.tsx). Those have an
+         * attribute-selector in them, which out-specifies a bare `w-full`/`sm:max-w-md`
+         * regardless of which comes later in the class list — the menu was rendering at 75%
+         * width on real phones (no `sm:` breakpoint to even reach the second override), with
+         * the story circles and everything else laid out for the full width it never
+         * actually got. `!` forces these to win outright instead of relitigating specificity.
+         */
+        className="!w-full flex flex-col border-none bg-luxe-white p-0 sm:!max-w-md"
       >
         <SheetTitle className="sr-only">{t("siteNavigation")}</SheetTitle>
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-luxe-purple/15 px-6">
@@ -150,9 +160,14 @@ export function MobileMenu({ items, productCareLink, open, onOpenChange, trigger
 
         {/* A quiet closing note rather than another link — everything actionable is already
             above it, this is just the menu ending somewhere warmer than a plain edge. */}
-        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-luxe-purple/15 bg-luxe-gray-light py-6">
-          <Heart className="size-5 fill-luxe-purple text-luxe-purple" strokeWidth={0} />
-          <p className="text-eyebrow text-[10px] text-luxe-gray-dark">Handpicked in Heraklion</p>
+        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-luxe-purple/15 bg-luxe-gray-light py-5">
+          <Heart className="size-4 fill-luxe-purple text-luxe-purple" strokeWidth={0} />
+          {/* Was `text-eyebrow text-[10px]` — text-eyebrow's own text-xs won that fight, so
+              this rendered at 12px with 0.2em tracking instead of the intended 10px caption.
+              Written out explicitly here instead, so nothing outsizes it again. */}
+          <p className="text-[9px] font-medium tracking-[0.12em] uppercase text-luxe-gray-dark">
+            By Maria Gemitzaki
+          </p>
         </div>
       </SheetContent>
     </Sheet>
