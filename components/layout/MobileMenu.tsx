@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Menu, X } from "lucide-react";
+import { Heart, Menu, X } from "lucide-react";
 import {
   Sheet,
   SheetClose,
@@ -19,14 +19,20 @@ import type { NavItem } from "@/types";
 
 interface MobileMenuProps {
   items: NavItem[];
-  /** The footer's Support column, so a phone user can reach Contact/FAQ/Size Guide from the menu. */
-  supportLinks?: { label: string; href: string }[];
+  /**
+   * Product Care specifically — everything else that used to live down here (Contact, Ask a
+   * Stylist, Shipping & Returns, Size Guide) is footer-only now, same as Blog and About: the
+   * menu is for getting into the catalogue, not a mirror of the footer. Product Care stays
+   * because it sits with Wishlist/Account as something a shopper reaches for mid-browse, not
+   * only at checkout time.
+   */
+  productCareLink?: { label: string; href: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerLight: boolean;
 }
 
-export function MobileMenu({ items, supportLinks = [], open, onOpenChange, triggerLight }: MobileMenuProps) {
+export function MobileMenu({ items, productCareLink, open, onOpenChange, triggerLight }: MobileMenuProps) {
   const tA11y = useTranslations("A11y");
   const t = useTranslations("MobileMenu");
   const close = () => onOpenChange(false);
@@ -44,10 +50,10 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
       <SheetContent
         side="left"
         showCloseButton={false}
-        className="w-full border-none bg-luxe-white p-0 sm:max-w-sm"
+        className="flex w-full flex-col border-none bg-luxe-white p-0 sm:max-w-md"
       >
         <SheetTitle className="sr-only">{t("siteNavigation")}</SheetTitle>
-        <div className="flex h-16 items-center justify-between border-b border-border px-6">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-luxe-purple/15 px-6">
           <span className="font-heading text-lg tracking-[0.15em] uppercase">{t("menu")}</span>
           <SheetClose aria-label={t("closeMenu")}>
             <X className="size-5" strokeWidth={1.5} />
@@ -117,7 +123,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
           </Accordion>
         </nav>
 
-        <div className="border-t border-border px-6 py-6">
+        <div className="shrink-0 border-t border-border px-6 py-6">
           <ul className="font-heading flex flex-col gap-3 text-sm text-luxe-gray-dark">
             <li>
               <Link href="/account" onClick={close} className="no-underline">
@@ -129,19 +135,21 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
                 {t("wishlist")}
               </Link>
             </li>
+            {productCareLink ? (
+              <li>
+                <Link href={productCareLink.href} onClick={close} className="no-underline">
+                  {productCareLink.label}
+                </Link>
+              </li>
+            ) : null}
           </ul>
+        </div>
 
-          {supportLinks.length > 0 ? (
-            <ul className="font-heading mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm text-luxe-gray-dark">
-              {supportLinks.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} onClick={close} className="no-underline">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+        {/* A quiet closing note rather than another link — everything actionable is already
+            above it, this is just the menu ending somewhere warmer than a plain edge. */}
+        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-luxe-purple/15 bg-luxe-gray-light py-6">
+          <Heart className="size-5 fill-luxe-purple text-luxe-purple" strokeWidth={0} />
+          <p className="text-eyebrow text-[10px] text-luxe-gray-dark">Handpicked in Heraklion</p>
         </div>
       </SheetContent>
     </Sheet>

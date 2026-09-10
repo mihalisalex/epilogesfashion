@@ -54,10 +54,12 @@ export function Header({
             <div className="flex items-center gap-4">
               <MobileMenu
                 items={navigation.primary}
-                // The Support column from the footer, reused rather than duplicated — a
-                // shopper on a phone had no route to Contact, FAQ, Size Guide or
-                // Shipping & Returns short of scrolling to the very bottom of the page.
-                supportLinks={navigation.footer.find((column) => column.title === "Υποστήριξη")?.links ?? []}
+                // Product Care specifically, from the footer's Support column — everything
+                // else there (Contact, Ask a Stylist, Shipping & Returns, Size Guide) is
+                // footer-only, same as Blog and About; see MobileMenuProps for why.
+                productCareLink={navigation.footer
+                  .flatMap((column) => column.links)
+                  .find((link) => link.label === "Φροντίδα Προϊόντων")}
                 open={mobileOpen}
                 onOpenChange={setMobileOpen}
                 triggerLight={isLight}

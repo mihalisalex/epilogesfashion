@@ -123,18 +123,6 @@
       "id": "sale",
       "label": "Προσφορές",
       "href": "/sale"
-    },
-    {
-      "id": "journal",
-      "label": "Blog",
-      "href": "/journal",
-      "mobileOnly": true
-    },
-    {
-      "id": "about",
-      "label": "Σχετικά",
-      "href": "/about",
-      "mobileOnly": true
     }
   ],
   "utility": [
