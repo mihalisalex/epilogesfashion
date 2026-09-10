@@ -62,7 +62,9 @@ export function SplitHero() {
         <Link
           key={panel.href}
           href={panel.href}
-          className="group relative flex h-[420px] items-end overflow-hidden bg-luxe-black md:h-[560px]"
+          // Taller from lg (1024px) up only, per request — md (tablet, 768-1023px) and mobile
+          // heights are untouched.
+          className="group relative flex h-[420px] items-end overflow-hidden bg-luxe-black md:h-[560px] lg:h-[720px]"
         >
           <Image
             src={panel.image.src}
