@@ -45,7 +45,7 @@ export function MobileMenu({ items, productCareLink, open, onOpenChange, trigger
         type="button"
         aria-label={t("openMenu")}
         onClick={() => onOpenChange(true)}
-        className={triggerLight ? "text-luxe-white lg:hidden" : "text-luxe-black lg:hidden"}
+        className={triggerLight ? "text-luxe-white lg:hidden" : "text-luxe-purple lg:hidden"}
       >
         <Menu className="size-5" strokeWidth={1.5} />
       </button>
@@ -138,7 +138,7 @@ export function MobileMenu({ items, productCareLink, open, onOpenChange, trigger
         </nav>
 
         <div className="shrink-0 border-t border-border px-6 py-6">
-          <ul className="font-heading flex flex-col gap-3 text-sm text-luxe-gray-dark">
+          <ul className="font-heading flex flex-col gap-3.5 text-[13px] text-luxe-gray-dark">
             <li>
               <Link href="/account" onClick={close} className="no-underline">
                 {t("account")}

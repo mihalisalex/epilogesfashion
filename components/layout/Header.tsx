@@ -64,12 +64,12 @@ export function Header({
                 onOpenChange={setMobileOpen}
                 triggerLight={isLight}
               />
-              <Logo siteName={siteName} className={isLight ? "text-luxe-white" : "text-luxe-black"} />
+              <Logo siteName={siteName} className={isLight ? "text-luxe-white" : "text-luxe-purple"} />
             </div>
 
             <DesktopNav items={navigation.primary} transparentText={isLight} />
 
-            <div className={cn("flex items-center gap-5", isLight ? "text-luxe-white" : "text-luxe-black")}>
+            <div className={cn("flex items-center gap-5", isLight ? "text-luxe-white" : "text-luxe-purple")}>
               <IconButton label={t("search")} onClick={() => setSearchOpen(true)}>
                 <Search className="size-5" strokeWidth={1.5} />
               </IconButton>

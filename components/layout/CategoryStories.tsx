@@ -90,32 +90,33 @@ const CATEGORIES: StoryCategory[] = [
 export function CategoryStories({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div
-      className="flex shrink-0 snap-x snap-mandatory gap-3 overflow-x-auto border-b border-border px-4 py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex shrink-0 snap-x snap-mandatory gap-2 overflow-x-auto border-b border-border px-4 py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {CATEGORIES.map((category) => (
         <Link
           key={category.label}
           href={category.href}
           onClick={onNavigate}
-          className="group flex shrink-0 snap-start flex-col items-center gap-1.5"
+          className="group flex shrink-0 snap-start flex-col items-center gap-1"
         >
           <span className="rounded-full bg-gradient-to-tr from-[#f9a13f] via-[#e0356b] to-luxe-purple p-[2px] transition-transform duration-200 group-hover:scale-105">
-            <span className="block rounded-full bg-luxe-white p-[2px]">
-              <span className="relative block size-14 overflow-hidden rounded-full bg-luxe-gray-light">
+            <span className="block rounded-full bg-luxe-white p-[1.5px]">
+              <span className="relative block size-11 overflow-hidden rounded-full bg-luxe-gray-light">
                 <Image
                   src={category.image.src}
                   alt={category.image.alt}
                   fill
-                  sizes="56px"
+                  sizes="44px"
                   className="object-cover"
                 />
               </span>
             </span>
           </span>
-          {/* w-14, matching the circle: without it a long label (e.g. "Denim Jackets") widens
-              the whole flex item past its circle, throwing off the otherwise-even rhythm of
-              the row. Truncates instead, same as Instagram does with long usernames. */}
-          <span className="w-14 truncate text-center text-[11px] font-medium text-luxe-black">
+          {/* w-12, a touch wider than the circle: without it a long label (e.g. "Denim
+              Jackets") widens the whole flex item past its circle, throwing off the
+              otherwise-even rhythm of the row. Truncates instead, same as Instagram does
+              with long usernames. */}
+          <span className="w-12 truncate text-center text-[9.5px] font-medium text-luxe-black">
             {category.label}
           </span>
         </Link>

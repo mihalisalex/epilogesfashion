@@ -51,7 +51,7 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
             href={item.href}
             className={cn(
               "relative text-[13px] font-medium tracking-[0.08em] uppercase transition-colors duration-300",
-              transparentText ? "text-luxe-white" : "text-luxe-black",
+              transparentText ? "text-luxe-white" : "text-luxe-purple",
               item.id === openId ? "opacity-100" : "opacity-90 hover:opacity-100"
             )}
           >
@@ -59,7 +59,7 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
             <span
               className={cn(
                 "pointer-events-none absolute inset-x-0 -bottom-1 h-px origin-center scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100",
-                transparentText ? "bg-luxe-white" : "bg-luxe-black",
+                transparentText ? "bg-luxe-white" : "bg-luxe-purple",
                 item.id === openId && "scale-x-100"
               )}
             />
