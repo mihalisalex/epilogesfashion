@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Heart, Menu, X } from "lucide-react";
+import { CategoryStories } from "@/components/layout/CategoryStories";
 import {
   Sheet,
   SheetClose,
@@ -59,6 +60,8 @@ export function MobileMenu({ items, productCareLink, open, onOpenChange, trigger
             <X className="size-5" strokeWidth={1.5} />
           </SheetClose>
         </div>
+
+        <CategoryStories onNavigate={close} />
 
         <nav className="flex-1 overflow-y-auto px-6 py-4" aria-label={tA11y("mobileNav")}>
           <Accordion>
