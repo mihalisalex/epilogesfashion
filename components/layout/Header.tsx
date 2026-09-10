@@ -47,7 +47,11 @@ export function Header({
         <header
           className={cn(
             "transition-colors duration-300",
-            isLight ? "bg-transparent" : "border-b border-border bg-luxe-white"
+            // Transparent-over-hero is a mobile/tablet trick — at desktop width the logo and
+            // nav sit beside a much wider, busier row (six nav links, four icons), and the
+            // white patch of the header reads as an anchor for that row rather than clutter.
+            // `lg:` forces the solid look back on regardless of `isLight`/scroll.
+            isLight ? "bg-transparent lg:border-b lg:border-border lg:bg-luxe-white" : "border-b border-border bg-luxe-white"
           )}
         >
           <div className="container-luxe flex h-18 items-center justify-between md:h-20">
@@ -64,12 +68,22 @@ export function Header({
                 onOpenChange={setMobileOpen}
                 triggerLight={isLight}
               />
-              <Logo siteName={siteName} className={isLight ? "text-luxe-white" : "text-luxe-purple"} />
+              <Logo
+                siteName={siteName}
+                className={isLight ? "text-luxe-white lg:text-luxe-purple" : "text-luxe-purple"}
+              />
             </div>
 
-            <DesktopNav items={navigation.primary} transparentText={isLight} />
+            {/* DesktopNav only ever renders at lg+ (hidden below it), and the header is
+                always solid there now — so it's never in the transparent/white state. */}
+            <DesktopNav items={navigation.primary} transparentText={false} />
 
-            <div className={cn("flex items-center gap-5", isLight ? "text-luxe-white" : "text-luxe-purple")}>
+            <div
+              className={cn(
+                "flex items-center gap-5",
+                isLight ? "text-luxe-white lg:text-luxe-purple" : "text-luxe-purple"
+              )}
+            >
               <IconButton label={t("search")} onClick={() => setSearchOpen(true)}>
                 <Search className="size-5" strokeWidth={1.5} />
               </IconButton>
