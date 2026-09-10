@@ -53,7 +53,11 @@ const PANELS: SplitHeroPanel[] = [
  */
 export function SplitHero() {
   return (
-    <section className="grid grid-cols-1 gap-px bg-border pt-header md:grid-cols-2">
+    // No `pt-header`: the header renders `transparent` on this page (see app/page.tsx), so
+    // these panels need to run full-bleed up under it rather than start below it — that's
+    // the whole point of the white-on-photo treatment. The announcement bar above the header
+    // stays opaque regardless and simply overlaps the very top of the image, same as before.
+    <section className="grid grid-cols-1 gap-px bg-border md:grid-cols-2">
       {PANELS.map((panel, index) => (
         <Link
           key={panel.href}
@@ -71,6 +75,11 @@ export function SplitHero() {
           {/* Bottom-weighted scrim rather than a flat overlay — keeps the top of each photo
               true to itself and only darkens where the caption actually sits. */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-luxe-black/80 via-luxe-black/15 to-transparent" />
+          {/* Separate, short top scrim — purely so the transparent header's white wordmark
+              and icons stay readable over whatever happens to be at the top of the photo
+              (sky, pale stone, fabric), independent of the bottom scrim that serves the
+              caption instead. Fades out well above the caption so it never doubles up. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-luxe-black/55 to-transparent md:h-32" />
 
           <motion.div
             initial="hidden"

@@ -51,6 +51,10 @@ export default async function HomePage() {
         navigation={navigation}
         siteName={settings.siteName}
         announcementMessages={settings.announcementMessages}
+        // SplitHero now renders full-bleed under the fixed header (no pt-header offset) with
+        // its own top scrim, specifically so this can go back to true: white wordmark/icons
+        // floating over the photo until scrolled, solid white bar after.
+        transparent
       />
       <main id="main" className="flex-1">
         <SplitHero />
