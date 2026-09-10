@@ -20,12 +20,13 @@ interface TikTokLiveModalProps {
 }
 
 /**
- * A full-screen "incoming call" takeover, styled after iOS's own call screen, that the
- * merchant switches on right before/during a TikTok live: pulsing avatar, caller-ID-style
- * name, red decline / green accept. Answering opens the live stream in a new tab; declining
- * (or Escape) just closes it — either way the shop underneath is untouched, exactly as it
- * was before the toggle. Purely presentational: whether it can appear at all lives entirely
- * in `enabled`, sourced from the site settings the admin dashboard edits.
+ * A floating "incoming call" card — rounded, frosted glass, centered over a dimmed shop
+ * rather than a full-screen takeover — that the merchant switches on right before/during a
+ * TikTok live: pulsing avatar, caller-ID-style name, red decline / green accept. Answering
+ * opens the live stream in a new tab; declining (or Escape, or tapping outside the card)
+ * just closes it — either way the shop underneath is untouched, exactly as it was before
+ * the toggle. Purely presentational: whether it can appear at all lives entirely in
+ * `enabled`, sourced from the site settings the admin dashboard edits.
  */
 export function TikTokLiveModal({ enabled, tiktokUrl }: TikTokLiveModalProps) {
   const [visible, setVisible] = useState(false);
@@ -70,86 +71,86 @@ export function TikTokLiveModal({ enabled, tiktokUrl }: TikTokLiveModalProps) {
     <AnimatePresence>
       {visible ? (
         <motion.div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Ζωντανά τώρα στο TikTok"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-300 flex flex-col items-center justify-between overflow-hidden bg-gradient-to-b from-[#1c1024] via-luxe-black to-black px-8 pt-16 pb-14 text-luxe-white"
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-300 flex items-center justify-center bg-luxe-black/45 p-6 backdrop-blur-[2px]"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) dismiss();
+          }}
         >
-          {/* Ambient glow, purely decorative — echoes the story-ring gradient used elsewhere
-              on the site (CategoryStories) so this reads as the same brand, not a bolted-on
-              system dialog. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute top-1/3 left-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-luxe-purple/25 blur-3xl"
-          />
-
           <motion.div
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            className="relative flex items-center gap-2 rounded-full bg-luxe-white/10 px-4 py-1.5 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ζωντανά τώρα στο TikTok"
+            initial={{ opacity: 0, y: 14, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 340, damping: 28 }}
+            className="relative w-full max-w-[300px] overflow-hidden rounded-[32px] border border-luxe-white/15 bg-[#160c1d]/75 px-7 pt-7 pb-6 text-center text-luxe-white shadow-2xl shadow-black/40 backdrop-blur-2xl"
           >
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-red-500" />
-            </span>
-            <span className="text-[11px] font-semibold tracking-[0.18em] uppercase">TikTok Live</span>
-          </motion.div>
+            {/* The "liquid glass" read: a soft light sheen across the top third plus an
+                ambient purple bloom behind the avatar, both sitting under a blurred,
+                semi-transparent panel rather than an opaque one. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-gradient-to-b from-luxe-white/15 via-transparent to-transparent"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute top-8 left-1/2 size-40 -translate-x-1/2 rounded-full bg-luxe-purple/35 blur-3xl"
+            />
 
-          <motion.div
-            initial={{ y: 16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.5 }}
-            className="relative flex flex-col items-center gap-5 text-center"
-          >
-            <div className="relative flex size-28 items-center justify-center">
+            <div className="relative flex items-center justify-center gap-1.5">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
+              </span>
+              <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-luxe-white/80">
+                TikTok Live
+              </span>
+            </div>
+
+            <div className="relative mx-auto mt-5 flex size-20 items-center justify-center">
               <span className="absolute inset-0 animate-ping rounded-full bg-luxe-purple/40" />
-              <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#f9a13f] via-[#e0356b] to-luxe-purple p-[3px]">
-                <span className="block size-full rounded-full bg-luxe-black p-[3px]">
-                  <span className="flex size-full items-center justify-center rounded-full bg-luxe-black">
-                    <TikTokGlyph className="size-11 text-luxe-white" />
+              <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#f9a13f] via-[#e0356b] to-luxe-purple p-[2.5px]">
+                <span className="block size-full rounded-full bg-[#160c1d] p-[2.5px]">
+                  <span className="flex size-full items-center justify-center rounded-full bg-[#160c1d]">
+                    <TikTokGlyph className="size-8 text-luxe-white" />
                   </span>
                 </span>
               </span>
             </div>
 
-            <div>
-              <p className="font-heading text-2xl font-semibold">Epiloges Fashion Boutique</p>
-              <p className="mt-1.5 text-sm text-luxe-white/70">Μόλις ξεκινήσαμε live στο TikTok</p>
+            <div className="relative mt-4">
+              <p className="font-heading text-lg font-semibold">Epiloges Fashion Boutique</p>
+              <p className="mt-1 text-xs text-luxe-white/70">Μόλις ξεκινήσαμε live στο TikTok</p>
             </div>
-          </motion.div>
 
-          <motion.div
-            initial={{ y: 16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="relative flex items-end gap-16"
-          >
-            <div className="flex flex-col items-center gap-2.5">
-              <button
-                type="button"
-                onClick={dismiss}
-                aria-label="Απόρριψη"
-                className="flex size-16 items-center justify-center rounded-full bg-red-500 shadow-lg shadow-red-500/30 transition-transform active:scale-95"
-              >
-                <PhoneOff className="size-6" strokeWidth={2} />
-              </button>
-              <span className="text-xs text-luxe-white/60">Απόρριψη</span>
-            </div>
-            <div className="flex flex-col items-center gap-2.5">
-              <button
-                type="button"
-                onClick={answer}
-                aria-label="Μετάβαση στο live"
-                className="flex size-16 items-center justify-center rounded-full bg-green-500 shadow-lg shadow-green-500/30 transition-transform active:scale-95"
-              >
-                <Phone className="size-6" strokeWidth={2} />
-              </button>
-              <span className="text-xs text-luxe-white/60">Σύνδεση</span>
+            <div className="relative mt-6 flex items-center justify-center gap-14">
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={dismiss}
+                  aria-label="Απόρριψη"
+                  className="flex size-13 items-center justify-center rounded-full bg-red-500 shadow-lg shadow-red-500/30 transition-transform active:scale-95"
+                >
+                  <PhoneOff className="size-5" strokeWidth={2} />
+                </button>
+                <span className="text-[10px] text-luxe-white/60">Απόρριψη</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={answer}
+                  aria-label="Μετάβαση στο live"
+                  className="flex size-13 items-center justify-center rounded-full bg-green-500 shadow-lg shadow-green-500/30 transition-transform active:scale-95"
+                >
+                  <Phone className="size-5" strokeWidth={2} />
+                </button>
+                <span className="text-[10px] text-luxe-white/60">Σύνδεση</span>
+              </div>
             </div>
           </motion.div>
         </motion.div>
