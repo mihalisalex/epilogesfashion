@@ -8,10 +8,10 @@ interface StoryCategory {
 }
 
 /**
- * All four reuse photography already proven to load elsewhere on this site (the denim jeans
- * and silk dress images are the Denim Edit / Evening Dresses collection tiles; the linen
- * shirt is the Linen Button-Down Shirt product photo) rather than fresh, unverified URLs —
- * same reasoning as SplitHero's placeholders.
+ * All eight reuse photography already proven to load elsewhere on this site (product photos
+ * and SplitHero/homepage tiles) rather than fresh, unverified URLs — same reasoning as
+ * SplitHero's placeholders. Denim gets two distinct entries (jeans vs. the jacket) because
+ * the row is a browse shortcut, not a literal one-row-per-category index.
  */
 const CATEGORIES: StoryCategory[] = [
   {
@@ -46,26 +46,58 @@ const CATEGORIES: StoryCategory[] = [
       alt: "Jewellery and accessories",
     },
   },
+  {
+    label: "Coats",
+    href: "/women?category=outerwear",
+    image: {
+      src: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=200&q=80",
+      alt: "Black wool trench coat",
+    },
+  },
+  {
+    label: "Blazers",
+    href: "/women?category=blazers",
+    image: {
+      src: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=200&q=80",
+      alt: "Charcoal wool blazer",
+    },
+  },
+  {
+    label: "Knitwear",
+    href: "/women?category=knitwear",
+    image: {
+      src: "https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=200&q=80",
+      alt: "Merino wool knitwear",
+    },
+  },
+  {
+    label: "Denim Jackets",
+    href: "/women?category=denim",
+    image: {
+      src: "https://images.unsplash.com/photo-1601333144130-8cbb312386b6?auto=format&fit=crop&w=200&q=80",
+      alt: "Relaxed denim trucker jacket",
+    },
+  },
 ];
 
 /**
- * Instagram-story-style shortcuts into the four categories a shopper reaches for most —
- * the gradient ring and the padded-white gap between ring and photo are what make it read
- * as "story" rather than just "circular thumbnail with a border."
+ * Instagram-story-style shortcuts into eight categories a shopper reaches for most. Eight
+ * doesn't fit one screen, so the row scrolls horizontally with snap points instead of
+ * shrinking to fit — same feel as swiping through a real story tray, rather than cramming
+ * smaller and smaller circles onto the page. The scrollbar is hidden (still keyboard/
+ * trackpad/touch scrollable) so it reads as a swipe gesture, not a browser scroll strip.
  */
 export function CategoryStories({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    // Centered with a fixed gap, not `justify-between`: that stretched the outer gap to fill
-    // whatever width was left, which put the first/last circle flush against the row's own
-    // padding with zero slack on a real 375px phone — reading as the ring overlapping the
-    // menu's edge. Centering means any extra width becomes margin around the row instead.
-    <div className="flex shrink-0 justify-center gap-3 border-b border-border px-4 py-5">
+    <div
+      className="flex shrink-0 snap-x snap-mandatory gap-3 overflow-x-auto border-b border-border px-4 py-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {CATEGORIES.map((category) => (
         <Link
           key={category.label}
           href={category.href}
           onClick={onNavigate}
-          className="group flex flex-col items-center gap-1.5"
+          className="group flex shrink-0 snap-start flex-col items-center gap-1.5"
         >
           <span className="rounded-full bg-gradient-to-tr from-[#f9a13f] via-[#e0356b] to-luxe-purple p-[2px] transition-transform duration-200 group-hover:scale-105">
             <span className="block rounded-full bg-luxe-white p-[2px]">
@@ -80,7 +112,12 @@ export function CategoryStories({ onNavigate }: { onNavigate?: () => void }) {
               </span>
             </span>
           </span>
-          <span className="text-[11px] font-medium text-luxe-black">{category.label}</span>
+          {/* w-14, matching the circle: without it a long label (e.g. "Denim Jackets") widens
+              the whole flex item past its circle, throwing off the otherwise-even rhythm of
+              the row. Truncates instead, same as Instagram does with long usernames. */}
+          <span className="w-14 truncate text-center text-[11px] font-medium text-luxe-black">
+            {category.label}
+          </span>
         </Link>
       ))}
     </div>
