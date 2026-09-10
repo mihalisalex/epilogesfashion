@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Heart, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { CategoryStories } from "@/components/layout/CategoryStories";
 import {
   Sheet,
@@ -159,9 +160,12 @@ export function MobileMenu({ items, productCareLink, open, onOpenChange, trigger
         </div>
 
         {/* A quiet closing note rather than another link — everything actionable is already
-            above it, this is just the menu ending somewhere warmer than a plain edge. */}
+            above it, this is just the menu ending somewhere warmer than a plain edge. The
+            heart became the real badge (public/logo-badge.png), small, at a size where its
+            detail still reads instead of collapsing — unlike the header, this spot has never
+            needed to compete with icons or shrink to ~32px. */}
         <div className="flex shrink-0 flex-col items-center gap-2 border-t border-luxe-purple/15 bg-luxe-gray-light py-5">
-          <Heart className="size-4 fill-luxe-purple text-luxe-purple" strokeWidth={0} />
+          <Image src="/logo-badge.png" alt="" width={567} height={440} className="h-12 w-auto" />
           {/* Was `text-eyebrow text-[10px]` — text-eyebrow's own text-xs won that fight, so
               this rendered at 12px with 0.2em tracking instead of the intended 10px caption.
               Written out explicitly here instead, so nothing outsizes it again. */}
