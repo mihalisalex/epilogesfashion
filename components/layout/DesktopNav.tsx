@@ -78,58 +78,108 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
             onMouseEnter={() => open(activeItem.id)}
             className="absolute inset-x-0 top-full border-t border-luxe-black bg-luxe-white shadow-[0_24px_48px_-28px_rgba(0,0,0,0.3)]"
           >
-            <div className="container-luxe grid grid-cols-12 gap-x-10 py-14">
-              <div className="col-span-3">
-                <h2 className="font-heading text-3xl">{activeItem.label}</h2>
-                <Link
-                  href={activeItem.href}
-                  className="mt-5 inline-flex items-center gap-1.5 text-xs tracking-[0.08em] text-luxe-gray-dark uppercase transition-colors hover:text-luxe-black"
-                >
-                  {tNav("viewAll")}
-                  <ArrowRight className="size-3.5" strokeWidth={1.5} />
-                </Link>
-              </div>
-
-              <div className="col-span-3 border-l border-border pl-10">
-                <p className="text-eyebrow mb-5">{tNav("shopByCategory")}</p>
-                <ul className="space-y-3.5">
-                  {activeItem.children?.map((child) => (
-                    <li key={child.id}>
-                      <Link href={child.href} className="group/link relative inline-block text-sm text-luxe-black/80 transition-colors hover:text-luxe-black">
-                        {child.label}
-                        <span className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-luxe-black transition-transform duration-300 ease-out group-hover/link:scale-x-100" />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="col-span-6 flex justify-end gap-5">
-                {activeItem.featured?.map((feature) => (
+            {activeItem.featured?.length ? (
+              <div className="container-luxe grid grid-cols-12 gap-x-10 py-14">
+                <div className="col-span-3">
+                  <h2 className="font-heading text-3xl">{activeItem.label}</h2>
                   <Link
-                    key={feature.href}
-                    href={feature.href}
-                    className="group/feature relative block h-64 w-72 shrink-0 overflow-hidden"
+                    href={activeItem.href}
+                    className="mt-5 inline-flex items-center gap-1.5 text-xs tracking-[0.08em] text-luxe-gray-dark uppercase transition-colors hover:text-luxe-black"
                   >
-                    <Image
-                      src={feature.image}
-                      alt={feature.title}
-                      fill
-                      sizes="288px"
-                      className="object-cover transition-transform duration-700 ease-out group-hover/feature:scale-105"
-                    />
-                    <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                    <span className="absolute inset-x-0 bottom-0 p-5">
-                      <span className="font-heading block text-lg text-white">{feature.title}</span>
-                      <span className="mt-1.5 flex items-center gap-1 text-[11px] tracking-[0.1em] text-white/0 uppercase transition-colors duration-300 group-hover/feature:text-white/90">
-                        {tNav("discover")}
-                        <ArrowRight className="size-3 -translate-x-1 opacity-0 transition-all duration-300 group-hover/feature:translate-x-0 group-hover/feature:opacity-100" strokeWidth={1.5} />
-                      </span>
-                    </span>
+                    {tNav("viewAll")}
+                    <ArrowRight className="size-3.5" strokeWidth={1.5} />
                   </Link>
-                ))}
+                </div>
+
+                <div className="col-span-3 border-l border-border pl-10">
+                  <p className="text-eyebrow mb-5">{tNav("shopByCategory")}</p>
+                  <ul className="space-y-3.5">
+                    {activeItem.children?.map((child) => (
+                      <li key={child.id}>
+                        <Link href={child.href} className="group/link relative inline-block text-sm text-luxe-black/80 transition-colors hover:text-luxe-black">
+                          {child.label}
+                          <span className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-luxe-black transition-transform duration-300 ease-out group-hover/link:scale-x-100" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="col-span-6 flex justify-end gap-5">
+                  {activeItem.featured.map((feature) => (
+                    <Link
+                      key={feature.href}
+                      href={feature.href}
+                      className="group/feature relative block h-64 w-72 shrink-0 overflow-hidden"
+                    >
+                      <Image
+                        src={feature.image}
+                        alt={feature.title}
+                        fill
+                        sizes="288px"
+                        className="object-cover transition-transform duration-700 ease-out group-hover/feature:scale-105"
+                      />
+                      <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                      <span className="absolute inset-x-0 bottom-0 p-5">
+                        <span className="font-heading block text-lg text-white">{feature.title}</span>
+                        <span className="mt-1.5 flex items-center gap-1 text-[11px] tracking-[0.1em] text-white/0 uppercase transition-colors duration-300 group-hover/feature:text-white/90">
+                          {tNav("discover")}
+                          <ArrowRight className="size-3 -translate-x-1 opacity-0 transition-all duration-300 group-hover/feature:translate-x-0 group-hover/feature:opacity-100" strokeWidth={1.5} />
+                        </span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              /*
+                No featured image to fill the remaining width, and this is where a category
+                with many children (Clothing's 7, each with its own sub-types) actually needs
+                the room: a single narrow column would run ΜΠΛΟΥΖΕΣ's seven sub-items nearly
+                600px tall. CSS multi-column lets the browser balance children across as many
+                columns as the row fits, wrapping a tall list back up to sit beside a short
+                one — a plain grid would have to commit to a fixed column count regardless of
+                how uneven the groups are.
+              */
+              <div className="container-luxe py-14">
+                <div className="mb-8 flex items-baseline justify-between border-b border-border pb-6">
+                  <h2 className="font-heading text-3xl">{activeItem.label}</h2>
+                  <Link
+                    href={activeItem.href}
+                    className="inline-flex items-center gap-1.5 text-xs tracking-[0.08em] text-luxe-gray-dark uppercase transition-colors hover:text-luxe-black"
+                  >
+                    {tNav("viewAll")}
+                    <ArrowRight className="size-3.5" strokeWidth={1.5} />
+                  </Link>
+                </div>
+                <div className="columns-2 gap-x-12 md:columns-3 lg:columns-4">
+                  {activeItem.children?.map((child) => (
+                    <div key={child.id} className="mb-8 break-inside-avoid">
+                      <Link
+                        href={child.href}
+                        className="text-xs font-semibold tracking-[0.1em] text-luxe-black uppercase transition-colors hover:text-luxe-gray-dark"
+                      >
+                        {child.label}
+                      </Link>
+                      {child.children?.length ? (
+                        <ul className="mt-3 space-y-2.5">
+                          {child.children.map((grandchild) => (
+                            <li key={grandchild.id}>
+                              <Link
+                                href={grandchild.href}
+                                className="text-sm text-luxe-gray-dark transition-colors hover:text-luxe-black"
+                              >
+                                {grandchild.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         ) : null}
       </AnimatePresence>

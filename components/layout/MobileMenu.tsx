@@ -78,10 +78,25 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
                           <Link
                             href={child.href}
                             onClick={close}
-                            className="font-heading block text-sm text-luxe-gray-dark no-underline"
+                            className="font-heading block text-sm font-medium text-luxe-black no-underline"
                           >
                             {child.label}
                           </Link>
+                          {child.children?.length ? (
+                            <ul className="mt-2.5 mb-1 space-y-2.5 pl-3">
+                              {child.children.map((grandchild) => (
+                                <li key={grandchild.id}>
+                                  <Link
+                                    href={grandchild.href}
+                                    onClick={close}
+                                    className="font-heading block text-sm text-luxe-gray-dark no-underline"
+                                  >
+                                    {grandchild.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </li>
                       ))}
                     </ul>

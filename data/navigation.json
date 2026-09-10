@@ -1,71 +1,112 @@
 {
   "primary": [
     {
-      "id": "women",
-      "label": "Γυναικεία",
+      "id": "clothing",
+      "label": "ΡΟΥΧΙΣΜΟΣ",
       "href": "/women",
       "children": [
         {
-          "id": "women-new-in",
-          "label": "Νέες αφίξεις",
-          "href": "/women?isNew=true"
+          "id": "dresses",
+          "label": "ΦΟΡΕΜΑΤΑ",
+          "href": "/women?category=dresses",
+          "children": [
+            { "id": "dresses-mini", "label": "ΜΙΝΙ", "href": "/women?category=dresses" },
+            { "id": "dresses-midi", "label": "MIDI", "href": "/women?category=dresses" },
+            { "id": "dresses-maxi", "label": "MAXI", "href": "/women?category=dresses" }
+          ]
         },
         {
-          "id": "women-dresses",
-          "label": "Φορέματα",
-          "href": "/women?category=dresses"
+          "id": "trousers",
+          "label": "ΠΑΝΤΕΛΟΝΙΑ",
+          "href": "/women?category=trousers",
+          "children": [
+            { "id": "trousers-1", "label": "ΠΑΝΤΕΛΟΝΙΑ", "href": "/women?category=trousers" },
+            { "id": "trousers-2", "label": "ΠΑΝΤΕΛΟΝΕΣ", "href": "/women?category=trousers" },
+            { "id": "trousers-jeans", "label": "JEANS", "href": "/women?category=denim" },
+            { "id": "trousers-leggings", "label": "ΚΟΛΑΝ", "href": "/women?category=trousers" }
+          ]
         },
         {
-          "id": "women-outerwear",
-          "label": "Πανωφόρια",
-          "href": "/women?category=outerwear"
+          "id": "skirts",
+          "label": "ΦΟΥΣΤΕΣ",
+          "href": "/women?category=skirts",
+          "children": [
+            { "id": "skirts-mini", "label": "ΜΙΝΙ", "href": "/women?category=skirts" },
+            { "id": "skirts-midi", "label": "MIDI", "href": "/women?category=skirts" },
+            { "id": "skirts-maxi", "label": "ΜΑΧΙ", "href": "/women?category=skirts" }
+          ]
         },
         {
-          "id": "women-shirts",
-          "label": "Πουκάμισα",
-          "href": "/women?category=shirts"
-        }
-      ],
-      "featured": [
+          "id": "outerwear-nav",
+          "label": "ΠΑΝΩΦΟΡΙΑ",
+          "href": "/women?category=outerwear",
+          "children": [
+            { "id": "ow-jackets", "label": "ΜΠΟΥΦΑΝ", "href": "/women?category=outerwear" },
+            { "id": "ow-coats", "label": "ΠΑΛΤΟ", "href": "/women?category=outerwear" },
+            { "id": "ow-cardigans", "label": "ΖΑΚΕΤΕΣ", "href": "/women?category=outerwear" },
+            { "id": "ow-blazers", "label": "ΣΑΚΑΚΙΑ", "href": "/women?category=blazers" },
+            { "id": "ow-vests", "label": "ΓΙΛΕΚΑ", "href": "/women?category=outerwear" },
+            { "id": "ow-trenches", "label": "ΚΑΠΑΡΝΤΙΝΕΣ", "href": "/women?category=outerwear" },
+            { "id": "ow-capes", "label": "ΚΑΠΕΣ", "href": "/women?category=outerwear" }
+          ]
+        },
         {
-          "title": "Βραδινά Φορέματα",
-          "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80",
-          "href": "/collections/evening-dresses"
+          "id": "jumpsuits",
+          "label": "ΟΛΟΣΩΜΕΣ ΦΟΡΜΕΣ",
+          "href": "/women?category=jumpsuits"
+        },
+        {
+          "id": "knitwear-nav",
+          "label": "ΠΛΕΚΤΑ",
+          "href": "/women?category=knitwear"
+        },
+        {
+          "id": "tops",
+          "label": "ΜΠΛΟΥΖΕΣ",
+          "href": "/women?category=tops",
+          "children": [
+            { "id": "tops-long", "label": "ΜΑΚΡΥΜΑΝΙΚΕΣ", "href": "/women?category=tops" },
+            { "id": "tops-short", "label": "ΚΟΝΤΟΜΑΝΙΚΕΣ", "href": "/women?category=tops" },
+            { "id": "tops-strap", "label": "ΜΕ ΤΙΡΑΝΤΑ", "href": "/women?category=tops" },
+            { "id": "tops-bodysuit", "label": "ΚΟΡΜΑΚΙΑ", "href": "/women?category=tops" },
+            { "id": "tops-sleeveless", "label": "ΑΜΑΝΙΚΕΣ", "href": "/women?category=tops" },
+            { "id": "tops-turtleneck", "label": "ΖΙΒΑΓΚΟ", "href": "/women?category=tops" },
+            { "id": "tops-shirts", "label": "ΠΟΥΚΑΜΙΣΑ", "href": "/women?category=shirts" }
+          ]
         }
       ]
     },
     {
-      "id": "men",
-      "label": "Ανδρικά",
-      "href": "/men",
+      "id": "shoes",
+      "label": "ΠΑΠΟΥΤΣΙΑ",
+      "href": "/women?category=shoes",
       "children": [
-        {
-          "id": "men-new-in",
-          "label": "Νέες αφίξεις",
-          "href": "/men?isNew=true"
-        },
-        {
-          "id": "men-blazers",
-          "label": "Σακάκια",
-          "href": "/men?category=blazers"
-        },
-        {
-          "id": "men-denim",
-          "label": "Τζιν",
-          "href": "/men?category=denim"
-        },
-        {
-          "id": "men-outerwear",
-          "label": "Πανωφόρια",
-          "href": "/men?category=outerwear"
-        }
-      ],
-      "featured": [
-        {
-          "title": "Η Συλλογή Τζιν",
-          "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80",
-          "href": "/collections/denim-edit"
-        }
+        { "id": "shoes-boots-ankle", "label": "ΜΠΟΤΑΚΙΑ", "href": "/women?category=shoes" },
+        { "id": "shoes-boots", "label": "ΜΠΟΤΕΣ", "href": "/women?category=shoes" },
+        { "id": "shoes-pumps", "label": "ΓΟΒΕΣ", "href": "/women?category=shoes" },
+        { "id": "shoes-sneakers", "label": "SNEAKERS", "href": "/women?category=shoes" },
+        { "id": "shoes-heeled-sandals", "label": "ΠΕΔΙΛΑ", "href": "/women?category=shoes" },
+        { "id": "shoes-flats", "label": "ΜΠΑΛΑΡΙΝΕΣ", "href": "/women?category=shoes" },
+        { "id": "shoes-sandals", "label": "ΣΑΝΔΑΛΙΑ", "href": "/women?category=shoes" },
+        { "id": "shoes-espadrilles", "label": "ΕΣΠΑΝΤΡΙΓΙΕΣ", "href": "/women?category=shoes" },
+        { "id": "shoes-slippers", "label": "ΠΑΝΤΟΦΛΕΣ", "href": "/women?category=shoes" },
+        { "id": "shoes-platforms", "label": "ΠΛΑΤΦΟΡΜΕΣ", "href": "/women?category=shoes" }
+      ]
+    },
+    {
+      "id": "accessories",
+      "label": "ΑΞΕΣΟΥΑΡ",
+      "href": "/women?category=accessories",
+      "children": [
+        { "id": "acc-necklaces", "label": "ΚΟΛΙΕ", "href": "/women?category=accessories" },
+        { "id": "acc-bracelets", "label": "ΒΡΑΧΙΟΛΙΑ", "href": "/women?category=accessories" },
+        { "id": "acc-earrings", "label": "ΣΚΟΥΛΑΡΙΚΙΑ", "href": "/women?category=accessories" },
+        { "id": "acc-rings", "label": "ΔΑΧΤΥΛΙΔΙΑ", "href": "/women?category=accessories" },
+        { "id": "acc-hair", "label": "ΑΞΕΣΟΥΑΡ ΜΑΛΛΙΩΝ", "href": "/women?category=accessories" },
+        { "id": "acc-scarves", "label": "ΦΟΥΛΑΡΙΑ/ΚΑΣΚΟΛ", "href": "/women?category=accessories" },
+        { "id": "acc-bags", "label": "ΤΣΑΝΤΕΣ", "href": "/women?category=accessories" },
+        { "id": "acc-wallets", "label": "ΠΟΡΤΟΦΟΛΙΑ", "href": "/women?category=accessories" },
+        { "id": "acc-belts", "label": "ΖΩΝΕΣ", "href": "/women?category=accessories" }
       ]
     },
     {
@@ -74,8 +115,8 @@
       "href": "/new-in"
     },
     {
-      "id": "collections",
-      "label": "Συλλογές",
+      "id": "ready-to-wear",
+      "label": "Ready to Wear",
       "href": "/collections"
     },
     {
@@ -85,7 +126,7 @@
     },
     {
       "id": "journal",
-      "label": "Άρθρα",
+      "label": "Blog",
       "href": "/journal",
       "mobileOnly": true
     },
@@ -104,7 +145,7 @@
     },
     {
       "id": "wishlist",
-      "label": "Αγαπημένα",
+      "label": "Wish List",
       "href": "/wishlist"
     },
     {
@@ -123,24 +164,28 @@
       "title": "Αγορές",
       "links": [
         {
-          "label": "Γυναικεία",
+          "label": "Ρουχισμός",
           "href": "/women"
         },
         {
-          "label": "Ανδρικά",
-          "href": "/men"
+          "label": "Παπούτσια",
+          "href": "/women?category=shoes"
+        },
+        {
+          "label": "Αξεσουάρ",
+          "href": "/women?category=accessories"
         },
         {
           "label": "Νέες αφίξεις",
           "href": "/new-in"
         },
         {
-          "label": "Προσφορές",
-          "href": "/sale"
+          "label": "Ready to Wear",
+          "href": "/collections"
         },
         {
-          "label": "Συλλογές",
-          "href": "/collections"
+          "label": "Προσφορές",
+          "href": "/sale"
         }
       ]
     },
@@ -160,7 +205,7 @@
           "href": "/careers"
         },
         {
-          "label": "Άρθρα",
+          "label": "Blog",
           "href": "/journal"
         }
       ]
@@ -183,6 +228,10 @@
         {
           "label": "Οδηγός μεγεθών",
           "href": "/size-guide"
+        },
+        {
+          "label": "Φροντίδα Προϊόντων",
+          "href": "/faq"
         },
         {
           "label": "Συχνές ερωτήσεις",

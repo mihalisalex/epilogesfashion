@@ -14,9 +14,14 @@ interface SplitHeroPanel {
   tone: "bg-luxe-purple" | "bg-luxe-black";
 }
 
+/**
+ * The shop is women's-only — there is no men's line, so the two panels split by occasion
+ * (new season pieces vs. curated complete looks) rather than by a gender the catalog
+ * doesn't carry.
+ */
 const PANELS: SplitHeroPanel[] = [
-  { eyebrow: "Women — A/W 2026", headline: "Tailoring, softened.", ctaLabel: "Shop Women", href: "/women", tone: "bg-luxe-purple" },
-  { eyebrow: "Men — A/W 2026", headline: "Sharp lines, quiet rooms.", ctaLabel: "Shop Men", href: "/men", tone: "bg-luxe-black" },
+  { eyebrow: "A/W 2026", headline: "Tailoring, softened.", ctaLabel: "Shop New In", href: "/new-in", tone: "bg-luxe-purple" },
+  { eyebrow: "Curated by Us", headline: "Complete looks, zero guesswork.", ctaLabel: "Shop Ready to Wear", href: "/collections", tone: "bg-luxe-black" },
 ];
 
 /**
