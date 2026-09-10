@@ -12,7 +12,7 @@ export function Logo({ siteName, className }: LogoProps) {
       href="/"
       aria-label={`${siteName} — Home`}
       className={cn(
-        "font-heading text-2xl font-semibold tracking-[0.15em] uppercase",
+        "font-heading text-lg font-light tracking-[0.4em] uppercase",
         className
       )}
     >

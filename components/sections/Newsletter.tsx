@@ -11,7 +11,7 @@ interface NewsletterProps {
 
 export function Newsletter({ data }: NewsletterProps) {
   return (
-    <section className="bg-luxe-black py-24 text-luxe-white md:py-32">
+    <section className="bg-luxe-purple py-24 text-luxe-white md:py-32">
       <motion.div
         initial="hidden"
         whileInView="visible"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Nunito_Sans, Quicksand } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { JsonLd } from "@/components/shared/JsonLd";
@@ -26,13 +26,13 @@ import "./globals.css";
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
-const inter = Inter({
+const nunitoSans = Nunito_Sans({
   variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
 });
 
-const playfairDisplay = Playfair_Display({
+const quicksand = Quicksand({
   variable: "--font-heading",
   subsets: ["latin"],
   display: "swap",
@@ -101,7 +101,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${inter.variable} ${playfairDisplay.variable} h-full antialiased`}
+      className={`${nunitoSans.variable} ${quicksand.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

@@ -151,7 +151,7 @@
 }
 
 @layer utilities {
-  /* Editorial wordmark / display type — Playfair Display at generous tracking. */
+  /* Editorial wordmark / display type — Quicksand at generous tracking. */
   .text-display {
     @apply font-heading font-normal tracking-tight;
   }
